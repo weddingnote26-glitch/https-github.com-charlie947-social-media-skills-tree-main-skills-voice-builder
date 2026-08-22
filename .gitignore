@@ -1,0 +1,29 @@
+# 운영체제 임시 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기 설정
+.vscode/
+.idea/
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 비밀키·환경변수 — 절대 올리지 않기
+.env
+.env.*
+*.key
+*.pem
+
+# 임시·백업 파일
+*.tmp
+*.bak
+~$*
