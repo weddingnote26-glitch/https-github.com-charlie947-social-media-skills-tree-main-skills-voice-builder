@@ -14,7 +14,7 @@ title_candidates: []
 
 publish:
   date: "2026-08-27"
-  time: "07:00"
+  time: "08:30"
   timezone: Asia/Seoul
   weekday: "목"
   visibility: closed        # closed(비공개) → 검증 후 all(전체공개)

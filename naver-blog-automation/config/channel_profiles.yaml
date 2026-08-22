@@ -79,7 +79,7 @@ channels:
 
     publish:
       days: [mon, tue, wed, thu, fri, sat]
-      time: "07:00"
+      time: "08:30"          # 실제 발행 08:30~09:00 중 이른 쪽 (2026-08-22 확인)
 
     # 실제 글은 3편 모두 13개였습니다.
     hashtags:
