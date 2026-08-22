@@ -65,6 +65,65 @@ PRIVATE_DIR = PROJECT_ROOT / "private"
 LOG_DIR = PROJECT_ROOT / "logs"
 
 
+# ──────────────────────────────────────────────────────────────
+# 1-1. 클라우드 동기화 폴더 안에 있으면 경고합니다.
+#
+#  구글 드라이브·원드라이브·드롭박스는 .git 폴더의 작은 파일 수천 개를
+#  순서를 지키지 않고 올립니다. 절반만 올라간 상태에서 다른 PC가 받으면
+#  작업 기록이 깨집니다. 이 프로젝트는 깃허브로만 동기화합니다.
+# ──────────────────────────────────────────────────────────────
+CLOUD_MARKERS: list[tuple[str, str]] = [
+    ("google drive", "구글 드라이브"),
+    ("googledrive", "구글 드라이브"),
+    ("내 드라이브", "구글 드라이브"),
+    ("my drive", "구글 드라이브"),
+    ("onedrive", "원드라이브"),
+    ("dropbox", "드롭박스"),
+    ("icloud", "아이클라우드"),
+    ("naver mybox", "네이버 마이박스"),
+]
+
+
+def cloud_folder_name(path: Path | str | None = None) -> str | None:
+    """
+    이 폴더가 클라우드 동기화 폴더 안에 있으면 그 서비스 이름을 돌려줍니다.
+    아니면 None 입니다.
+    """
+    target = Path(path) if path else PROJECT_ROOT
+    try:
+        parts = [seg.lower() for seg in target.resolve().parts]
+    except OSError:
+        parts = [seg.lower() for seg in target.parts]
+    for seg in parts:
+        for marker, korean in CLOUD_MARKERS:
+            if marker in seg:
+                return korean
+    return None
+
+
+def warn_if_cloud_synced(path: Path | str | None = None) -> bool:
+    """클라우드 폴더 안이면 경고를 띄웁니다. 경고했으면 True."""
+    name = cloud_folder_name(path)
+    if not name:
+        return False
+    target = Path(path) if path else PROJECT_ROOT
+    say()
+    warn(f"이 폴더가 {name} 안에 있습니다.")
+    say(f"      위치: {target}")
+    say()
+    say("      이대로 두면 작업 기록(.git)이 깨질 수 있습니다.")
+    say(f"      {name}는 작은 파일 수천 개를 순서 없이 올립니다.")
+    say("      절반만 올라간 상태에서 다른 PC가 받으면 기록이 망가집니다.")
+    say()
+    say("      이 프로젝트는 깃허브로만 동기화합니다.")
+    say(f"      폴더를 {name} 밖으로 옮겨 주세요. (예: 내 문서\\블로그작업)")
+    say()
+    say("      문서·보고서는 클라우드에 두셔도 괜찮습니다.")
+    say("      프로그램 폴더만 밖으로 옮기시면 됩니다.")
+    say()
+    return True
+
+
 def rel(path: Path | str) -> str:
     """프로젝트 루트 기준 상대경로 문자열. 화면 표시·기록용."""
     p = Path(path)

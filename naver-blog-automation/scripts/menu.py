@@ -44,6 +44,8 @@ def pause() -> None:
 
 def show_state() -> None:
     """맨 위에 지금 상황을 간단히 보여줍니다."""
+    c.warn_if_cloud_synced()
+
     try:
         weeks = sorted((p for p in c.OUTPUT_DIR.iterdir()
                         if p.is_dir() and p.name.startswith("20")),
