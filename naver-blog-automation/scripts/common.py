@@ -265,14 +265,56 @@ def post_dir(wid: str, channel_key: str, date: _dt.date) -> Path:
 # ──────────────────────────────────────────────────────────────
 # 6. 상태 흐름
 # ──────────────────────────────────────────────────────────────
-STATUSES = ["draft", "fact_checked", "reviewed", "approved", "scheduled", "published"]
+#  글 하나가 지나가는 길입니다. 순서대로만 올라가고 건너뛸 수 없습니다.
+#
+#    draft                  원고 초안
+#    fact_checked           본문 수치가 출처로 확인됨
+#    reviewed               자동 검수 통과
+#    approved               사람이 확인하고 승인함  ← 여기부터 네이버 작업 가능
+#    editor_filled          네이버 편집기에 입력을 마침
+#    draft_saved            비공개로 임시저장함 (아직 예약 아님)
+#    reservation_requested  예약 버튼을 눌렀음 (아직 확인 전)
+#    reservation_verified   네이버 예약 목록에서 제목·시각을 다시 확인함
+#    published              예약 시각이 지나 실제로 올라감
+#    post_publish_verified  올라간 글을 열어 이미지·태그까지 확인함
+#
+#  failed 은 위 순서와 별개입니다. 어느 단계에서든 멈출 수 있습니다.
+STATUSES = [
+    "draft", "fact_checked", "reviewed", "approved",
+    "editor_filled", "draft_saved",
+    "reservation_requested", "reservation_verified",
+    "published", "post_publish_verified",
+]
 STATUS_KO = {
-    "draft":       "초안",
-    "fact_checked": "사실확인 완료",
-    "reviewed":    "검수 완료",
-    "approved":    "승인됨",
-    "scheduled":   "예약 등록됨",
-    "published":   "발행됨",
+    "draft":                 "초안",
+    "fact_checked":          "사실확인 완료",
+    "reviewed":              "검수 완료",
+    "approved":              "승인됨",
+    "editor_filled":         "편집기 입력 완료",
+    "draft_saved":           "비공개 임시저장",
+    "reservation_requested": "예약 요청함",
+    "reservation_verified":  "예약 확인됨",
+    "published":             "발행됨",
+    "post_publish_verified": "발행 확인 완료",
+    "failed":                "실패 — 사람 확인 필요",
+}
+
+# 예약이나 공개 발행을 실행할 수 있는 최소 단계
+PUBLISH_GATE = "approved"
+
+# 화면 표시용 기호
+STATUS_MARK = {
+    "draft":                 "□",
+    "fact_checked":          "◑",
+    "reviewed":              "◕",
+    "approved":              "●",
+    "editor_filled":         "▣",
+    "draft_saved":           "▤",
+    "reservation_requested": "◇",
+    "reservation_verified":  "◆",
+    "published":             "★",
+    "post_publish_verified":  "✦",
+    "failed":                "✗",
 }
 
 
@@ -287,6 +329,19 @@ def can_advance(current: str, target: str) -> bool:
     """상태는 순서대로만 올라갑니다. 건너뛰기 금지."""
     ci, ti = status_index(current), status_index(target)
     return ci >= 0 and ti >= 0 and ti == ci + 1
+
+
+def at_least(current: str, minimum: str) -> bool:
+    """현재 상태가 기준 단계 이상인가. (failed 는 항상 False)"""
+    if current == "failed":
+        return False
+    ci, mi = status_index(current), status_index(minimum)
+    return ci >= 0 and mi >= 0 and ci >= mi
+
+
+def can_touch_naver(current: str) -> bool:
+    """네이버 편집기를 열어 예약·발행까지 진행해도 되는 상태인가."""
+    return at_least(current, PUBLISH_GATE)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -375,13 +430,22 @@ def header(title: str) -> None:
     print(f"\n{line}\n  {title}\n{line}", flush=True)
 
 
+class InputClosed(RuntimeError):
+    """더 이상 입력을 받을 수 없는 상황 (Ctrl+D, 파이프 끝 등)."""
+
+
 def ask(prompt: str, default: str = "") -> str:
     suffix = f" [{default}]" if default else ""
     try:
         answer = input(f"{prompt}{suffix}: ").strip()
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
+        # 입력이 끊겼습니다. 기본값으로 돌려주면 메뉴가 끝없이 반복되므로
+        # 여기서 분명히 알려 주고 프로그램이 끝나게 합니다.
         print()
-        return default
+        raise InputClosed
+    except KeyboardInterrupt:
+        print()
+        raise InputClosed
     return answer or default
 
 

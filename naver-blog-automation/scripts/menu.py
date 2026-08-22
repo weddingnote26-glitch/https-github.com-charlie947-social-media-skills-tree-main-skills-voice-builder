@@ -36,7 +36,9 @@ def pause() -> None:
     c.say()
     try:
         input("  계속하려면 Enter 를 눌러 주세요 …")
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
+        raise c.InputClosed
+    except KeyboardInterrupt:
         pass
 
 
@@ -148,12 +150,16 @@ def menu_3() -> None:
 def menu_4() -> None:
     c.header("4. 네이버 예약 발행 준비")
     c.say()
-    c.say("  검수를 통과한 글을 승인한 뒤, 붙여넣기용 자료를 만듭니다.")
+    c.say("  검수를 통과한 글을 승인하고, 네이버에 올릴 자료를 만듭니다.")
+    c.say()
+    c.say("  ⚠ 네이버 스마트에디터는 HTML 글쓰기를 지원하지 않습니다.")
+    c.say("     그래서 HTML을 붙여넣는 대신, 편집기에 그대로 옮길 수 있는")
+    c.say("     순수 텍스트와 이미지 파일을 준비합니다.")
     c.say()
     if c.confirm("  먼저 승인 단계를 진행할까요?", default_yes=True):
         run("approve.py")
     c.say()
-    c.info("붙여넣기용 HTML과 발행 카드를 만듭니다 …")
+    c.info("중복·예약 충돌을 검사하고 업로드 패키지를 만듭니다 …")
     run("prepare_publish.py")
 
 
@@ -163,20 +169,23 @@ def menu_5() -> None:
     c.say("  네이버에는 글을 자동으로 올려주는 공식 기능이 없습니다.")
     c.say("  (블로그 글쓰기 API는 2020년 5월에 종료되었습니다)")
     c.say()
-    c.say("  두 가지 방법이 있습니다.")
+    c.say("    A. 직접 올리기  — 가장 안전하고 확실합니다. (권장)")
+    c.say("       체크리스트를 보고 편집기에 옮깁니다.")
     c.say()
-    c.say("    A. 직접 붙여넣기  — 가장 안전하고 확실합니다. (권장)")
-    c.say("       발행 카드를 보고 네이버 글쓰기 화면에 붙여넣습니다.")
-    c.say()
-    c.say("    B. 브라우저 보조  — 선택 기능입니다. 기본값은 꺼져 있습니다.")
+    c.say("    B. 브라우저 보조 — 선택 기능. 기본값은 꺼져 있습니다.")
     c.say("       화면 구조를 먼저 확인해야 하고, 한 번에 1편만 다룹니다.")
     c.say()
     choice = c.ask("  어느 쪽으로 하시겠습니까? (A/B)", "A").upper()
 
     if choice == "B":
         c.say()
-        c.warn("브라우저 보조 기능은 계정에 불이익이 갈 수 있습니다.")
+        c.warn("브라우저 보조는 계정에 불이익이 갈 수 있습니다.")
         c.say("      처음에는 반드시 비공개로 1편만 시험해 주세요.")
+        c.say()
+        c.say("  순서:")
+        c.say("    1) 화면 구조 확인   --calibrate")
+        c.say("    2) 입력 후 비공개 저장  --fill --post <ID>")
+        c.say("    3) 예약 걸기        --reserve --post <ID>")
         c.say()
         run("browser_publish.py")
         return
@@ -184,31 +193,80 @@ def menu_5() -> None:
     from scripts.generate_week import resolve_week
     try:
         wdir = resolve_week(None)
-        guide = wdir / "발행안내.md"
-        if guide.exists():
-            c.say()
-            c.ok(f"발행 안내를 여세요: {c.rel(guide)}")
-            c.say()
-            c.say(c.read_text(guide)[:1200])
-        else:
-            c.warn("아직 발행 자료가 없습니다. 4번을 먼저 실행해 주세요.")
     except SystemExit as e:
         c.warn(str(e))
+        return
+
+    guide = wdir / "발행안내.md"
+    if not guide.exists():
+        c.warn("아직 발행 자료가 없습니다. 4번을 먼저 실행해 주세요.")
+        return
+
+    checklists = sorted(wdir.rglob("publish/upload_checklist.md"))
+    c.say()
+    c.ok(f"준비된 글 {len(checklists)}편")
+    c.say()
+    for i, ck in enumerate(checklists, 1):
+        meta = c.read_yaml(ck.parent.parent / "metadata.yaml", default={}) or {}
+        pub = meta.get("publish") or {}
+        st = meta.get("status", "draft")
+        c.say(f"    {i}. [{c.STATUS_MARK.get(st,'?')} {c.STATUS_KO.get(st,st)}] "
+              f"{pub.get('date')} {pub.get('time')}  {c.clip(meta.get('title',''), 34)}")
+        c.say(f"       → {c.rel(ck)}")
+    c.say()
+    c.say("  각 글의 체크리스트를 열어 0단계(블로그 ID 7가지 확인)부터")
+    c.say("  차례대로 따라가시면 됩니다.")
+    c.say()
+    c.say("  ⚠ post.html 은 눈으로 보는 용도입니다. 붙여넣지 마세요.")
+    c.say("  ⚠ 이미지는 편집기의 사진 단추(포토 업로더)로 올려 주세요.")
 
 
 def menu_6() -> None:
     c.header("6. 발행 결과 확인")
     run("publish_status.py")
     c.say()
-    if c.confirm("  발행이 끝난 글을 기록해 둘까요?"):
-        pid = c.ask("  게시물 ID")
-        if not pid:
-            return
-        url = c.ask("  글 주소 (없으면 그냥 Enter)")
-        args = ["--mark-published", pid]
-        if url:
-            args += ["--url", url]
-        run("publish_status.py", *args)
+    c.say("  네이버에서 한 단계를 마칠 때마다 여기에 기록해 두면")
+    c.say("  중간에 멈췄다가 다시 시작할 때 어디부터 할지 알 수 있습니다.")
+    c.say()
+    if not c.confirm("  방금 마친 단계를 기록할까요?"):
+        return
+
+    steps = [
+        ("1", "editor_filled", "편집기에 입력을 마침"),
+        ("2", "draft_saved", "비공개로 저장함"),
+        ("3", "reservation_requested", "예약 버튼을 누름"),
+        ("4", "reservation_verified", "예약 목록에서 확인함"),
+        ("5", "published", "발행일이 지나 실제로 올라감"),
+        ("6", "post_publish_verified", "올라간 글을 열어 확인함"),
+        ("9", "failed", "문제가 생겨 멈춤"),
+    ]
+    c.say()
+    for num, _, label in steps:
+        c.say(f"    {num}. {label}")
+    c.say()
+    pick = c.ask("  번호")
+    found = next((s for s in steps if s[0] == pick), None)
+    if not found:
+        c.warn("번호를 다시 골라 주세요.")
+        return
+
+    pid = c.ask("  게시물 ID")
+    if not pid:
+        return
+
+    args = ["--post", pid]
+    if found[1] == "failed":
+        args.append("--fail")
+        note = c.ask("  무슨 일이 있었나요 (없으면 Enter)")
+        if note:
+            args += ["--note", note]
+    else:
+        args += ["--set", found[1]]
+        if found[1] in ("published", "post_publish_verified"):
+            url = c.ask("  글 주소 (없으면 Enter)")
+            if url:
+                args += ["--url", url]
+    run("publish_status.py", *args)
 
 
 def menu_7() -> None:
@@ -264,17 +322,27 @@ def main() -> None:
             c.warn(f"상태를 읽지 못했습니다: {e}")
         c.say(MENU)
 
-        choice = c.ask("  번호를 고르세요")
+        try:
+            choice = c.ask("  번호를 고르세요")
+        except c.InputClosed:
+            c.say("  입력이 끝나 메뉴를 닫습니다.")
+            return
+
         if choice in ("8", "q", "종료", "exit"):
             c.say()
             c.say("  수고하셨습니다.")
             return
+
         handler = HANDLERS.get(choice)
         if not handler:
             c.warn("1부터 8 사이의 번호를 골라 주세요.")
             continue
+
         try:
             handler()
+        except c.InputClosed:
+            c.say("  입력이 끝나 메뉴를 닫습니다.")
+            return
         except c.ConfigError as e:
             c.error(str(e))
         except KeyboardInterrupt:
@@ -284,7 +352,11 @@ def main() -> None:
             c.error(f"예상하지 못한 문제가 생겼습니다: {e}")
             c.say(f"      자세한 내용은 {c.rel(c.LOG_DIR)} 폴더의 기록을 봐주세요.")
             c.get_logger().exception("메뉴 실행 중 오류")
-        pause()
+
+        try:
+            pause()
+        except c.InputClosed:
+            return
 
 
 if __name__ == "__main__":

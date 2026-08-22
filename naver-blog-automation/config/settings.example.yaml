@@ -22,6 +22,13 @@ holidays:
   # false 로 두면 아래 날짜는 편성에서 제외됩니다 (YYYY-MM-DD)
   dates: []
 
+# ── 예약 규칙 ──────────────────────────────────────────────
+schedule:
+  # 같은 채널의 두 글 사이 최소 간격(시간). 너무 촘촘하면 경고합니다.
+  min_gap_hours: 12
+  # 예약을 걸기 전에 지금 시각보다 최소 몇 시간 뒤여야 하는지
+  min_lead_hours: 1
+
 # ── 원고 생성 방식 ─────────────────────────────────────────
 generation:
   # claude_code : 지시 패킷(brief)을 만들어 두고 Claude Code가 원고를 씁니다.
@@ -66,8 +73,18 @@ review:
 #  ⚠ 기본값은 꺼짐입니다. 켜기 전에 README의 '주의사항'을 읽어주세요.
 browser:
   enabled: false
+
+  # 두 블로그를 한 네이버 계정으로 쓰는지, 계정이 서로 다른지
+  #   same_account      : 한 계정 → 블로그 전환 후 ID를 다시 확인합니다
+  #   separate_accounts : 계정이 다름 → 채널마다 브라우저 프로필을 나눕니다
+  account_mode: same_account
+
   # 로그인 프로필 저장 위치 (이 폴더는 절대 동기화하지 마세요)
   profile_dir: private/browser-profile
+  # account_mode 가 separate_accounts 일 때 쓰는 채널별 폴더
+  profile_dirs:
+    coin: private/browser-profile/coin
+    stock: private/browser-profile/stock
   # 처음에는 반드시 비공개(closed)로 1건만 시험하세요.
   first_run_visibility: closed
   # 한 번에 등록할 수 있는 최대 글 수 (안전장치)

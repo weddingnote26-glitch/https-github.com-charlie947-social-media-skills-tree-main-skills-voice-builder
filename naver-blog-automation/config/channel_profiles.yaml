@@ -62,6 +62,20 @@ channels:
       accent_color: "#F6AD55"
       mood: 차분한 파랑 계열, 정돈된 느낌
 
+    # ── 검수 기준 (⚠ 아직 실제 글을 못 봐서 임시값입니다) ──
+    #    샘플을 받으면 실측값으로 교체합니다.
+    review_targets:
+      calibrated_from: 0          # 0 = 미측정, 이 상태에서는 글자 수로 막지 않습니다
+      min_chars: 1100
+      max_chars: 2200
+      intro_max_chars: 250
+      headings_min: 3
+      headings_max: 6
+      avg_sentence_chars: 40
+      max_sentence_chars: 90
+      long_sentence_ratio: 0.15
+      images_min: 1
+      images_max: 5
     style_file: config/style_coin.md
 
   # ─────────────────────────────────────────────────────────
@@ -99,25 +113,49 @@ channels:
       required:
         - 투자 권유가 아닌 교육 목적임을 명시
 
+    # 실제 블로그에서 쓰고 있는 문구 그대로입니다. (2026-08-21 글 기준)
     disclaimer: |
-      이 글은 경제 공부를 돕기 위한 교육 목적의 글입니다.
-      특정 종목의 매수나 매도를 권유하지 않으며,
-      투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+      이 글은 주식과 경제를 공부하기 위한 교육 콘텐츠이며 특정 종목의 매수·매도를 권유하는 글이 아닙니다.
+
+    # 글 끝에 붙는 고정 소개 문단 (실제 글에서 확인)
+    footer: |
+      오락(ORAK) 5070 경제공부소 경제와 주식을 처음 공부하는 50·60·70대를 위해 어려운 경제 이야기를 쉬운 말로 하나씩 설명합니다. 관악구에서 진행하는 오프라인 경제·재테크 공부 모임에서도 차트 보는 법과 기초 개념을 눈높이에 맞추어 차근차근 함께 연습해 볼 수 있습니다.
+
+    # 글 첫 줄 고정 인사말 (실제 글에서 확인)
+    greeting: "안녕하세요. 오락(ORAK) 5070 경제공부소입니다."
 
     publish:
       days: [mon, tue, wed, thu, fri, sat]
       time: "07:30"
 
+    # 실제 글의 태그 구성: 독자층 + 주제 + 일반 + 연령 타깃 (7개)
+    #   #주식초보 #주식차트보는법 #양봉음봉 #주식캔들 #주식공부 #50대재테크 #60대재테크
     hashtags:
-      min: 5
-      max: 10
-      base: [주식공부, 경제공부, 주식초보, 경제상식, 재테크공부]
+      min: 6
+      max: 8
+      base: [주식초보, 주식공부]          # 거의 매번 들어가는 것
+      age_target: [50대재테크, 60대재테크]  # 연령 타깃 (고정)
+      # 나머지는 그 글의 주제어로 채웁니다 (예: 주식차트보는법, 양봉음봉, 주식캔들)
 
     design:
       primary_color: "#2F855A"
       accent_color: "#D69E2E"
       mood: 편안한 초록 계열, 큰 글씨, 여백 넉넉하게
 
+    # ── 검수 기준 (실제 글 1편 실측값 기반, 2026-08-21) ──
+    #    표본이 늘면 다시 조정합니다.
+    review_targets:
+      calibrated_from: 1          # 표본 수
+      min_chars: 1100             # 실측 1,383자 → 여유 두고 하한
+      max_chars: 2200
+      intro_max_chars: 250        # 실측 238자 (원지시서의 100자와 다름)
+      headings_min: 3
+      headings_max: 5             # 실측 4개
+      avg_sentence_chars: 35      # 실측 평균 35자
+      max_sentence_chars: 90      # 실측 최대 95자, 90자 초과는 2%뿐
+      long_sentence_ratio: 0.08   # 90자 초과 문장 허용 비율
+      images_min: 2
+      images_max: 5               # 실측 3장
     style_file: config/style_stock.md
 
 # ═══════════════════════════════════════════════════════════════

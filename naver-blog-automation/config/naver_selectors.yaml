@@ -40,10 +40,13 @@ login_markers:
 # 에디터 요소 — 확인 전에는 비어 있습니다.
 # --calibrate 가 실제 화면에서 찾아 채웁니다.
 editor:
-  iframe: null           # 예: "iframe#mainFrame"
+  iframe: null              # 예: "iframe#mainFrame"
   title_input: null
   body_input: null
+  photo_button: null        # 사진(포토 업로더) 단추 — 이미지는 반드시 이걸로 올립니다
+  file_input: null          # 포토 업로더의 파일 선택 입력
   publish_button: null
+  save_draft_button: null   # 비공개 임시저장
   schedule_toggle: null
   schedule_date: null
   schedule_time: null
@@ -51,6 +54,19 @@ editor:
   visibility_closed: null
   tag_input: null
   confirm_button: null
+
+# 화면에서 읽어 대조할 값들 (채널 오발행 방지용)
+identity:
+  account_name: null        # 로그인한 계정 이름이 보이는 곳
+  blog_name: null           # 블로그 이름이 보이는 곳
+  # 블로그 ID 는 주소창(URL)에서 읽으므로 선택자가 필요 없습니다.
+
+# 예약 목록 확인용
+reservation_list:
+  open_button: null         # 예약 건수를 누르는 곳
+  items: null               # 예약 글 한 줄
+  item_title: null
+  item_time: null
 
 # 확인 결과 기록 (--calibrate 가 채웁니다)
 calibration_log: []

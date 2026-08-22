@@ -183,57 +183,75 @@ def check_title_body(r: Report, post: PostFile) -> None:
 
 
 def check_tone(r: Report, post: PostFile, ch: dict, settings: dict) -> None:
-    """5. 채널 문체가 맞는가"""
+    """5. 채널 문체가 맞는가 — 채널별 실측 기준으로 봅니다."""
+    tg = ch.get("review_targets") or {}
     rv = settings.get("review") or {}
-    max_sent = int(rv.get("max_sentence_chars", 90))
-    sents = t.sentences(post.prose())
+
+    def t_get(key, fallback):
+        v = tg.get(key)
+        return v if v is not None else rv.get(key, fallback)
+
+    calibrated = int(tg.get("calibrated_from", 0)) > 0
+    max_sent = int(t_get("max_sentence_chars", 90))
+    min_c = int(t_get("min_chars", 1100))
+    max_c = int(t_get("max_chars", 2200))
+    intro_max = int(t_get("intro_max_chars", 250))
+    h_min = int(t_get("headings_min", 3))
+    h_max = int(t_get("headings_max", 6))
+    long_ratio_limit = float(t_get("long_sentence_ratio", 0.15))
+
+    prose = post.prose()
+    sents = t.sentences(prose)
     if not sents:
         r.add(5, "채널 문체 일치", BLOCK, "본문이 비어 있습니다.")
         return
-    long_ones = [s for s in sents if t.char_count(s) > max_sent]
-    body_chars = t.char_count(post.prose())
-    min_c, max_c = int(rv.get("min_chars", 1200)), int(rv.get("max_chars", 4000))
 
-    problems = []
-    if body_chars < min_c:
-        problems.append(f"본문이 {body_chars}자로 짧습니다 (최소 {min_c}자)")
-    if body_chars > max_c:
-        problems.append(f"본문이 {body_chars}자로 깁니다 (최대 {max_c}자)")
-
+    body_chars = t.char_count(prose)
     heads = post.headings()
-    if not (3 <= len(heads) <= 6):
-        problems.append(f"소제목이 {len(heads)}개입니다 (3~6개 필요)")
-
     intro_len = t.char_count(post.intro())
-    if intro_len > 100:
-        problems.append(f"도입부가 {intro_len}자입니다 (100자 이내)")
+    long_ones = [s for s in sents if t.char_count(s) > max_sent]
+    long_ratio = len(long_ones) / len(sents)
+    avg = sum(t.char_count(s) for s in sents) // len(sents)
 
-    if long_ones:
-        ratio = len(long_ones) / len(sents)
-        note = f"{max_sent}자 넘는 문장 {len(long_ones)}개"
-        if ch["key"] == "stock" and ratio > 0.15:
-            problems.append(note + " — 50~70대 독자에게는 문장이 깁니다")
-        elif ratio > 0.3:
-            problems.append(note)
+    length_problems, structure_problems = [], []
+
+    if body_chars < min_c:
+        length_problems.append(f"본문이 {body_chars}자로 짧습니다 (기준 {min_c}자 이상)")
+    elif body_chars > max_c:
+        length_problems.append(f"본문이 {body_chars}자로 깁니다 (기준 {max_c}자 이하)")
+
+    if not (h_min <= len(heads) <= h_max):
+        structure_problems.append(
+            f"소제목이 {len(heads)}개입니다 (기준 {h_min}~{h_max}개)")
+
+    if intro_len > intro_max:
+        length_problems.append(f"도입부가 {intro_len}자입니다 (기준 {intro_max}자 이내)")
+
+    if long_ratio > long_ratio_limit:
+        msg = (f"{max_sent}자 넘는 문장이 {len(long_ones)}개"
+               f"({long_ratio:.0%})입니다")
+        if ch["key"] == "stock":
+            msg += " — 50~70대 독자에게는 문장이 깁니다"
+        length_problems.append(msg)
+
+    problems = structure_problems + length_problems
 
     if problems:
-        # 글자 수 기준은 실제 블로그 양식을 분석하기 전까지는 임시값입니다.
-        # 임시값으로 발행을 막지 않습니다. 소제목 개수만 구조 문제로 봅니다.
-        analyzed = c.style_status(ch["key"]).get("status") == "analyzed"
-        length_only = all("자로" in p for p in problems)
-        if len(heads) < 3:
+        # 소제목 개수처럼 구조가 어긋난 것은 막습니다.
+        # 글자 수는 표본을 측정하기 전이라면 막지 않고 알리기만 합니다.
+        if structure_problems:
             level = BLOCK
-        elif length_only and not analyzed:
-            level = WARN
-            problems.append("(글자 수 기준은 양식 분석 전 임시값입니다)")
-        elif body_chars < min_c:
-            level = BLOCK
+        elif calibrated:
+            level = BLOCK if body_chars < min_c else WARN
         else:
             level = WARN
+            problems.append("(이 채널은 아직 실제 글을 측정하지 않아 임시 기준입니다)")
         r.add(5, "채널 문체 일치", level, " / ".join(problems))
     else:
-        r.add(5, "채널 문체 일치", PASS,
-              f"{body_chars}자 · 소제목 {len(heads)}개 · 도입부 {intro_len}자")
+        note = f"{body_chars}자 · 소제목 {len(heads)}개 · 도입부 {intro_len}자 · 평균 문장 {avg}자"
+        if calibrated:
+            note += f" (표본 {tg.get('calibrated_from')}편 기준)"
+        r.add(5, "채널 문체 일치", PASS, note)
 
 
 def check_cross_channel(r: Report, post: PostFile, others: list[PostFile],

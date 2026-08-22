@@ -17,6 +17,12 @@
 1. **네이버 글쓰기 API를 쓰지 마세요.** 2020년 5월 6일에 종료됐습니다.
    옛 문서(`naver-openapi-guide`)에 `/blog/writePost` 가 남아 있지만 동작하지 않습니다.
    비공식 내부 API를 찾아 쓰는 것도 금지입니다.
+1-1. **`post.html` 을 업로드 기준으로 삼지 마세요.**
+   스마트에디터 ONE 은 HTML 글쓰기를 지원하지 않습니다.
+   `post.html` 은 눈으로 확인하는 용도이며, 실제 업로드는
+   `publish/` 폴더의 `body.txt` + `blocks.yaml` 을 씁니다.
+1-2. **이미지를 클립보드 복사나 외부 URL 로 넣지 마세요.**
+   네이버 포토 업로더로 파일을 직접 올려야 합니다.
 2. **네이버 계정 정보를 코드나 설정 파일에 넣지 마세요.**
 3. **CAPTCHA·본인인증·보안 경고를 우회하는 코드를 쓰지 마세요.**
 4. **출처 없는 가격·지수·환율·금리를 지어내지 마세요.** `확인 필요` 로 남기세요.
@@ -97,6 +103,46 @@
 - 앞머리의 `blog_id` 가 채널과 다름 (**채널 혼동 — 가장 위험**)
 - 두 채널 글이 25% 이상 닮음
 
+## 업로드 패키지 (publish/)
+
+`prepare_publish.py` 가 승인된 글마다 만듭니다. 직접 손으로 만들지 마세요.
+
+| 파일 | 내용 |
+|---|---|
+| `title.txt` | 순수 텍스트 제목 |
+| `body.txt` | 숨은 태그가 없는 순수 텍스트 본문 |
+| `blocks.yaml` | 문단·소제목·이미지·목록·구분선의 입력 순서 |
+| `image_order.csv` | 이미지 파일과 삽입 위치, 대체 텍스트 |
+| `publish_settings.yaml` | 채널·카테고리·공개설정·예약일시·태그·본문지문 |
+| `upload_checklist.md` | 사람이 따라가는 순서표 (0단계 = 블로그 ID 7가지 확인) |
+| `result.json` | 단계별 진행 기록, 올린 이미지 목록, 실패 이력 |
+
+블록 형식은 `scripts/blocks.py` 가 정합니다.
+`paragraph` / `heading` / `image` / `list` / `divider` / `quote` / `hashtags`.
+
+## 상태 흐름 (10단계)
+
+```
+draft → fact_checked → reviewed → approved
+     → editor_filled → draft_saved
+     → reservation_requested → reservation_verified
+     → published → post_publish_verified
+```
+
+- `approved` 이전에는 네이버 쪽 단계로 갈 수 없습니다. (`common.can_touch_naver`)
+- 단계를 건너뛸 수 없습니다. (`common.can_advance`)
+- 어느 단계에서든 `failed` 로 빠질 수 있고, 고친 뒤 그 단계부터 이어서 합니다.
+
+## 발행 전 반드시 검사하는 것
+
+`scripts/conflicts.py` 가 `prepare_publish.py` 와 브라우저 작업 앞에서 돌아갑니다.
+
+**중복** — 같은 post_id / 같은 제목 / 같은 채널·날짜 / 본문 해시 일치 /
+본문 60% 이상 유사 / 이미 네이버에 올라간 기록(naver_log_no, post_url)
+
+**예약 충돌** — 이미 지난 시각 / 월~토가 아님 / 폴더 날짜와 불일치 /
+원고 요일과 불일치 / 공휴일 설정 / 같은 채널·같은 시각 중복 / 최소 발행 간격
+
 ## 명령 모음
 
 ```bash
@@ -105,8 +151,11 @@ python scripts/generate_week.py      # 원고 작업 지시서 만들기
 python scripts/factcheck.py          # 수치 출처 검사
 python scripts/review.py             # 15가지 자동 검수
 python scripts/approve.py            # 사람 승인
-python scripts/prepare_publish.py    # 예약 발행 자료 준비
+python scripts/prepare_publish.py    # 중복·충돌 검사 + 업로드 패키지 생성
+python scripts/build_package.py      # 업로드 패키지만 다시 만들기
 python scripts/publish_status.py     # 상태 보기
+python scripts/publish_status.py --set draft_saved --post <ID>   # 단계 기록
+python scripts/publish_status.py --fail --post <ID> --note "..."  # 실패 기록
 python scripts/menu.py               # 번호 선택 메뉴
 ```
 
