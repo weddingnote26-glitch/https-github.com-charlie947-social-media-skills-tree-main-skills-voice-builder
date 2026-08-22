@@ -304,9 +304,34 @@ def check_history_similarity(r: Report, post: PostFile,
               f"비교한 글 {len(history)}편 · 최대 {worst:.0%}")
 
 
+def _is_prohibitive(text: str, pos: int, length: int, cfg: dict) -> bool:
+    """
+    걸린 표현이 '하지 말라'는 문장 안에 있는지 봅니다.
+
+      "섣부른 몰빵 금지"                → 말리는 문장
+      "풀매수하고 있으면 고통스럽습니다"  → 말리는 문장
+      "지금 몰빵하세요"                 → 진짜 유도
+
+    앞뒤 가까운 곳에 '금지', '마세요', '고통' 같은 말이 있으면
+    말리는 문장으로 보고 넘어갑니다.
+    """
+    markers = cfg.get("markers") or []
+    if not markers:
+        return False
+    after = int(cfg.get("window_after", 24))
+    before = int(cfg.get("window_before", 12))
+    # 걸린 표현 자체는 빼고 그 앞뒤만 봅니다.
+    # (안 그러면 "손실 없는 투자" 의 '손실' 이 스스로를 면제해 버립니다)
+    left = text[max(0, pos - before): pos]
+    right = text[pos + length: pos + length + after]
+    return any((m in left) or (m in right) for m in markers)
+
+
 def _scan_groups(text: str, groups: list[dict], ch_key: str,
-                 ids: set[str]) -> list[tuple[str, str, str]]:
+                 ids: set[str], banned: dict | None = None
+                 ) -> list[tuple[str, str, str]]:
     """(그룹라벨, 심각도, 걸린표현) 목록"""
+    ctx = (banned or {}).get("prohibitive_context") or {}
     hits = []
     for g in groups:
         if g["id"] not in ids:
@@ -314,15 +339,24 @@ def _scan_groups(text: str, groups: list[dict], ch_key: str,
         if ch_key not in (g.get("applies_to") or []):
             continue
         for pat in g.get("patterns", []):
-            if pat in text:
+            start = 0
+            while True:
+                pos = text.find(pat, start)
+                if pos < 0:
+                    break
+                start = pos + 1
+                # 말리는 문장이면 걸지 않습니다.
+                if ctx and _is_prohibitive(text, pos, len(pat), ctx):
+                    continue
                 hits.append((g["label"], g["severity"], pat))
+                break
     return hits
 
 
 def check_profit_guarantee(r: Report, post: PostFile, ch_key: str,
                            banned: dict) -> None:
     """8. 투자 수익 보장 표현"""
-    hits = _scan_groups(post.body, banned["groups"], ch_key, {"profit_guarantee"})
+    hits = _scan_groups(post.body, banned["groups"], ch_key, {"profit_guarantee"}, banned)
     if hits:
         r.add(8, "투자 수익 보장 표현", BLOCK,
               "쓰면 안 되는 표현: " + ", ".join(f"「{h[2]}」" for h in hits))
@@ -335,7 +369,7 @@ def check_fear_and_solicit(r: Report, post: PostFile, ch_key: str,
     """9. 과도한 공포·매수 유도 표현"""
     ids = {"trade_solicitation", "fear_mongering", "price_prediction",
            "slang_5070", "slang_coin", "rumor", "copy_signal"}
-    hits = _scan_groups(post.body, banned["groups"], ch_key, ids)
+    hits = _scan_groups(post.body, banned["groups"], ch_key, ids, banned)
     blocked = [h for h in hits if h[1] == "block"]
     warned = [h for h in hits if h[1] == "warn"]
     if blocked:
