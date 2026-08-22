@@ -30,6 +30,9 @@ data/source_cache/
 !data/source_cache/.gitkeep
 *.log
 
+# 수집한 원본 HTML (용량이 큽니다. 분석용 .md 만 동기화합니다)
+samples/**/_raw/
+
 # 원고 폴더 안의 대용량 파일
 output/**/*.zip
 output/**/*.mp4

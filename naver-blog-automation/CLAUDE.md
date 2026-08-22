@@ -171,6 +171,40 @@ python scripts/menu.py               # 번호 선택 메뉴
 
 ## 글 양식 분석을 요청받으면
 
+### 표본이 `samples/` 에 있을 때 (권장)
+
+사용자가 `python scripts/fetch_samples.py` 를 실행하면
+`samples/coin/` 과 `samples/stock/` 에 글이 저장됩니다.
+
+각 파일 앞머리에 **이미 재어 놓은 값**이 있습니다. 다시 세지 말고 그걸 쓰세요.
+
+```yaml
+title_chars: 49            # 제목 글자 수
+body_chars: 1383           # 본문 글자 수 (공백 제외)
+avg_sentence_chars: 35     # 문장 평균 길이
+heading_count: 4
+headings: ["아주 쉽게 설명해 드릴게요", ...]
+image_count: 3
+tags: [주식초보, 양봉음봉, ...]
+```
+
+분석 방법:
+1. 채널별로 모든 표본의 값을 모아 **중간값과 범위**를 냅니다.
+2. `headings` 목록을 비교해 **반복되는 소제목이 있는지** 봅니다.
+   여러 글에 같은 소제목이 나오면 고정 템플릿입니다.
+3. 본문에서 반복되는 표현(인사말, 마무리, 괄호 뜻풀이 등)을 찾습니다.
+4. 표본이 3편 미만이면 `confidence: low` 로 두고 그렇게 밝힙니다.
+5. 잰 값으로 `channel_profiles.yaml` 의 `review_targets` 를 보정하고
+   `calibrated_from` 에 표본 수를 적습니다.
+
+### 표본이 없고 사용자가 본문을 붙여넣었을 때
+
+같은 항목을 직접 재되, **본 것만** 적습니다.
+이미지 배치처럼 텍스트로 알 수 없는 것은 `미확인` 으로 남기고,
+화면 캡처를 요청하세요.
+
+### 공통 규칙
+
 사용자가 블로그 게시물 샘플을 주면 `config/style_coin.md` 또는
 `config/style_stock.md` 를 채웁니다.
 

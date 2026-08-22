@@ -72,6 +72,8 @@ def show_state() -> None:
 
 
 MENU = """
+  0. 내 블로그 글 가져오기 (양식 분석용 — 처음에 한 번)
+
   1. 다음 주 콘텐츠 12편 생성
   2. 특정 게시물 다시 생성
   3. 전체 원고 검수
@@ -81,6 +83,42 @@ MENU = """
   7. 설정 변경
   8. 종료
 """
+
+
+def menu_0() -> None:
+    c.header("0. 내 블로그 글 가져오기")
+    c.say()
+    c.say("  두 블로그의 공개 글을 가져와 글 양식을 분석합니다.")
+    c.say("  로그인하지 않고, 공개된 글만 가져옵니다.")
+    c.say()
+    c.say("  이걸 해야 하는 이유:")
+    c.say("    글 양식을 모르면 원고가 기존 글과 다른 모양으로 나옵니다.")
+    c.say("    실제 글을 보고 제목 길이·문장 길이·소제목 구성을 맞춥니다.")
+    c.say()
+
+    unana = [c.get_channel(k)["name"] for k in ("coin", "stock")
+             if c.style_status(k).get("status") != "analyzed"]
+    if unana:
+        c.warn(f"아직 분석되지 않은 채널: {', '.join(unana)}")
+    else:
+        c.info("두 채널 모두 분석되어 있습니다. 표본을 늘리면 더 정확해집니다.")
+    c.say()
+
+    n = c.ask("  채널당 몇 편을 가져올까요?", "10")
+    if not n.isdigit():
+        c.warn("숫자로 적어 주세요.")
+        return
+    if run("fetch_samples.py", "--count", n) != 0:
+        return
+
+    c.say()
+    c.say("  ┌─────────────────────────────────────────────────────┐")
+    c.say("  │  이제 Claude Code 에게 아래 문장을 그대로 말하세요. │")
+    c.say("  └─────────────────────────────────────────────────────┘")
+    c.say()
+    c.say("    samples/ 폴더의 글을 분석해서 style_coin.md 와")
+    c.say("    style_stock.md 를 채워줘")
+    c.say()
 
 
 def menu_1() -> None:
@@ -305,6 +343,7 @@ def menu_7() -> None:
 
 
 HANDLERS = {
+    "0": menu_0,
     "1": menu_1, "2": menu_2, "3": menu_3, "4": menu_4,
     "5": menu_5, "6": menu_6, "7": menu_7,
 }
@@ -335,7 +374,7 @@ def main() -> None:
 
         handler = HANDLERS.get(choice)
         if not handler:
-            c.warn("1부터 8 사이의 번호를 골라 주세요.")
+            c.warn("0부터 8 사이의 번호를 골라 주세요.")
             continue
 
         try:
