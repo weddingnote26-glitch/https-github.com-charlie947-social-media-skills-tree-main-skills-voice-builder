@@ -31,8 +31,15 @@ WORK_ORDER_NAME = "작업지시_이번주원고.md"
 
 # ──────────────────────────────────────────────────────────────
 def find_pending(wdir: Path, only_channel: str | None,
-                 only_date: str | None) -> list[Path]:
-    """아직 post.md 가 없는 게시물 폴더를 찾습니다."""
+                 only_date: str | None,
+                 same_day: bool = False) -> list[Path]:
+    """
+    아직 post.md 가 없는 게시물 폴더를 찾습니다.
+
+    시황·뉴스·일정 글은 미리 쓰지 않습니다. (write_mode: same_day)
+    며칠 전에 써 두면 발행 시점에 이미 지난 내용이 되기 때문입니다.
+    기본으로는 미리 쓸 글만 돌려주고, same_day=True 면 당일 글만 돌려줍니다.
+    """
     pending = []
     for ch_dir in sorted(p for p in wdir.iterdir() if p.is_dir()):
         if only_channel and ch_dir.name != only_channel:
@@ -40,7 +47,16 @@ def find_pending(wdir: Path, only_channel: str | None,
         for day_dir in sorted(p for p in ch_dir.iterdir() if p.is_dir()):
             if only_date and day_dir.name != only_date:
                 continue
-            if (day_dir / "brief.md").exists() and not (day_dir / "post.md").exists():
+            if not (day_dir / "brief.md").exists():
+                continue
+            if (day_dir / "post.md").exists():
+                continue
+            meta = c.read_yaml(day_dir / "metadata.yaml", default={}) or {}
+            is_same_day = meta.get("write_mode") == "same_day"
+            # 날짜를 콕 집어 부르면 그건 그대로 씁니다.
+            if only_date:
+                pending.append(day_dir)
+            elif is_same_day == same_day:
                 pending.append(day_dir)
     return pending
 
@@ -108,6 +124,16 @@ def mode_claude_code(wdir: Path, pending: list[Path]) -> None:
         "6. 시황·뉴스 글에는 **자료 기준 시각(한국시간)** 을 반드시 넣습니다.",
         "7. 채널마다 정해진 **투자 유의 문구**를 빠뜨리지 않습니다.",
         "8. 글 하나를 끝낼 때마다 `post.md`, `sources.md`, `image_prompts.md` 를 만듭니다.",
+        "",
+        "## 시황·뉴스 글은 여기에 없습니다",
+        "",
+        "월·수·토의 시황·뉴스·일정 글은 **미리 쓰지 않습니다.**",
+        "며칠 전에 써 두면 발행 시점에 이미 지난 내용이 되기 때문입니다.",
+        "발행일 아침에 아래로 따로 만드세요.",
+        "",
+        "```",
+        "python scripts/generate_week.py --same-day --date <그날 날짜>",
+        "```",
         "",
         "## 다 쓴 뒤에",
         "",
@@ -278,6 +304,8 @@ def main() -> None:
     ap.add_argument("--week", help="주차 (예: 2026-W36). 생략하면 가장 최근 주차.")
     ap.add_argument("--only", choices=["coin", "stock"], help="한 채널만")
     ap.add_argument("--date", help="특정 날짜만 (YYYY-MM-DD)")
+    ap.add_argument("--same-day", action="store_true", dest="same_day",
+                    help="시황·뉴스처럼 당일에 쓰는 글만 만듭니다 (발행일 아침에 쓰세요)")
     args = ap.parse_args()
 
     try:
@@ -287,17 +315,28 @@ def main() -> None:
         raise SystemExit(1)
 
     wdir = resolve_week(args.week)
-    pending = find_pending(wdir, args.only, args.date)
+    pending = find_pending(wdir, args.only, args.date, args.same_day)
 
-    c.header(f"{wdir.name} 원고 생성")
+    kind = "당일 작성 글" if args.same_day else "미리 쓰는 글"
+    c.header(f"{wdir.name} 원고 생성 — {kind}")
 
     if not pending:
-        c.ok("새로 쓸 원고가 없습니다. 모든 자리에 이미 원고가 있습니다.")
+        c.ok("새로 쓸 원고가 없습니다.")
         c.say()
+        if not args.same_day:
+            waiting = find_pending(wdir, args.only, None, same_day=True)
+            if waiting:
+                c.say(f"  시황·뉴스처럼 **당일에 쓰는 글**이 {len(waiting)}편 남아 있습니다.")
+                c.say("  발행일 아침에 아래로 만드세요:")
+                c.say("    python scripts/generate_week.py --same-day")
         c.say("  특정 글을 다시 쓰려면 그 폴더의 post.md 를 지운 뒤 다시 실행하세요.")
         return
 
     c.info(f"작성할 글: {len(pending)}편")
+    if args.same_day:
+        c.say()
+        c.warn("이 글들은 오늘의 최신 자료로 써야 합니다.")
+        c.say("      확인하지 못한 수치는 지어내지 말고 `확인 필요` 로 남기세요.")
 
     mode = ((settings.get("generation") or {}).get("mode") or "claude_code").lower()
     if mode == "api":

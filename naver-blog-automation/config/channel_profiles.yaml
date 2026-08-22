@@ -195,17 +195,20 @@ channels:
 #  요일별 기본 편성
 # ═══════════════════════════════════════════════════════════════
 weekly_plan:
+  # advance_write: false  → 미리 쓰지 않습니다. 발행일 당일(또는 하루 전)에 씁니다.
+  #   시황·뉴스·일정 글은 며칠 전에 써 두면 발행 시점에 이미 틀린 내용이 됩니다.
+  #   그래서 주간 일괄 생성에서 빼고, 당일에 최신 자료로 씁니다.
   coin:
-    mon: { slot: 주간시황,   title_hint: "지난주 코인 시장 요약과 이번 주 핵심 일정", needs_live_data: true }
-    tue: { slot: 기초개념,   title_hint: "코인 초보 기초 개념",                      needs_live_data: false }
-    wed: { slot: 이슈해설,   title_hint: "주요 코인 또는 시장 이슈 설명",             needs_live_data: true }
-    thu: { slot: 투자마인드, title_hint: "코인 투자 마인드",                          needs_live_data: false }
-    fri: { slot: 위험관리,   title_hint: "위험관리와 투자 원칙",                      needs_live_data: false }
-    sat: { slot: 주간복습,   title_hint: "한 주 시장 복습과 초보자 체크리스트",        needs_live_data: true }
+    mon: { slot: 주간시황,   title_hint: "지난주 코인 시장 요약과 이번 주 핵심 일정", needs_live_data: true,  advance_write: false }
+    tue: { slot: 기초개념,   title_hint: "코인 초보 기초 개념",                      needs_live_data: false, advance_write: true }
+    wed: { slot: 이슈해설,   title_hint: "주요 코인 또는 시장 이슈 설명",             needs_live_data: true,  advance_write: false }
+    thu: { slot: 투자마인드, title_hint: "코인 투자 마인드",                          needs_live_data: false, advance_write: true }
+    fri: { slot: 위험관리,   title_hint: "위험관리와 투자 원칙",                      needs_live_data: false, advance_write: true }
+    sat: { slot: 주간복습,   title_hint: "한 주 시장 복습과 초보자 체크리스트",        needs_live_data: true,  advance_write: false }
   stock:
-    mon: { slot: 주간일정,   title_hint: "이번 주 경제·증시 일정",                    needs_live_data: true }
-    tue: { slot: 기초용어,   title_hint: "주식 기초 용어",                            needs_live_data: false }
-    wed: { slot: 뉴스해설,   title_hint: "최근 경제 뉴스 쉽게 해설",                  needs_live_data: true }
-    thu: { slot: 기업분석,   title_hint: "재무제표 또는 기업 분석 기초",              needs_live_data: false }
-    fri: { slot: 실수와원칙, title_hint: "초보 투자자의 실수와 원칙",                 needs_live_data: false }
-    sat: { slot: 주간복습,   title_hint: "한 주 경제 공부 복습",                      needs_live_data: true }
+    mon: { slot: 주간일정,   title_hint: "이번 주 경제·증시 일정",                    needs_live_data: true,  advance_write: false }
+    tue: { slot: 기초용어,   title_hint: "주식 기초 용어",                            needs_live_data: false, advance_write: true }
+    wed: { slot: 뉴스해설,   title_hint: "최근 경제 뉴스 쉽게 해설",                  needs_live_data: true,  advance_write: false }
+    thu: { slot: 기업분석,   title_hint: "재무제표 또는 기업 분석 기초",              needs_live_data: false, advance_write: true }
+    fri: { slot: 실수와원칙, title_hint: "초보 투자자의 실수와 원칙",                 needs_live_data: false, advance_write: true }
+    sat: { slot: 주간복습,   title_hint: "한 주 경제 공부 복습",                      needs_live_data: true,  advance_write: false }

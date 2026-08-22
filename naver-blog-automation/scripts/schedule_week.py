@@ -134,6 +134,8 @@ def build_week(week_id_str: str | None, force: bool) -> Path:
                 "slot": slot,
                 "title_hint": slot_cfg["title_hint"],
                 "needs_live_data": bool(slot_cfg.get("needs_live_data")),
+                # 미리 쓸 글인지, 당일에 쓸 글인지
+                "advance_write": bool(slot_cfg.get("advance_write", True)),
                 "topic": topic or f"(이번 주 실제 상황에서 정함 — {slot_cfg['title_hint']})",
                 "from_bank": from_bank,
             })
@@ -180,6 +182,9 @@ def build_week(week_id_str: str | None, force: bool) -> Path:
             recent = (used.get(ch_key, {}).get(item["slot"], []))[-6:]
 
             fc_note = (
+                "**이 글은 발행 당일에 씁니다.** 그날의 최신 자료로 쓰세요.\n"
+                "미리 써 두면 발행 시점에 이미 지난 내용이 됩니다."
+                if not item["advance_write"] else
                 "**이 글은 실시간 자료가 필요합니다.** 아래 규칙을 반드시 지키세요."
                 if item["needs_live_data"] else
                 "이 글은 실시간 시세가 없어도 됩니다. 다만 예시로 숫자를 들 때는 "
@@ -232,7 +237,12 @@ def build_week(week_id_str: str | None, force: bool) -> Path:
                 "category": item["slot"],
                 "slot": item["slot"],
             })
-            c.write_text(pdir / "metadata.yaml", meta)
+            # 당일에 쓸 글인지 기록합니다.
+            import yaml as _y
+            m = _y.safe_load(meta) or {}
+            m["write_mode"] = "advance" if item["advance_write"] else "same_day"
+            m["needs_live_data"] = item["needs_live_data"]
+            c.write_yaml(pdir / "metadata.yaml", m)
             created += 1
 
         rows.append({
@@ -245,6 +255,7 @@ def build_week(week_id_str: str | None, force: bool) -> Path:
             "슬롯": item["slot"],
             "주제": item["topic"],
             "실시간자료필요": "예" if item["needs_live_data"] else "아니오",
+            "작성시점": "미리" if item["advance_write"] else "당일",
             "상태": "draft",
             "폴더": c.rel(pdir),
         })

@@ -1,55 +1,71 @@
-# 게시물 메타데이터 — 예약 발행에 쓰이는 최종 정보
-post_id: "coin-2026-08-25-기초개념"
-
+post_id: coin-2026-08-25-기초개념
 channel:
-  key: "coin"
-  name: "친절한 코인 설명서"
-  blog_id: "dylankim26"
-  url: "https://blog.naver.com/dylankim26"
-  # 발행 직전 사람이 눈으로 대조하는 문구 (채널 혼동 방지)
-  confirm_phrase: "친절한 코인 설명서 / dylankim26"
-
-title: ""
-title_candidates: []
-
+  key: coin
+  name: 친절한 코인 설명서
+  blog_id: dylankim26
+  url: https://blog.naver.com/dylankim26
+  confirm_phrase: 친절한 코인 설명서 / dylankim26
+title: '[코린이 매매팁] "이 코인 믿어도 되나요?" 백서에서 딱 세 곳만 보는 법 📄'
+title_candidates:
+- '[코린이 매매팁] "이 코인 믿어도 되나요?" 백서에서 딱 세 곳만 보는 법 📄'
+- '[코린이 매매팁] "백서가 너무 어려워요" 10년 차가 알려주는 3분 독해법 📄'
+- '[코린이 매매팁] "영어라 못 읽겠어요" 백서에서 이것만 보면 됩니다 📄'
 publish:
-  date: "2026-08-25"
-  time: "08:30"
+  date: '2026-08-25'
+  time: 08:30
   timezone: Asia/Seoul
-  weekday: "화"
-  visibility: closed        # closed(비공개) → 검증 후 all(전체공개)
-  category: "기초개념"
-
-slot: "기초개념"
-keywords: []
-hashtags: []
-
-status: draft
-history: []                 # [{status, at, by, note}]
-
+  weekday: 화
+  visibility: closed
+  category: 코인투자마인드
+slot: 기초개념
+keywords:
+- 코인백서
+- 백서읽는법
+- 코인초보공부
+hashtags:
+- 코인시황
+- 비트코인
+- 알트코인
+- 가상자산
+- 암호화폐
+- 코린이
+- 코인투자
+- 크립토
+- 현금관망
+- 투자기초
+- 코인백서
+- 백서읽는법
+status: reviewed
+history:
+- status: fact_checked
+  at: 2026-08-22 22:22:36 KST
+  by: factcheck.py
+  note: 본문 수치가 모두 출처로 뒷받침됨
+- status: reviewed
+  at: 2026-08-22 22:23:33 KST
+  by: review.py
+  note: 자동 검수 통과 (확인 1건)
 sources:
   data_asof: null
-  verified: false
+  verified: true
   count: 0
-
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
-
+  warnings: 1
+  checked_at: 2026-08-22 22:25:51 KST
 approval:
   approved: false
   approved_at: null
   approved_by: null
-  notes: ""
-
+  notes: ''
 scheduled:
   registered: false
   registered_at: null
-  method: null              # manual(직접 붙여넣기) | browser(보조 자동화)
-
+  method: null
 published:
   confirmed: false
   confirmed_at: null
   post_url: null
+write_mode: advance
+needs_live_data: false

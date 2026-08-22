@@ -1,55 +1,71 @@
-# 게시물 메타데이터 — 예약 발행에 쓰이는 최종 정보
-post_id: "coin-2026-08-27-투자마인드"
-
+post_id: coin-2026-08-27-투자마인드
 channel:
-  key: "coin"
-  name: "친절한 코인 설명서"
-  blog_id: "dylankim26"
-  url: "https://blog.naver.com/dylankim26"
-  # 발행 직전 사람이 눈으로 대조하는 문구 (채널 혼동 방지)
-  confirm_phrase: "친절한 코인 설명서 / dylankim26"
-
-title: ""
-title_candidates: []
-
+  key: coin
+  name: 친절한 코인 설명서
+  blog_id: dylankim26
+  url: https://blog.naver.com/dylankim26
+  confirm_phrase: 친절한 코인 설명서 / dylankim26
+title: '[코린이 매매팁] "왜 꼭 제가 산 뒤에 떨어지죠?" 조급함이 만드는 세 가지 실수 ⏱️'
+title_candidates:
+- '[코린이 매매팁] "왜 꼭 제가 산 뒤에 떨어지죠?" 조급함이 만드는 세 가지 실수 ⏱️'
+- '[코린이 매매팁] "기다리는 게 제일 어려워요" 조급함을 줄이는 작은 습관 ⏱️'
+- '[코린이 매매팁] "손가락이 근질거려요" 10년 차가 조급함을 다루는 법 ⏱️'
 publish:
-  date: "2026-08-27"
-  time: "08:30"
+  date: '2026-08-27'
+  time: 08:30
   timezone: Asia/Seoul
-  weekday: "목"
-  visibility: closed        # closed(비공개) → 검증 후 all(전체공개)
-  category: "투자마인드"
-
-slot: "투자마인드"
-keywords: []
-hashtags: []
-
-status: draft
-history: []                 # [{status, at, by, note}]
-
+  weekday: 목
+  visibility: closed
+  category: 코인투자마인드
+slot: 투자마인드
+keywords:
+- 코인투자마인드
+- 뇌동매매
+- 조급함
+hashtags:
+- 코인시황
+- 비트코인
+- 알트코인
+- 가상자산
+- 암호화폐
+- 코린이
+- 코인투자
+- 크립토
+- 현금관망
+- 투자기초
+- 뇌동매매
+- 투자멘탈
+status: reviewed
+history:
+- status: fact_checked
+  at: 2026-08-22 22:25:02 KST
+  by: factcheck.py
+  note: 본문 수치가 모두 출처로 뒷받침됨
+- status: reviewed
+  at: 2026-08-22 22:25:51 KST
+  by: review.py
+  note: 자동 검수 통과 (확인 1건)
 sources:
   data_asof: null
-  verified: false
+  verified: true
   count: 0
-
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
-
+  warnings: 1
+  checked_at: 2026-08-22 22:25:51 KST
 approval:
   approved: false
   approved_at: null
   approved_by: null
-  notes: ""
-
+  notes: ''
 scheduled:
   registered: false
   registered_at: null
-  method: null              # manual(직접 붙여넣기) | browser(보조 자동화)
-
+  method: null
 published:
   confirmed: false
   confirmed_at: null
   post_url: null
+write_mode: advance
+needs_live_data: false

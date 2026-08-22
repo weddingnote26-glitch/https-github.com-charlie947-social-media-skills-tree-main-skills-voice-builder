@@ -455,9 +455,11 @@ def check_images(r: Report, post: PostFile, pdir: Path) -> None:
 def check_hashtags(r: Report, post: PostFile, ch: dict, settings: dict) -> None:
     """12. 해시태그 과다"""
     tags = post.hashtags()
+    # 채널별 값이 우선입니다. 실제 글을 재어 정한 값이기 때문입니다.
+    # settings 의 max_hashtags 는 채널 설정이 없을 때만 쓰는 예비값입니다.
     lo = int(ch["hashtags"]["min"])
-    hi = min(int(ch["hashtags"]["max"]),
-             int((settings.get("review") or {}).get("max_hashtags", 10)))
+    hi = int(ch["hashtags"].get("max")
+             or (settings.get("review") or {}).get("max_hashtags", 10))
     if len(tags) < lo:
         r.add(12, "해시태그 개수", BLOCK, f"{len(tags)}개입니다 (최소 {lo}개)")
     elif len(tags) > hi:
