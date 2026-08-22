@@ -7,7 +7,7 @@ publish_date: '2026-08-25'
 publish_time: 07:00
 weekday: 화
 slot: 기초개념
-status: approved
+status: draft
 title_candidates:
 - 코인 백서, 초보자는 어디부터 읽어야 할까요
 - 백서 읽는 법 - 코인 공부의 첫 단추

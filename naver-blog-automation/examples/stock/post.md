@@ -7,7 +7,7 @@ publish_date: '2026-08-25'
 publish_time: 07:30
 weekday: 화
 slot: 기초용어
-status: approved
+status: draft
 title_candidates:
 - ROE란 무엇일까요, 쉽게 풀어 봅니다
 - 회사가 돈을 잘 버는지 보는 자, ROE
