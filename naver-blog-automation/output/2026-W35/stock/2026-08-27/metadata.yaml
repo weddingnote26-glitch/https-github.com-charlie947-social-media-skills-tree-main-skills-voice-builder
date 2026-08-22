@@ -5,29 +5,50 @@ channel:
   blog_id: playorak
   url: https://blog.naver.com/playorak
   confirm_phrase: 오락 5070 경제공부소 / playorak
-title: ''
-title_candidates: []
+title: '[주식완전기초]- 배당 성향 하나로 회사 성격 알아보는 법, 3분이면 됩니다'
+title_candidates:
+- '[주식완전기초]- 배당 성향 하나로 회사 성격 알아보는 법, 3분이면 됩니다'
+- '[주식완전기초]- 번 돈을 나눠줄까 쌓아둘까, 배당 성향이 알려주는 것'
+- '[주식완전기초]- 배당금 주는 회사 고를 때 꼭 봐야 할 숫자 하나'
 publish:
   date: '2026-08-27'
   time: 07:30
   timezone: Asia/Seoul
   weekday: 목
   visibility: closed
-  category: 기업분석
+  category: 주식완전기초
 slot: 기업분석
-keywords: []
-hashtags: []
-status: draft
-history: []
+keywords:
+- 배당성향
+- 배당금
+- 기업분석기초
+hashtags:
+- 주식초보
+- 주식공부
+- 배당성향
+- 배당금
+- 경제상식
+- 50대재테크
+- 60대재테크
+status: reviewed
+history:
+- status: fact_checked
+  at: 2026-08-22 22:35:47 KST
+  by: factcheck.py
+  note: 본문 수치가 모두 출처로 뒷받침됨
+- status: reviewed
+  at: 2026-08-22 22:35:52 KST
+  by: review.py
+  note: 자동 검수 통과 (확인 1건)
 sources:
   data_asof: null
-  verified: false
+  verified: true
   count: 0
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
+  warnings: 1
+  checked_at: 2026-08-22 22:38:25 KST
 approval:
   approved: false
   approved_at: null

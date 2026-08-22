@@ -52,8 +52,8 @@ sources:
 review:
   passed: true
   blocking_issues: 0
-  warnings: 1
-  checked_at: 2026-08-22 22:25:51 KST
+  warnings: 2
+  checked_at: 2026-08-22 22:38:25 KST
 approval:
   approved: false
   approved_at: null

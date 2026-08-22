@@ -5,29 +5,50 @@ channel:
   blog_id: playorak
   url: https://blog.naver.com/playorak
   confirm_phrase: 오락 5070 경제공부소 / playorak
-title: ''
-title_candidates: []
+title: '[주식완전기초]- 나이가 들수록 달라져야 하는 것, 위험의 크기 정하는 법'
+title_candidates:
+- '[주식완전기초]- 나이가 들수록 달라져야 하는 것, 위험의 크기 정하는 법'
+- '[주식완전기초]- 60대에 20대처럼 투자하면 안 되는 이유, 쉽게 알려드립니다'
+- '[주식완전기초]- 내 나이에 맞는 투자 비중, 어떻게 정하면 될까요'
 publish:
   date: '2026-08-28'
   time: 07:30
   timezone: Asia/Seoul
   weekday: 금
   visibility: closed
-  category: 실수와원칙
+  category: 주식완전기초
 slot: 실수와원칙
-keywords: []
-hashtags: []
-status: draft
-history: []
+keywords:
+- 나이별투자
+- 자산배분
+- 노후자금
+hashtags:
+- 주식초보
+- 주식공부
+- 자산배분
+- 노후준비
+- 경제상식
+- 50대재테크
+- 60대재테크
+status: reviewed
+history:
+- status: fact_checked
+  at: 2026-08-22 22:32:06 KST
+  by: factcheck.py
+  note: 본문 수치가 모두 출처로 뒷받침됨
+- status: reviewed
+  at: 2026-08-22 22:35:52 KST
+  by: review.py
+  note: 자동 검수 통과 (확인 1건)
 sources:
   data_asof: null
-  verified: false
+  verified: true
   count: 0
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
+  warnings: 1
+  checked_at: 2026-08-22 22:38:25 KST
 approval:
   approved: false
   approved_at: null

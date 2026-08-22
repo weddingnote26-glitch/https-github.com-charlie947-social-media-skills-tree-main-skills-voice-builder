@@ -13,7 +13,7 @@
 
 | 채널 | 블로그 | 발행 |
 |---|---|---|
-| 친절한 코인 설명서 | blog.naver.com/dylankim26 | 월~토 07:00 |
+| 친절한 코인 설명서 | blog.naver.com/dylankim26 | 월~토 08:30 |
 | 오락 5070 경제공부소 | blog.naver.com/playorak | 월~토 07:30 |
 
 **시작하기** → [naver-blog-automation/README.md](naver-blog-automation/README.md)
