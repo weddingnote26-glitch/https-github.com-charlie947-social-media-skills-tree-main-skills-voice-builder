@@ -1,0 +1,55 @@
+# 게시물 메타데이터 — 예약 발행에 쓰이는 최종 정보
+post_id: "stock-2026-08-24-주간일정"
+
+channel:
+  key: "stock"
+  name: "오락 5070 경제공부소"
+  blog_id: "playorak"
+  url: "https://blog.naver.com/playorak"
+  # 발행 직전 사람이 눈으로 대조하는 문구 (채널 혼동 방지)
+  confirm_phrase: "오락 5070 경제공부소 / playorak"
+
+title: ""
+title_candidates: []
+
+publish:
+  date: "2026-08-24"
+  time: "07:30"
+  timezone: Asia/Seoul
+  weekday: "월"
+  visibility: closed        # closed(비공개) → 검증 후 all(전체공개)
+  category: "주간일정"
+
+slot: "주간일정"
+keywords: []
+hashtags: []
+
+status: draft
+history: []                 # [{status, at, by, note}]
+
+sources:
+  data_asof: null
+  verified: false
+  count: 0
+
+review:
+  passed: null
+  blocking_issues: 0
+  warnings: 0
+  checked_at: null
+
+approval:
+  approved: false
+  approved_at: null
+  approved_by: null
+  notes: ""
+
+scheduled:
+  registered: false
+  registered_at: null
+  method: null              # manual(직접 붙여넣기) | browser(보조 자동화)
+
+published:
+  confirmed: false
+  confirmed_at: null
+  post_url: null

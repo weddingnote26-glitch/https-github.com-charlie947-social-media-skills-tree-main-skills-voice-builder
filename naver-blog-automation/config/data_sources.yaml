@@ -1,0 +1,111 @@
+# ═══════════════════════════════════════════════════════════════
+#  자료 출처 등록부
+#
+#  시황·뉴스 글을 쓸 때 여기 있는 곳을 우선으로 확인합니다.
+#  · 공식 기관 > 거래소·기업 공시 > 언론 보도 순서로 신뢰합니다.
+#  · 수치 하나당 서로 다른 출처 2곳에서 확인합니다.
+#  · 여기 없는 곳에서 얻은 수치는 sources.md 에 URL을 반드시 적습니다.
+#
+#  ⚠ 주소는 바뀔 수 있습니다. 처음 쓸 때 한 번 열어서 확인해 주세요.
+# ═══════════════════════════════════════════════════════════════
+version: 1
+
+# ── 1순위: 공식 기관 ────────────────────────────────────────
+official:
+  - id: bok_ecos
+    name: 한국은행 경제통계시스템(ECOS)
+    url: https://ecos.bok.or.kr
+    covers: [기준금리, 환율, 물가, 통화량, 국내총생산]
+    tier: 1
+  - id: krx
+    name: 한국거래소 정보데이터시스템
+    url: http://data.krx.co.kr
+    covers: [코스피, 코스닥, 종목시세, 거래량, 지수]
+    tier: 1
+  - id: dart
+    name: 금융감독원 전자공시시스템(DART)
+    url: https://dart.fss.or.kr
+    covers: [기업공시, 재무제표, 사업보고서, 실적발표]
+    tier: 1
+  - id: kosis
+    name: 국가통계포털(KOSIS)
+    url: https://kosis.kr
+    covers: [물가지수, 고용, 인구, 산업통계]
+    tier: 1
+  - id: moef
+    name: 기획재정부
+    url: https://www.moef.go.kr
+    covers: [경제정책, 세제, 예산, 경제일정]
+    tier: 1
+  - id: fed
+    name: 미국 연방준비제도
+    url: https://www.federalreserve.gov
+    covers: [FOMC일정, 미국기준금리, 의사록]
+    tier: 1
+  - id: fred
+    name: FRED (세인트루이스 연은)
+    url: https://fred.stlouisfed.org
+    covers: [미국금리, 미국물가, 고용지표, 국채수익률]
+    tier: 1
+
+# ── 2순위: 거래소 ───────────────────────────────────────────
+exchange:
+  - id: upbit
+    name: 업비트
+    url: https://upbit.com
+    covers: [원화코인시세, 거래량]
+    tier: 2
+  - id: bithumb
+    name: 빗썸
+    url: https://www.bithumb.com
+    covers: [원화코인시세, 거래량]
+    tier: 2
+  - id: coingecko
+    name: CoinGecko
+    url: https://www.coingecko.com
+    covers: [코인시세, 시가총액, 도미넌스]
+    tier: 2
+  - id: coinmarketcap
+    name: CoinMarketCap
+    url: https://coinmarketcap.com
+    covers: [코인시세, 시가총액, 순위]
+    tier: 2
+
+# ── 3순위: 언론 (제목만 보고 쓰지 말 것) ────────────────────
+media:
+  - id: yonhap
+    name: 연합뉴스
+    url: https://www.yna.co.kr
+    tier: 3
+  - id: hankyung
+    name: 한국경제
+    url: https://www.hankyung.com
+    tier: 3
+  - id: mk
+    name: 매일경제
+    url: https://www.mk.co.kr
+    tier: 3
+
+# ── 절대 사실 근거로 쓰지 않는 곳 ───────────────────────────
+never_cite_as_fact:
+  - 개인 블로그
+  - 유튜브 영상 요약
+  - 오픈채팅·텔레그램방
+  - 커뮤니티 게시판
+  - 익명 제보
+  - 광고성 리딩방
+
+# ── 교차 확인 규칙 ──────────────────────────────────────────
+cross_check:
+  # 같은 tier 안에서만 확인하면 안 됩니다. 되도록 tier가 다른 두 곳을 씁니다.
+  prefer_different_tier: true
+  # 이 항목들은 반드시 2개 출처가 있어야 본문에 쓸 수 있습니다.
+  strict_items:
+    - 가격
+    - 지수
+    - 환율
+    - 금리
+    - 수익률
+    - 시가총액
+    - 거래량
+    - 경제일정 날짜

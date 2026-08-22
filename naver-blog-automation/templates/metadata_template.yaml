@@ -1,0 +1,55 @@
+# 게시물 메타데이터 — 예약 발행에 쓰이는 최종 정보
+post_id: "{{post_id}}"
+
+channel:
+  key: "{{channel_key}}"
+  name: "{{channel_name}}"
+  blog_id: "{{blog_id}}"
+  url: "{{channel_url}}"
+  # 발행 직전 사람이 눈으로 대조하는 문구 (채널 혼동 방지)
+  confirm_phrase: "{{confirm_phrase}}"
+
+title: "{{final_title}}"
+title_candidates: []
+
+publish:
+  date: "{{publish_date}}"
+  time: "{{publish_time}}"
+  timezone: Asia/Seoul
+  weekday: "{{weekday_ko}}"
+  visibility: closed        # closed(비공개) → 검증 후 all(전체공개)
+  category: "{{category}}"
+
+slot: "{{slot}}"
+keywords: []
+hashtags: []
+
+status: draft
+history: []                 # [{status, at, by, note}]
+
+sources:
+  data_asof: null
+  verified: false
+  count: 0
+
+review:
+  passed: null
+  blocking_issues: 0
+  warnings: 0
+  checked_at: null
+
+approval:
+  approved: false
+  approved_at: null
+  approved_by: null
+  notes: ""
+
+scheduled:
+  registered: false
+  registered_at: null
+  method: null              # manual(직접 붙여넣기) | browser(보조 자동화)
+
+published:
+  confirmed: false
+  confirmed_at: null
+  post_url: null

@@ -1,0 +1,140 @@
+# ═══════════════════════════════════════════════════════════════
+#  채널 프로필 — 두 블로그의 정체성·독자·문체 규칙
+#  ※ blog_id 는 채널이 뒤바뀌는 사고를 막는 최종 기준값입니다.
+#     절대 임의로 수정하지 마세요.
+# ═══════════════════════════════════════════════════════════════
+version: 1
+timezone: Asia/Seoul
+
+channels:
+
+  # ─────────────────────────────────────────────────────────
+  coin:
+    key: coin
+    name: 친절한 코인 설명서
+    blog_id: dylankim26
+    url: https://blog.naver.com/dylankim26
+    # 발행 직전 사람이 눈으로 대조하는 확인 문구 (채널 혼동 방지)
+    confirm_phrase: "친절한 코인 설명서 / dylankim26"
+
+    audience:
+      summary: 가상화폐와 코인 투자를 처음 시작한 사람
+      knowledge_level: 입문
+      assumed_age: 제한 없음
+      pain_points:
+        - 용어가 어려워 뉴스를 읽어도 이해가 안 됨
+        - 무엇을 기준으로 판단해야 할지 모름
+        - 급등락에 감정적으로 흔들림
+
+    topics:
+      - 가상화폐 주간·일간 시황
+      - 코인 투자 마인드
+
+    tone:
+      voice: 차분하고 친절한 설명형
+      rules:
+        - 초보자도 이해할 수 있는 쉬운 한국어를 쓴다
+        - 어려운 용어가 나오면 그 자리에서 바로 풀어서 설명한다
+        - 문장은 길게 늘어뜨리지 않는다
+      forbidden:
+        - 과도한 가격 예측
+        - 매수·매도 유도
+        - 수익 보장 표현
+      required:
+        - 투자 판단과 책임은 독자에게 있다는 고지
+
+    disclaimer: |
+      이 글은 정보 제공을 목적으로 작성했습니다.
+      특정 가상자산의 매수나 매도를 권유하지 않으며,
+      투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+
+    publish:
+      days: [mon, tue, wed, thu, fri, sat]
+      time: "07:00"
+
+    hashtags:
+      min: 5
+      max: 10
+      base: [코인공부, 가상화폐, 코인초보, 비트코인, 코인시황]
+
+    design:
+      primary_color: "#2B6CB0"
+      accent_color: "#F6AD55"
+      mood: 차분한 파랑 계열, 정돈된 느낌
+
+    style_file: config/style_coin.md
+
+  # ─────────────────────────────────────────────────────────
+  stock:
+    key: stock
+    name: 오락 5070 경제공부소
+    blog_id: playorak
+    url: https://blog.naver.com/playorak
+    confirm_phrase: "오락 5070 경제공부소 / playorak"
+
+    audience:
+      summary: 50~70대를 포함한 주식·경제 공부 입문자
+      knowledge_level: 입문
+      assumed_age: 50-70
+      pain_points:
+        - 경제 뉴스의 용어가 낯설다
+        - 빠른 호흡의 설명은 따라가기 어렵다
+        - 어디서부터 공부해야 할지 모른다
+
+    topics:
+      - 주식 초보 경제 공부
+      - 주식 기초 개념
+      - 경제 뉴스와 시장 흐름 설명
+
+    tone:
+      voice: 짧고 쉬운 문장, 차분한 설명
+      rules:
+        - 한 문장은 되도록 짧게 쓴다
+        - 전문용어는 생활 속 예시로 바꿔 설명한다
+        - 글자 크기와 줄바꿈으로 읽기 편하게 만든다
+      forbidden:
+        - 지나치게 빠른 호흡
+        - 젊은 세대 은어·유행어
+        - 특정 종목의 수익을 보장하는 표현
+      required:
+        - 투자 권유가 아닌 교육 목적임을 명시
+
+    disclaimer: |
+      이 글은 경제 공부를 돕기 위한 교육 목적의 글입니다.
+      특정 종목의 매수나 매도를 권유하지 않으며,
+      투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+
+    publish:
+      days: [mon, tue, wed, thu, fri, sat]
+      time: "07:30"
+
+    hashtags:
+      min: 5
+      max: 10
+      base: [주식공부, 경제공부, 주식초보, 경제상식, 재테크공부]
+
+    design:
+      primary_color: "#2F855A"
+      accent_color: "#D69E2E"
+      mood: 편안한 초록 계열, 큰 글씨, 여백 넉넉하게
+
+    style_file: config/style_stock.md
+
+# ═══════════════════════════════════════════════════════════════
+#  요일별 기본 편성
+# ═══════════════════════════════════════════════════════════════
+weekly_plan:
+  coin:
+    mon: { slot: 주간시황,   title_hint: "지난주 코인 시장 요약과 이번 주 핵심 일정", needs_live_data: true }
+    tue: { slot: 기초개념,   title_hint: "코인 초보 기초 개념",                      needs_live_data: false }
+    wed: { slot: 이슈해설,   title_hint: "주요 코인 또는 시장 이슈 설명",             needs_live_data: true }
+    thu: { slot: 투자마인드, title_hint: "코인 투자 마인드",                          needs_live_data: false }
+    fri: { slot: 위험관리,   title_hint: "위험관리와 투자 원칙",                      needs_live_data: false }
+    sat: { slot: 주간복습,   title_hint: "한 주 시장 복습과 초보자 체크리스트",        needs_live_data: true }
+  stock:
+    mon: { slot: 주간일정,   title_hint: "이번 주 경제·증시 일정",                    needs_live_data: true }
+    tue: { slot: 기초용어,   title_hint: "주식 기초 용어",                            needs_live_data: false }
+    wed: { slot: 뉴스해설,   title_hint: "최근 경제 뉴스 쉽게 해설",                  needs_live_data: true }
+    thu: { slot: 기업분석,   title_hint: "재무제표 또는 기업 분석 기초",              needs_live_data: false }
+    fri: { slot: 실수와원칙, title_hint: "초보 투자자의 실수와 원칙",                 needs_live_data: false }
+    sat: { slot: 주간복습,   title_hint: "한 주 경제 공부 복습",                      needs_live_data: true }
