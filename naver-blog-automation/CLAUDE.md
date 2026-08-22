@@ -109,10 +109,30 @@
 ### 수치를 쓸 때
 
 본문에 금액·지수·환율·금리·비율을 쓰려면 **반드시** `sources.md` 의
-`## 확인한 수치` 표에 서로 다른 출처 2곳과 함께 올려야 합니다.
+`## 확인한 수치` 표에 올려야 합니다.
 교차확인 열에 `✓` 가 없으면 `scripts/review.py` 가 발행을 막습니다.
 
 확인하지 못했다면 숫자를 지어내지 말고 본문에 `확인 필요` 라고 쓰세요.
+
+#### 시세의 기준 출처는 트레이딩뷰입니다 (2026-08-22 사용자 지정)
+
+시장 주가·시장 동향·시세는 **https://kr.tradingview.com/** 을 봅니다.
+자주 보는 항목의 주소는 `config/data_sources.yaml` 에 있습니다.
+
+필요한 출처 수가 자료 종류에 따라 다릅니다.
+
+| 종류 | 예 | 필요한 출처 |
+|---|---|---|
+| 화면에서 읽는 값 (`quote`) | 가격, 지수, 환율, 등락률, 도미넌스 | **트레이딩뷰 한 곳** |
+| 사건·발표 (`claim`) | ETF 승인, 금리 인하, 규제 발표, 상장·폐지 | **서로 다른 두 곳** |
+
+출처 1 칸에 `트레이딩뷰` / `TradingView` / `kr.tradingview.com` 중 하나가
+적혀 있어야 검사기가 시세로 알아봅니다. 없으면 사건으로 보고 2곳을 요구합니다.
+
+**Claude Code 는 트레이딩뷰에 접속할 수 없습니다.** (작업 환경에서 막혀 있음)
+시세는 사람이 화면에서 읽어 `sources.md` 에 적어 주셔야 합니다.
+`python scripts/quotes.py` 를 쓰면 열어 볼 주소와 붙여 넣을 표가 나옵니다.
+추측으로 채우지 마세요.
 
 ### 설명용 예시 숫자는 예시임을 밝히세요
 
@@ -192,6 +212,7 @@ draft → fact_checked → reviewed → approved
 ```bash
 python scripts/schedule_week.py      # 주간 편성 만들기
 python scripts/generate_week.py      # 원고 작업 지시서 만들기
+python scripts/quotes.py             # 시세 기준 출처 주소 + 붙여넣을 표
 python scripts/factcheck.py          # 수치 출처 검사
 python scripts/review.py             # 15가지 자동 검수
 python scripts/approve.py            # 사람 승인

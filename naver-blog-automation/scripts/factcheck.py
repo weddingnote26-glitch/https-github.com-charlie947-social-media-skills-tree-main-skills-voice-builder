@@ -142,8 +142,47 @@ def _digits(s: str) -> str:
     return re.sub(r"[^\d]", "", s)
 
 
-def is_backed(claim: str, rows: list[dict], min_sources: int) -> bool:
-    """이 수치가 출처 표에서 교차확인된 값과 맞아떨어지는가."""
+EMPTY_CELLS = ("–", "-", "", "?", "미확인", "확인 필요")
+
+
+def load_data_sources() -> dict:
+    """시세 기준 출처 설정을 읽습니다. 없으면 빈 설정으로 동작합니다."""
+    return c.read_yaml(c.CONFIG_DIR / "data_sources.yaml", default={}) or {}
+
+
+def _primary_names(ds: dict) -> list[str]:
+    """기준 출처를 가리키는 이름들. 표에 이 중 하나가 적혀 있으면 기준 출처로 봅니다."""
+    pri = ds.get("primary") or {}
+    names = [pri.get("name"), pri.get("name_en")]
+    url = str(pri.get("url") or "")
+    if "//" in url:                      # https://kr.tradingview.com/ → kr.tradingview.com
+        names.append(url.split("//", 1)[1].strip("/"))
+    return [str(n).lower() for n in names if n]
+
+
+def _row_kind(row: dict, ds: dict) -> str:
+    """
+    이 줄이 '화면에서 읽는 값(quote)' 인지 '사건·발표(claim)' 인지 봅니다.
+    출처 칸에 기준 출처가 적혀 있으면 quote 로 봅니다.
+    """
+    cited = f"{row.get('source1', '')} {row.get('source2', '')}".lower()
+    return "quote" if any(n in cited for n in _primary_names(ds)) else "claim"
+
+
+def is_backed(claim: str, rows: list[dict], min_sources: int,
+              ds: dict | None = None) -> bool:
+    """
+    이 수치가 출처 표에서 확인된 값과 맞아떨어지는가.
+
+    자료 종류에 따라 필요한 출처 수가 다릅니다 (config/data_sources.yaml).
+      quote — 트레이딩뷰 같은 기준 출처에서 눈으로 읽은 시세·지수·환율
+              → 기준 출처 한 곳이면 됩니다.
+      claim — 사건·결정·발표
+              → 서로 다른 출처 2곳이 필요합니다.
+    설정 파일이 없으면 예전처럼 전부 min_sources 를 요구합니다.
+    """
+    ds = ds or {}
+    rules = ds.get("rules") or {}
     target = _digits(claim)
     if not target:
         return False
@@ -153,8 +192,11 @@ def is_backed(claim: str, rows: list[dict], min_sources: int) -> bool:
         if "✓" not in r["verified"] and r["verified"].lower() not in ("o", "ok", "예"):
             continue
         n = sum(1 for k in ("source1", "source2")
-                if r[k] and r[k] not in ("–", "-", ""))
-        if n >= min_sources:
+                if r[k] and r[k] not in EMPTY_CELLS)
+
+        rule = rules.get(_row_kind(r, ds)) or {}
+        need = int(rule.get("min_sources", min_sources))
+        if n >= need:
             return True
     return False
 
@@ -174,6 +216,7 @@ def check_post(pdir: Path, settings: dict) -> dict:
     min_sources = int(fc.get("min_sources", 2))
 
     rows = parse_sources_table(pdir / "sources.md")
+    ds = load_data_sources()
 
     # 시황·뉴스처럼 실시간 자료를 쓰는 글은 엄격하게 검사합니다.
     meta_early = c.read_yaml(pdir / "metadata.yaml", default={}) or {}
@@ -187,7 +230,7 @@ def check_post(pdir: Path, settings: dict) -> dict:
         if claim in seen:
             continue
         seen.add(claim)
-        if not is_backed(claim, rows, min_sources):
+        if not is_backed(claim, rows, min_sources, ds):
             result["unbacked"].append({"line": lineno, "value": claim, "text": line})
 
     # 시황 글이면 자료 기준 시각이 있어야 합니다.
@@ -200,6 +243,13 @@ def check_post(pdir: Path, settings: dict) -> dict:
         result["notes"].append(
             f"자료 기준 시각에 시간대 표시가 없습니다: {asof} (예: 2026-08-24 07:00 KST)"
         )
+
+    if live and rows and not any(_row_kind(r, ds) == "quote" for r in rows):
+        pri = (ds.get("primary") or {}).get("name")
+        if pri:
+            result["notes"].append(
+                f"시황 글인데 기준 출처({pri})가 출처 칸에 한 번도 없습니다."
+            )
 
     if not (pdir / "sources.md").exists():
         result["notes"].append("sources.md 가 없습니다.")

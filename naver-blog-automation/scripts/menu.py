@@ -74,6 +74,8 @@ def show_state() -> None:
 MENU = """
   0. 내 블로그 글 가져오기 (양식 분석용 — 처음에 한 번)
 
+  9. 오늘 시세 확인하기 (시황 글 쓰기 전에)
+
   1. 다음 주 콘텐츠 12편 생성
   2. 특정 게시물 다시 생성
   3. 전체 원고 검수
@@ -83,6 +85,19 @@ MENU = """
   7. 설정 변경
   8. 종료
 """
+
+
+def menu_9() -> None:
+    c.header("9. 오늘 시세 확인하기")
+    c.say()
+    c.say("  시황 글에 넣을 시세는 사람이 화면에서 읽어야 합니다.")
+    c.say("  아래 주소를 열어 값을 확인한 뒤, 나온 표를 sources.md 에 붙여 넣으세요.")
+    c.say()
+    import quotes
+    ds = quotes.load()
+    rows = quotes.items(ds, None)
+    quotes.show_links(ds, rows)
+    quotes.show_table(ds, rows)
 
 
 def menu_0() -> None:
@@ -346,6 +361,7 @@ HANDLERS = {
     "0": menu_0,
     "1": menu_1, "2": menu_2, "3": menu_3, "4": menu_4,
     "5": menu_5, "6": menu_6, "7": menu_7,
+    "9": menu_9,
 }
 
 
@@ -374,7 +390,7 @@ def main() -> None:
 
         handler = HANDLERS.get(choice)
         if not handler:
-            c.warn("0부터 8 사이의 번호를 골라 주세요.")
+            c.warn("0부터 9 사이의 번호를 골라 주세요.")
             continue
 
         try:
