@@ -67,29 +67,37 @@ WORKLOG 읽고 이어서 해줘
 
 ## 회사 PC에서 처음 시작할 때
 
-### 1. 이 저장소를 받습니다
+**→ [회사PC_처음설치.md](회사PC_처음설치.md) 를 보세요.** 한 단계씩 적어 뒀습니다.
 
-```bash
-git clone https://github.com/weddingnote26-glitch/https-github.com-charlie947-social-media-skills-tree-main-skills-voice-builder.git
+10분이면 끝나고, 한 번만 하면 그다음부터는 클릭 두 번입니다.
+
+짧게 요약하면 이렇습니다.
+
+```powershell
+# 1) 스크립트 실행 허용 (한 번만)
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+# 2) 받아오기
+cd ~\Documents
+git clone https://github.com/weddingnote26-glitch/https-github.com-charlie947-social-media-skills-tree-main-skills-voice-builder.git 블로그작업
+
+# 3) 그 PC에 맞춰 설치
+cd 블로그작업
+.\naver-blog-automation\setup.ps1
 ```
 
 > git 이 없다면 [git-scm.com/download/win](https://git-scm.com/download/win) 에서 설치하세요.
 > 설치 중 선택지는 전부 "Next" 를 누르시면 됩니다.
+> **설치 후에는 PowerShell 창을 닫고 새로 열어야 합니다.**
 
-### 2. 그 PC에 맞춰 한 번 설치합니다
+회사에서 프로그램 설치가 막혀 있다면 **claude.ai/code** 에서 이 저장소를 열면
+아무것도 설치하지 않고 브라우저 안에서 작업할 수 있습니다.
 
-받은 폴더 안의 `naver-blog-automation\setup.ps1` 을 실행합니다.
-파이썬 환경과 개인 설정을 그 PC에 만드는 작업이며, 1~2분이면 끝납니다.
-**PC마다 한 번씩만** 하면 됩니다.
+### ⚠ 구글 드라이브로는 하지 마세요
 
-### 3. 그다음부터
-
-- 작업 시작 전 → `받아오기.ps1`
-- 작업할 때 → `naver-blog-automation\run.ps1`
-- 자리 뜨기 전 → `올리기.ps1`
-
-브라우저만 쓸 수 있는 환경이라면 **claude.ai/code** 에서 이 저장소를 열면
-Claude 가 최신 상태로 받아온 뒤 시작합니다.
+이 폴더를 구글 드라이브에 넣으면 **작업 기록이 깨집니다.**
+`.git` 폴더의 수천 개 파일을 드라이브가 순서 없이 올리기 때문입니다.
+자세한 이유는 [회사PC_처음설치.md](회사PC_처음설치.md) 맨 위에 있습니다.
 
 ## 작업 일지
 
