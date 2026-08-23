@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, api, useApi, ErrorBox } from "@/components/ui";
 import type { AppSettings } from "@/lib/settings";
+import VoicePicker from "@/components/VoicePicker";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
 
@@ -55,9 +56,11 @@ export default function SettingsPage() {
 
       <Card title="🎙 ElevenLabs — AI 음성">
         <p className="text-sm text-gray-500 mb-3">.env에 <code className="bg-gray-100 px-1 rounded">ELEVENLABS_API_KEY</code>, <code className="bg-gray-100 px-1 rounded">ELEVENLABS_VOICE_ID</code>를 넣으세요. 아래 세부 값은 바로 저장됩니다.</p>
+        <div className="mb-4">
+          <label className="label text-sm">목소리 고르기</label>
+          <VoicePicker value={s.tts.voiceId} onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
+        </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <div><label className="label text-sm">VOICE ID (설정 화면 우선)</label>
-            <input className="input py-2 text-sm" value={s.tts.voiceId} onChange={(e) => setS({ ...s, tts: { ...s.tts, voiceId: e.target.value } })} /></div>
           <div><label className="label text-sm">Model</label>
             <input className="input py-2 text-sm" value={s.tts.model} onChange={(e) => setS({ ...s, tts: { ...s.tts, model: e.target.value } })} /></div>
           <div><label className="label text-sm">Speed ({s.tts.speed})</label>

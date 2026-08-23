@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { getEnv } from "../env";
 import { getSettings } from "../settings";
-import { fetchBuffer, withRetry } from "./http";
+import { fetchBuffer, fetchJson, withRetry } from "./http";
 import type { TTSProvider } from "./types";
 import { runFFmpeg } from "../ffmpeg";
 import { DIRS } from "../paths";
@@ -68,6 +68,40 @@ export function getTTS(): TTSProvider {
   const env = getEnv();
   if (env.APP_MODE === "sample" || !env.ELEVENLABS_API_KEY) return new SampleTTS();
   return new ElevenLabsTTS();
+}
+
+/** 미리듣기용 — Sample Mode 여부와 상관없이 실제 ElevenLabs 음성을 씁니다 */
+export function createElevenLabsTTS(): TTSProvider {
+  return new ElevenLabsTTS();
+}
+
+export interface VoiceSummary {
+  id: string;
+  name: string;
+  category: string;
+  labels: Record<string, string>;
+  previewUrl: string;
+}
+
+/** 계정에 등록된 목소리 목록 (§16 설정 화면에서 골라 쓰기 위함) */
+export async function listElevenLabsVoices(): Promise<VoiceSummary[]> {
+  const env = getEnv();
+  if (!env.ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY가 없습니다. .env에 키를 넣어 주세요.");
+  const out = await withRetry("elevenlabs", "list-voices", async () =>
+    fetchJson<{ voices?: Array<{
+      voice_id: string; name: string; category?: string;
+      labels?: Record<string, string>; preview_url?: string;
+    }> }>("elevenlabs", "https://api.elevenlabs.io/v1/voices", {
+      method: "GET",
+      headers: { "xi-api-key": env.ELEVENLABS_API_KEY },
+    }), 2);
+  return (out.voices ?? []).map((v) => ({
+    id: v.voice_id,
+    name: v.name,
+    category: v.category ?? "",
+    labels: v.labels ?? {},
+    previewUrl: v.preview_url ?? "",
+  }));
 }
 
 /** 오디오 길이(초) 측정 */
