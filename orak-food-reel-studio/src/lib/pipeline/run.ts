@@ -16,7 +16,7 @@ import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
 import { saveScenes, updateReel, getReel } from "../reels";
 import { logError, logInfo } from "../log";
-import { getEnv } from "../env";
+import { isSampleMode } from "../secrets";
 
 /** §44 제작 진행 단계 */
 export const STEP_DEFS = [
@@ -236,7 +236,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     logInfo("produce", `제작 완료 — ${script.title} (${reelId})`);
 
     // §33 AUTO MODE: 팩트체크 통과 + 품질 통과 시 자동 예약 (FACT CHECK 실패는 발행 금지)
-    if (getSettings().approvalMode === "AUTO" && !fact.blocked && quality.pass && getEnv().APP_MODE !== "sample") {
+    if (getSettings().approvalMode === "AUTO" && !fact.blocked && quality.pass && !isSampleMode()) {
       const { autoSchedule } = await import("../scheduler");
       autoSchedule(reelId);
     }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { getEnv } from "../env";
+import { resolveSecret, isSampleMode } from "../secrets";
 import { getSettings } from "../settings";
 import { ApiError, fetchJson, withRetry } from "./http";
 import type { ImageProvider } from "./types";
@@ -34,7 +35,7 @@ class GeminiImage implements ImageProvider {
           candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string }; inline_data?: { data?: string } }> } }>;
         }>(
           "gemini-image",
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.IMAGE_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolveSecret("IMAGE_API_KEY")}`,
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -62,7 +63,7 @@ class GeminiImage implements ImageProvider {
     return withRetry("gemini-image", "generate", async () => {
       const out = await fetchJson<{ predictions?: Array<{ bytesBase64Encoded?: string }> }>(
         "gemini-image",
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${env.IMAGE_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${resolveSecret("IMAGE_API_KEY")}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -105,7 +106,7 @@ class OpenAIImage implements ImageProvider {
         }
         const res = await fetch("https://api.openai.com/v1/images/edits", {
           method: "POST",
-          headers: { authorization: `Bearer ${env.IMAGE_API_KEY}` },
+          headers: { authorization: `Bearer ${resolveSecret("IMAGE_API_KEY")}` },
           body: form,
           signal: AbortSignal.timeout(180_000),
         });
@@ -125,7 +126,7 @@ class OpenAIImage implements ImageProvider {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            authorization: `Bearer ${env.IMAGE_API_KEY}`,
+            authorization: `Bearer ${resolveSecret("IMAGE_API_KEY")}`,
           },
           body: JSON.stringify({
             model,
@@ -205,7 +206,7 @@ export function friendlyImageError(e: unknown): string {
 export function getImageProvider(): ImageProvider {
   const env = getEnv();
   const provider = getSettings().imageProvider || env.IMAGE_PROVIDER;
-  if (env.APP_MODE === "sample" || provider === "sample" || !env.IMAGE_API_KEY) return new SampleImage();
+  if (isSampleMode() || provider === "sample" || !resolveSecret("IMAGE_API_KEY")) return new SampleImage();
   if (provider === "gemini") return new GeminiImage();
   return new OpenAIImage();
 }

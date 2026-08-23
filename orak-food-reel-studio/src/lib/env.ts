@@ -33,12 +33,18 @@ export function resetEnvCache(): void {
 
 export type ServiceKey = "llm" | "image" | "tts" | "instagram";
 
-/** 각 서비스가 실제 API를 쓸 준비가 됐는지 */
-export function serviceReady(env: Env = getEnv()): Record<ServiceKey, boolean> {
+/**
+ * 각 서비스가 실제 API를 쓸 준비가 됐는지.
+ * 키는 설정 화면 저장값이 .env 보다 우선하므로 secrets 를 통해 확인한다.
+ */
+export async function serviceReady(env: Env = getEnv()): Promise<Record<ServiceKey, boolean>> {
+  const { resolveSecret } = await import("./secrets");
+  const { getSettings } = await import("./settings");
+  const provider = getSettings().imageProvider || env.IMAGE_PROVIDER;
   return {
-    llm: !!env.ANTHROPIC_API_KEY,
-    image: env.IMAGE_PROVIDER !== "sample" && !!env.IMAGE_API_KEY,
-    tts: !!env.ELEVENLABS_API_KEY && !!env.ELEVENLABS_VOICE_ID,
+    llm: !!resolveSecret("ANTHROPIC_API_KEY"),
+    image: provider !== "sample" && !!resolveSecret("IMAGE_API_KEY"),
+    tts: !!resolveSecret("ELEVENLABS_API_KEY"),
     instagram: !!env.INSTAGRAM_ACCESS_TOKEN && !!env.INSTAGRAM_USER_ID && !!env.PUBLIC_MEDIA_BASE_URL,
   };
 }

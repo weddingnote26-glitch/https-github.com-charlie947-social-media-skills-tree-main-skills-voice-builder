@@ -1,4 +1,5 @@
 import { getEnv } from "../env";
+import { resolveSecret, isSampleMode } from "../secrets";
 import { fetchJson, withRetry } from "./http";
 import type { LLMProvider, LLMTask } from "./types";
 import { sampleComplete } from "../content/samplegen";
@@ -15,7 +16,7 @@ class AnthropicLLM implements LLMProvider {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-api-key": env.ANTHROPIC_API_KEY,
+            "x-api-key": resolveSecret("ANTHROPIC_API_KEY"),
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
@@ -43,7 +44,7 @@ class SampleLLM implements LLMProvider {
 
 export function getLLM(): LLMProvider {
   const env = getEnv();
-  if (env.APP_MODE === "sample" || !env.ANTHROPIC_API_KEY) return new SampleLLM();
+  if (isSampleMode() || !resolveSecret("ANTHROPIC_API_KEY")) return new SampleLLM();
   return new AnthropicLLM();
 }
 

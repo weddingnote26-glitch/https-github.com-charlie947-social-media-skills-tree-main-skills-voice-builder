@@ -1,4 +1,5 @@
 import { getEnv } from "../env";
+import { isSampleMode } from "../secrets";
 import { kvGet } from "../settings";
 import { decrypt } from "../crypto";
 import { fetchJson, withRetry } from "./http";
@@ -120,6 +121,6 @@ class SamplePublisher implements PublishingProvider {
 export function getPublisher(): PublishingProvider {
   const env = getEnv();
   const { token, userId } = resolveIgAuth();
-  if (env.APP_MODE === "sample" || !token || !userId) return new SamplePublisher();
+  if (isSampleMode() || !token || !userId) return new SamplePublisher();
   return new GraphPublisher();
 }

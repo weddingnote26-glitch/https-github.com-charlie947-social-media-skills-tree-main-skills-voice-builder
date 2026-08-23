@@ -18,7 +18,7 @@ describe("§16 ElevenLabs 목소리 목록", () => {
   it("키가 없으면 안내 오류를 낸다", async () => {
     vi.stubEnv("ELEVENLABS_API_KEY", "");
     resetEnvCache();
-    await expect(listElevenLabsVoices()).rejects.toThrow(/ELEVENLABS_API_KEY/);
+    await expect(listElevenLabsVoices()).rejects.toThrow(/ElevenLabs API 키가 없습니다/);
   });
 
   it("응답을 화면에서 쓰기 좋은 형태로 정리한다", async () => {

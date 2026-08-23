@@ -5,20 +5,29 @@ import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
+type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY";
+interface SecretStatus { set: boolean; source: string; hint: string }
+interface SettingsResponse {
+  settings: AppSettings;
+  services: Services;
+  mode: "sample" | "live";
+  secrets: Record<SecretName, SecretStatus>;
+}
 
 export default function SettingsPage() {
-  const { data, reload } = useApi<{ settings: AppSettings; services: Services }>("/api/settings");
+  const { data, reload } = useApi<SettingsResponse>("/api/settings");
   const [s, setS] = useState<AppSettings | null>(null);
   const [igToken, setIgToken] = useState("");
   const [igUser, setIgUser] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, string>>({});
+  const [keyInput, setKeyInput] = useState<Partial<Record<SecretName, string>>>({});
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
   if (!data || !s) return <div className="text-gray-400 py-20 text-center">불러오는 중…</div>;
 
-  const save = async (patch: Partial<AppSettings> & { igAccessToken?: string; igUserId?: string }) => {
+  const save = async (patch: Partial<AppSettings> & Partial<Record<SecretName, string>> & { igAccessToken?: string; igUserId?: string }) => {
     setErr(null); setMsg(null);
     try {
       const out = await api<{ settings: AppSettings }>("/api/settings", { method: "PUT", body: JSON.stringify(patch) });
@@ -32,6 +41,36 @@ export default function SettingsPage() {
       const r = await api<{ ok: boolean; detail: string }>("/api/settings/test", { method: "POST", body: JSON.stringify({ service }) });
       setTestResult((t) => ({ ...t, [service]: `${r.ok ? "✅" : "❌"} ${r.detail}` }));
     } catch (e) { setTestResult((t) => ({ ...t, [service]: `❌ ${e instanceof Error ? e.message : e}` })); }
+  };
+
+  /** API 키 입력 — 키 자체는 화면에 다시 표시하지 않는다 */
+  const KeyField = ({ name, label, help }: { name: SecretName; label: string; help?: string }) => {
+    const st = data.secrets?.[name];
+    return (
+      <div className="mb-3">
+        <label className="label text-sm">{label}</label>
+        {st?.set && (
+          <div className="text-xs text-emerald-700 font-semibold mb-1.5">
+            ✅ 저장됨 ({st.source}) · {st.hint}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input type="password" className="input py-2 text-sm flex-1"
+            placeholder={st?.set ? "바꾸려면 새 키를 붙여넣으세요" : "여기에 키를 붙여넣으세요"}
+            value={keyInput[name] ?? ""}
+            onChange={(e) => setKeyInput({ ...keyInput, [name]: e.target.value })} />
+          <button className="btn-primary px-4 py-2 text-sm" disabled={!(keyInput[name] ?? "").trim()}
+            onClick={() => { save({ [name]: keyInput[name] } as never); setKeyInput({ ...keyInput, [name]: "" }); }}>
+            저장
+          </button>
+          {st?.set && st.source === "설정" && (
+            <button className="btn-ghost text-xs" title="설정에 저장된 키를 지웁니다(.env 값으로 되돌아감)"
+              onClick={() => save({ [name]: "" } as never)}>지우기</button>
+          )}
+        </div>
+        {help && <p className="text-xs text-gray-400 mt-1">{help}</p>}
+      </div>
+    );
   };
 
   const TestBtn = ({ service }: { service: string }) => (
@@ -49,13 +88,33 @@ export default function SettingsPage() {
       {msg && <div className="card p-3 px-4 bg-emerald-50 border-emerald-200 text-emerald-800 text-sm font-bold">{msg}</div>}
       <ErrorBox msg={err} />
 
+      <Card title="⚡ 실행 모드">
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <button onClick={() => save({ appMode: "live" })}
+            className={`rounded-xl border-2 p-4 text-left ${data.mode === "live" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
+            <div className="font-extrabold">🚀 실제 모드</div>
+            <div className="text-sm text-gray-500">진짜 AI로 대본·이미지·음성을 만듭니다. 요금이 발생합니다.</div>
+          </button>
+          <button onClick={() => save({ appMode: "sample" })}
+            className={`rounded-xl border-2 p-4 text-left ${data.mode === "sample" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
+            <div className="font-extrabold">🧪 연습 모드</div>
+            <div className="text-sm text-gray-500">외부 API를 쓰지 않고 샘플로 전체 흐름만 확인합니다. 무료.</div>
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">
+          현재: <b>{data.mode === "live" ? "실제 모드" : "연습 모드"}</b> · 바꾸면 바로 적용되며 프로그램을 다시 켜지 않아도 됩니다.
+        </p>
+      </Card>
+
       <Card title="🤖 AI (Claude) — 대본·캡션·기획">
-        <p className="text-sm text-gray-500 mb-2">API 키는 프로그램 폴더의 <b>.env</b> 파일에 넣습니다: <code className="bg-gray-100 px-1 rounded">ANTHROPIC_API_KEY=...</code></p>
+        <KeyField name="ANTHROPIC_API_KEY" label="Claude API 키"
+          help="console.anthropic.com → API Keys 에서 발급. 저장하면 바로 적용되며 프로그램을 다시 켜지 않아도 됩니다." />
         <TestBtn service="llm" />
       </Card>
 
       <Card title="🎙 ElevenLabs — AI 음성">
-        <p className="text-sm text-gray-500 mb-3">.env에 <code className="bg-gray-100 px-1 rounded">ELEVENLABS_API_KEY</code>, <code className="bg-gray-100 px-1 rounded">ELEVENLABS_VOICE_ID</code>를 넣으세요. 아래 세부 값은 바로 저장됩니다.</p>
+        <KeyField name="ELEVENLABS_API_KEY" label="ElevenLabs API 키"
+          help="elevenlabs.io → 설정 → 워크스페이스 → API 키. 저장하면 아래에 목소리 목록이 나타납니다." />
         <div className="mb-4">
           <label className="label text-sm">목소리 고르기</label>
           <VoicePicker value={s.tts.voiceId} onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
@@ -84,7 +143,8 @@ export default function SettingsPage() {
           <div><label className="label text-sm">모델 (비우면 기본값)</label>
             <input className="input py-2 text-sm" placeholder="imagen-3.0-generate-002 / gpt-image-1" value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} /></div>
         </div>
-        <p className="text-sm text-gray-500 mb-3">API 키는 .env의 <code className="bg-gray-100 px-1 rounded">IMAGE_API_KEY</code>에 넣습니다.</p>
+        <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
+          help="Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요." />
         <div className="flex gap-3"><button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 

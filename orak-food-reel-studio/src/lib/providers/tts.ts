@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { getEnv } from "../env";
+import { resolveSecret, isSampleMode } from "../secrets";
 import { getSettings } from "../settings";
 import { fetchBuffer, fetchJson, withRetry } from "./http";
 import type { TTSProvider } from "./types";
@@ -24,7 +25,7 @@ class ElevenLabsTTS implements TTSProvider {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "xi-api-key": env.ELEVENLABS_API_KEY,
+          "xi-api-key": resolveSecret("ELEVENLABS_API_KEY"),
           accept: "audio/mpeg",
         },
         body: JSON.stringify({
@@ -66,7 +67,7 @@ class SampleTTS implements TTSProvider {
 
 export function getTTS(): TTSProvider {
   const env = getEnv();
-  if (env.APP_MODE === "sample" || !env.ELEVENLABS_API_KEY) return new SampleTTS();
+  if (isSampleMode() || !resolveSecret("ELEVENLABS_API_KEY")) return new SampleTTS();
   return new ElevenLabsTTS();
 }
 
@@ -86,14 +87,14 @@ export interface VoiceSummary {
 /** 계정에 등록된 목소리 목록 (§16 설정 화면에서 골라 쓰기 위함) */
 export async function listElevenLabsVoices(): Promise<VoiceSummary[]> {
   const env = getEnv();
-  if (!env.ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY가 없습니다. .env에 키를 넣어 주세요.");
+  if (!resolveSecret("ELEVENLABS_API_KEY")) throw new Error("ElevenLabs API 키가 없습니다. 설정 화면에서 넣어 주세요.");
   const out = await withRetry("elevenlabs", "list-voices", async () =>
     fetchJson<{ voices?: Array<{
       voice_id: string; name: string; category?: string;
       labels?: Record<string, string>; preview_url?: string;
     }> }>("elevenlabs", "https://api.elevenlabs.io/v1/voices", {
       method: "GET",
-      headers: { "xi-api-key": env.ELEVENLABS_API_KEY },
+      headers: { "xi-api-key": resolveSecret("ELEVENLABS_API_KEY") },
     }), 2);
   return (out.voices ?? []).map((v) => ({
     id: v.voice_id,

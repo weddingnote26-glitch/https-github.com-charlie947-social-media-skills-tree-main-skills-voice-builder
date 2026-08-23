@@ -56,6 +56,9 @@ export const AppSettingsSchema = z.object({
   // 저장 폴더(표시용 — 실제 경로는 프로젝트 내부 고정)
   outputNote: z.string().default(""),
 
+  // 실행 모드 — auto 면 .env 의 APP_MODE 를 따른다
+  appMode: z.enum(["auto", "sample", "live"]).default("auto"),
+
   // 첫 실행 마법사
   wizardDone: z.boolean().default(false),
   wizardStep: z.number().int().min(1).max(8).default(1),

@@ -2,6 +2,7 @@ import { handle, ok } from "@/lib/api";
 import { getEnv, serviceReady } from "@/lib/env";
 import { ffmpegStatus, ffmpegVersion } from "@/lib/ffmpeg";
 import { getSettings } from "@/lib/settings";
+import { getAppMode } from "@/lib/secrets";
 import fs from "node:fs";
 import path from "node:path";
 import { FONT_BOLD, ROOT } from "@/lib/paths";
@@ -20,8 +21,8 @@ export async function GET() {
 
     return ok({
       builtAt,
-      mode: env.APP_MODE,
-      services: serviceReady(env),
+      mode: getAppMode(),
+      services: await serviceReady(env),
       ffmpeg: { ...ff, version: ff.found ? await ffmpegVersion() : null },
       fonts: { korean: fs.existsSync(FONT_BOLD) },
       node: process.version,

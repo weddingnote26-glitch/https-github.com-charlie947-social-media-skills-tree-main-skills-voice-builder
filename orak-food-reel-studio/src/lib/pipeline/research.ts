@@ -1,5 +1,5 @@
 import { RestaurantInfoSchema, type RestaurantInfo } from "../schema";
-import { getEnv } from "../env";
+import { resolveSecret, isSampleMode } from "../secrets";
 import { getLLM, extractJson } from "../providers/llm";
 import { logWarn } from "../log";
 
@@ -16,7 +16,6 @@ export interface ResearchInput {
 }
 
 export async function researchRestaurant(input: ResearchInput): Promise<{ info: RestaurantInfo; notice?: string }> {
-  const env = getEnv();
   let notice: string | undefined;
   let pageText = "";
 
@@ -37,7 +36,7 @@ export async function researchRestaurant(input: ResearchInput): Promise<{ info: 
     ...input.manual,
   };
 
-  if (env.APP_MODE !== "sample" && env.ANTHROPIC_API_KEY && pageText) {
+  if (!isSampleMode() && resolveSecret("ANTHROPIC_API_KEY") && pageText) {
     try {
       const llm = getLLM();
       const raw = await llm.complete({
