@@ -124,6 +124,10 @@ export default function VoicePicker({
           <input className="input py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}
             placeholder="21m00Tcm4TlvDq8ikWAM" />
           <ManualWarning value={value} />
+          <p className="text-xs text-gray-400 mt-1">
+            목록을 못 불러와도 목소리 ID를 알고 있으면 여기에 넣어 쓸 수 있습니다.
+            음성 생성 권한(Text to Speech)만 있으면 영상 제작은 됩니다.
+          </p>
         </div>
         <button className="btn-secondary px-4 py-2 text-sm" onClick={reload}>다시 불러오기</button>
       </div>
