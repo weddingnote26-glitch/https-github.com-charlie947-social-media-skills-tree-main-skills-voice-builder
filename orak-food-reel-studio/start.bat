@@ -53,14 +53,19 @@ REM .env 의 APP_PORT 를 읽어 PORT 환경변수로 (없으면 3000)
 set "PORT=3000"
 for /f "usebackq delims=" %%P in (`node scripts\port.mjs`) do set "PORT=%%P"
 
-if not exist .next\BUILD_ID (
-  echo  [3/4] 프로그램을 빌드합니다. 처음 한 번만 5분 정도 걸립니다...
+REM 코드를 새로 받았는데 예전 빌드가 남아 있으면 옛 화면이 그대로 돈다.
+REM 소스가 빌드 결과보다 새로우면 반드시 다시 빌드한다.
+call node scripts\needs-build.mjs
+if errorlevel 1 (
+  echo  [3/4] 프로그램을 빌드합니다. 3~5분 걸립니다...
   call npm run build
   if errorlevel 1 (
     echo  [X] 빌드에 실패했습니다. 화면의 오류 내용을 확인하세요.
     pause
     exit /b 1
   )
+) else (
+  echo  [3/4] 빌드가 최신입니다. 건너뜁니다.
 )
 
 echo.
