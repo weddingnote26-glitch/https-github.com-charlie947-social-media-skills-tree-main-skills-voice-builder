@@ -23,11 +23,22 @@ function which(cmd: string): string | null {
   return null;
 }
 
+/**
+ * ffmpeg-static 은 설치할 때 실행 파일을 인터넷에서 내려받는다.
+ * 회사 방화벽이나 백신이 그 다운로드를 막으면 패키지 폴더는 있는데 실행 파일만 없다.
+ * 그때 require 는 성공하고 "경로"를 돌려주므로, 파일이 실제로 있는지 확인하지 않으면
+ * 한참 뒤 영상 렌더링 도중에야 알 수 없는 오류로 터진다.
+ */
+function existing(p: string | null | undefined): string | null {
+  if (!p) return null;
+  try { return fs.existsSync(p) ? p : null; } catch { return null; }
+}
+
 export function findFFmpeg(): string | null {
   if (ffmpegPath !== undefined) return ffmpegPath;
   ffmpegPath = which("ffmpeg");
   if (!ffmpegPath) {
-    try { ffmpegPath = require_("ffmpeg-static") as string; } catch { ffmpegPath = null; }
+    try { ffmpegPath = existing(require_("ffmpeg-static") as string); } catch { ffmpegPath = null; }
   }
   return ffmpegPath;
 }
@@ -36,16 +47,21 @@ export function findFFprobe(): string | null {
   if (ffprobePath !== undefined) return ffprobePath;
   ffprobePath = which("ffprobe");
   if (!ffprobePath) {
-    try { ffprobePath = (require_("ffprobe-static") as { path: string }).path; } catch { ffprobePath = null; }
+    try { ffprobePath = existing((require_("ffprobe-static") as { path: string }).path); } catch { ffprobePath = null; }
   }
   return ffprobePath;
 }
 
+/** 테스트·자동복구 후 다시 찾게 하려고 기억을 지운다 */
+export function resetFFmpegCache(): void {
+  ffmpegPath = undefined;
+  ffprobePath = undefined;
+}
+
 export const FFMPEG_INSTALL_GUIDE =
-  "FFmpeg를 찾을 수 없습니다. ① 이 프로그램은 ffmpeg-static을 함께 설치하므로 보통 자동으로 해결됩니다 " +
-  "(npm install 재실행). ② 직접 설치하려면 https://www.gyan.dev/ffmpeg/builds/ 에서 " +
-  "ffmpeg-release-essentials.zip 을 받아 압축을 풀고, bin 폴더를 시스템 PATH에 추가한 뒤 " +
-  "새 터미널에서 ffmpeg -version 으로 확인하세요.";
+  "FFmpeg를 찾을 수 없습니다. 검은 창에서 npm run ffmpeg 를 실행하면 자동으로 내려받습니다. " +
+  "그래도 안 되면 https://www.gyan.dev/ffmpeg/builds/ 에서 ffmpeg-release-essentials.zip 을 받아 " +
+  "압축을 풀고 bin 폴더를 시스템 PATH에 추가한 뒤, 새 창에서 ffmpeg -version 으로 확인하세요.";
 
 export function runFFmpeg(args: string[], timeoutMs = 10 * 60 * 1000): Promise<string> {
   const bin = findFFmpeg();

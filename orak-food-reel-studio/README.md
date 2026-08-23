@@ -186,6 +186,8 @@ APP_MODE=sample         ← 키를 다 넣었으면 live 로 변경
 | 고친 내용이 화면에 반영 안 됨 | **`업데이트.bat` 을 더블클릭**하세요. 받아오기와 빌드를 함께 합니다 |
 | PowerShell 에서 `not a git repository` / `ENOENT package.json` | 폴더 밖에서 명령을 친 것입니다. 명령창 대신 **`업데이트.bat` 더블클릭**을 쓰세요 |
 | 설치 중 `Visual Studio` / `node-gyp` 오류 | 예전 버전에서 생긴 문제입니다. `node_modules` 폴더를 통째로 지우고 `start.bat`을 다시 실행하세요. (현재 버전은 C++ 컴파일이 필요 없습니다) |
+| `FFmpeg를 찾을 수 없습니다` | 설치 중 실행 파일 내려받기가 막힌 것입니다. **`업데이트.bat` 또는 `start.bat` 을 다시 실행**하면 자동으로 받아옵니다. 계속 실패하면 검은 창에서 `npm run ffmpeg` |
+| FFmpeg가 계속 안 잡힘 (회사 방화벽) | https://www.gyan.dev/ffmpeg/builds/ 에서 `ffmpeg-release-essentials.zip` → 압축 해제 → `bin` 폴더를 시스템 PATH에 추가 → 프로그램 재시작 |
 | 설치 중 `EPERM` / 파일 접근 오류 | 폴더가 OneDrive·구글드라이브 동기화 폴더 안에 있으면 자주 납니다. `C:\orak` 처럼 동기화 안 되는 곳으로 옮기세요 |
 | 처음부터 다시 하고 싶음 | `data/orak-studio.db` 삭제(콘텐츠 기록 초기화). 영상 파일은 output/ 에 그대로 남습니다 |
 

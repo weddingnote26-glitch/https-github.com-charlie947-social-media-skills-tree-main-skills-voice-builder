@@ -40,16 +40,47 @@ if (!fs.existsSync(envPath)) {
 } else ok(".env 파일 확인");
 
 // 4) FFmpeg
-let ffmpeg = null;
-try { execFileSync("ffmpeg", ["-version"], { stdio: "pipe" }); ffmpeg = "ffmpeg (시스템 설치)"; } catch { /* 다음 */ }
-if (!ffmpeg) {
-  try {
-    const p = require_("ffmpeg-static");
-    if (p && fs.existsSync(p)) { execFileSync(p, ["-version"], { stdio: "pipe" }); ffmpeg = "ffmpeg-static (자동 설치본)"; }
-  } catch { /* 없음 */ }
+/**
+ * 왜 안 되는지까지 가려낸다.
+ * "찾을 수 없습니다" 만으로는 npm install 을 다시 하라는 안내가 맞는지 알 수 없다.
+ *   - 패키지 없음      → 설치가 덜 된 것
+ *   - 실행 파일 없음    → 설치 중 다운로드가 막힌 것 (방화벽·백신)
+ *   - 실행 안 됨       → 백신이 격리했거나 손상된 것
+ */
+function inspectFFmpeg() {
+  try { execFileSync("ffmpeg", ["-version"], { stdio: "pipe" }); return { state: "ok", how: "ffmpeg (시스템 설치)" }; } catch { /* 다음 */ }
+  let binPath = null;
+  try { binPath = require_("ffmpeg-static"); } catch { return { state: "no-package" }; }
+  if (!binPath || !fs.existsSync(binPath)) return { state: "no-binary", binPath };
+  try { execFileSync(binPath, ["-version"], { stdio: "pipe" }); return { state: "ok", how: "ffmpeg-static (자동 설치본)" }; }
+  catch { return { state: "broken", binPath }; }
 }
-if (ffmpeg) ok(`FFmpeg 사용 가능 — ${ffmpeg}`);
-else bad("FFmpeg를 찾을 수 없습니다. ① npm install 다시 실행(자동 설치) 또는 ② https://www.gyan.dev/ffmpeg/builds/ 에서 essentials zip을 받아 bin 폴더를 PATH에 추가하세요.");
+
+let ff = inspectFFmpeg();
+
+// 실행 파일만 없는 경우는 그 자리에서 받아 고친다 (한글 폰트와 같은 방식)
+if (ff.state === "no-binary" || ff.state === "broken") {
+  process.stdout.write("  ⬇️  FFmpeg 실행 파일을 내려받는 중… (30~80MB, 1~3분) ");
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, "scripts", "fix-ffmpeg.mjs")], { stdio: "pipe" });
+    console.log("완료");
+    ff = inspectFFmpeg();
+  } catch {
+    console.log("실패");
+  }
+}
+
+if (ff.state === "ok") ok(`FFmpeg 사용 가능 — ${ff.how}`);
+else if (ff.state === "no-package") {
+  bad("FFmpeg 패키지가 설치되지 않았습니다. 검은 창에서 npm install 을 실행한 뒤 다시 시작하세요.");
+} else if (ff.state === "broken") {
+  bad(`FFmpeg 파일이 있지만 실행되지 않습니다. 백신이 격리했을 수 있습니다.\n     아래 폴더를 백신 예외로 등록한 뒤 npm run ffmpeg 를 실행하세요.\n     ${path.dirname(ff.binPath)}`);
+} else {
+  bad("FFmpeg 실행 파일을 내려받지 못했습니다 (회사 방화벽이 github.com 을 막는 경우가 많습니다).\n" +
+      "     ① 검은 창에서 npm run ffmpeg 를 다시 실행해 보세요.\n" +
+      "     ② 그래도 안 되면 https://www.gyan.dev/ffmpeg/builds/ 에서 ffmpeg-release-essentials.zip 을 받아\n" +
+      "        압축을 풀고 bin 폴더를 시스템 PATH 에 추가한 뒤 프로그램을 다시 켜세요.");
+}
 
 // 5) 한글 폰트 (없으면 자동 다운로드 — SIL OFL 라이선스)
 const fontsDir = path.join(ROOT, "assets", "fonts");

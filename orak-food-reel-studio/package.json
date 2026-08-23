@@ -14,7 +14,8 @@
     "doctor": "node scripts/doctor.mjs",
     "smoke": "tsx scripts/smoke.ts",
     "character": "node scripts/make-character.mjs",
-    "fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build"
+    "fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
+    "ffmpeg": "node scripts/fix-ffmpeg.mjs"
   },
   "dependencies": {
     "next": "16.3.2",
