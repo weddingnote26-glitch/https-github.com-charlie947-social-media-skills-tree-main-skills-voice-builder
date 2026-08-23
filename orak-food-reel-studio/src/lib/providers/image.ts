@@ -2,17 +2,62 @@ import path from "node:path";
 import fs from "node:fs";
 import { getEnv } from "../env";
 import { getSettings } from "../settings";
-import { fetchJson, withRetry } from "./http";
+import { ApiError, fetchJson, withRetry } from "./http";
 import type { ImageProvider } from "./types";
 import { runFFmpeg } from "../ffmpeg";
 import { DIRS } from "../paths";
 
-/** Gemini(Imagen) — 9:16 지원 */
+/** 기준 이미지 파일 → base64 (§14 Master Reference 기반 생성) */
+function readRefs(paths: string[] | undefined): Array<{ mime: string; b64: string; path: string }> {
+  return (paths ?? [])
+    .filter((p) => fs.existsSync(p))
+    .map((p) => ({
+      path: p,
+      mime: p.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+      b64: fs.readFileSync(p).toString("base64"),
+    }));
+}
+
+/** Gemini — 기준 이미지가 있으면 이미지 입력을 지원하는 모델로, 없으면 Imagen으로 */
 class GeminiImage implements ImageProvider {
   readonly name = "gemini";
-  async generate(req: { prompt: string }): Promise<Buffer> {
+  async generate(req: { prompt: string; referenceImagePaths?: string[] }): Promise<Buffer> {
     const env = getEnv();
-    const model = getSettings().imageModel || env.IMAGE_MODEL || "imagen-3.0-generate-002";
+    const configured = getSettings().imageModel || env.IMAGE_MODEL;
+    const refs = readRefs(req.referenceImagePaths);
+
+    // 기준 이미지가 있으면 이미지 입력이 가능한 모델을 사용 (Imagen predict는 참조 입력 불가)
+    if (refs.length > 0) {
+      const model = configured && !configured.includes("imagen") ? configured : "gemini-2.5-flash-image";
+      return withRetry("gemini-image", "generate-with-reference", async () => {
+        const out = await fetchJson<{
+          candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string }; inline_data?: { data?: string } }> } }>;
+        }>(
+          "gemini-image",
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.IMAGE_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                role: "user",
+                parts: [
+                  ...refs.map((r) => ({ inline_data: { mime_type: r.mime, data: r.b64 } })),
+                  { text: `${req.prompt}\n\nThe attached images are the character master reference. Keep the character's identity, face, eye shape, hat, proportions and colors exactly the same as the reference. Output a vertical 9:16 image.` },
+                ],
+              }],
+              generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+            }),
+          },
+        );
+        const parts = out.candidates?.[0]?.content?.parts ?? [];
+        const b64 = parts.map((p) => p.inlineData?.data ?? p.inline_data?.data).find(Boolean);
+        if (!b64) throw new Error("이미지 응답이 비어 있습니다");
+        return Buffer.from(b64, "base64");
+      });
+    }
+
+    const model = configured || "imagen-3.0-generate-002";
     return withRetry("gemini-image", "generate", async () => {
       const out = await fetchJson<{ predictions?: Array<{ bytesBase64Encoded?: string }> }>(
         "gemini-image",
@@ -33,12 +78,42 @@ class GeminiImage implements ImageProvider {
   }
 }
 
-/** OpenAI 이미지 API */
+/** OpenAI — 기준 이미지가 있으면 images/edits(참조 입력), 없으면 generations */
 class OpenAIImage implements ImageProvider {
   readonly name = "openai";
-  async generate(req: { prompt: string }): Promise<Buffer> {
+  async generate(req: { prompt: string; referenceImagePaths?: string[] }): Promise<Buffer> {
     const env = getEnv();
     const model = getSettings().imageModel || env.IMAGE_MODEL || "gpt-image-1";
+    const refs = readRefs(req.referenceImagePaths);
+    const size = model.startsWith("dall-e") ? "1024x1792" : "1024x1536";
+
+    // dall-e 계열은 참조 이미지 편집 방식이 다르므로 기본 생성만 사용
+    if (refs.length > 0 && !model.startsWith("dall-e")) {
+      return withRetry("openai-image", "generate-with-reference", async () => {
+        const form = new FormData();
+        form.append("model", model);
+        form.append("size", size);
+        form.append("n", "1");
+        form.append(
+          "prompt",
+          `${req.prompt}\n\nThe attached images are the character master reference. Keep the character's identity, face, eye shape, hat, proportions and colors exactly the same as the reference.`,
+        );
+        for (const r of refs) {
+          form.append("image[]", new Blob([new Uint8Array(fs.readFileSync(r.path))], { type: r.mime }), path.basename(r.path));
+        }
+        const res = await fetch("https://api.openai.com/v1/images/edits", {
+          method: "POST",
+          headers: { authorization: `Bearer ${env.IMAGE_API_KEY}` },
+          body: form,
+        });
+        const text = await res.text();
+        if (!res.ok) throw new ApiError("openai-image", res.status, `${res.status} ${text.slice(0, 300)}`);
+        const b64 = (JSON.parse(text) as { data?: Array<{ b64_json?: string }> }).data?.[0]?.b64_json;
+        if (!b64) throw new Error("이미지 응답이 비어 있습니다");
+        return Buffer.from(b64, "base64");
+      });
+    }
+
     return withRetry("openai-image", "generate", async () => {
       const out = await fetchJson<{ data?: Array<{ b64_json?: string }> }>(
         "openai-image",
@@ -52,7 +127,7 @@ class OpenAIImage implements ImageProvider {
           body: JSON.stringify({
             model,
             prompt: req.prompt,
-            size: model.startsWith("dall-e") ? "1024x1792" : "1024x1536",
+            size,
             n: 1,
             ...(model.startsWith("dall-e") ? { response_format: "b64_json" } : {}),
           }),

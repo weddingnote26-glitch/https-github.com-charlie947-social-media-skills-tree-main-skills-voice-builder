@@ -4,7 +4,7 @@ import { getImageProvider } from "../providers/image";
 import type { Scene } from "../schema";
 import { contentHash } from "../id";
 import { getSettings } from "../settings";
-import { DIRS } from "../paths";
+import { resolvedReferencePaths } from "../character/oraki";
 import { logInfo, logWarn } from "../log";
 
 /**
@@ -41,10 +41,7 @@ export async function generateSceneImages(
     let ok = false;
     for (let attempt = 0; attempt < 2 && !ok; attempt++) {
       try {
-        const refDir = DIRS.character;
-        const refs = lock.enabled
-          ? lock.referenceImages.map((f) => path.join(refDir, f)).filter((p) => fs.existsSync(p))
-          : [];
+        const refs = resolvedReferencePaths();
         const buf = await provider.generate({
           prompt: scene.visual_prompt,
           seed: lock.seed,

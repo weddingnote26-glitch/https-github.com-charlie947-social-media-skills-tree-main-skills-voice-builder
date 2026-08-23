@@ -76,7 +76,10 @@ export default function CharacterPage() {
       </div>
 
       <Card title="🖼 Master Reference — 캐릭터 일관성의 기준">
-        <p className="text-sm text-gray-500 mb-4">한 번 확정한 오락이 이미지를 등록해두면, 모든 콘텐츠에서 같은 얼굴·의상·비율을 유지하도록 프롬프트에 반영됩니다.</p>
+        <p className="text-sm text-gray-500 mb-4">
+          기준 이미지 7종이 <b>기본으로 준비돼 있습니다.</b> 이미지 생성 시 이 파일들이 참조로 함께 전달되어 모든 콘텐츠에서 같은 얼굴·의상·비율을 유지합니다.
+          직접 그린 오락이로 바꾸고 싶으면 아래에서 파일을 덮어쓰면 됩니다.
+        </p>
         <div className="grid grid-cols-7 gap-3">
           {data.references.map((r) => (
             <div key={r.file} className="text-center">
@@ -98,6 +101,11 @@ export default function CharacterPage() {
           <input ref={fileInput} type="file" accept="image/png,image/jpeg" hidden
             onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         </div>
+        <p className="text-xs text-gray-400 mt-3">
+          기본 이미지는 <code className="bg-gray-100 px-1 rounded">assets/character/svg/</code> 의 SVG 원본으로 만들어졌습니다.
+          색·소품을 고치려면 <code className="bg-gray-100 px-1 rounded">scripts/character/oraki-art.mjs</code> 를 수정하고
+          <code className="bg-gray-100 px-1 rounded">npm run character</code> 를 실행하세요.
+        </p>
       </Card>
 
       <div className="grid grid-cols-2 gap-6">

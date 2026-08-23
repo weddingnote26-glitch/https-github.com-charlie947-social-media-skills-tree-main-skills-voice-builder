@@ -36,6 +36,23 @@ export function masterReferenceStatus(): Array<{ file: string; exists: boolean; 
   });
 }
 
+/**
+ * 이미지 생성에 실제로 넘길 기준 이미지 경로.
+ * 사용자가 고른 것이 없으면 기본 제공 Master Reference를 자동으로 사용한다 (§14).
+ * 너무 많이 넣으면 토큰·비용이 늘어나므로 최대 3장.
+ */
+const DEFAULT_REFERENCES = ["character_sheet.png", "front.png", "face_detective.png"];
+
+export function resolvedReferencePaths(): string[] {
+  const lock = getSettings().characterLock;
+  if (!lock.enabled) return [];
+  const chosen = lock.referenceImages.length ? lock.referenceImages : DEFAULT_REFERENCES;
+  return chosen
+    .map((f) => path.join(DIRS.character, f))
+    .filter((p) => fs.existsSync(p))
+    .slice(0, 3);
+}
+
 /** §7 대표 말투 — 매번 그대로 반복하지 말고 변형해서 사용 */
 export const ORAKI_SPEECH_SAMPLES = [
   "오늘도 맛있는 사건 하나 들어왔습니다.",
