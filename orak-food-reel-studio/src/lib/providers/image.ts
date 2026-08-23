@@ -6,7 +6,11 @@ import { getSettings } from "../settings";
 import { ApiError, fetchJson, withRetry } from "./http";
 import type { ImageProvider } from "./types";
 import { runFFmpeg } from "../ffmpeg";
+import { logWarn } from "../log";
+import { pickImageModel } from "./image-model";
 import { DIRS } from "../paths";
+
+export { pickImageModel, modelOwner, clearStaleImageModel } from "./image-model";
 
 /** 기준 이미지 파일 → base64 (§14 Master Reference 기반 생성) */
 function readRefs(paths: string[] | undefined): Array<{ mime: string; b64: string; path: string }> {
@@ -19,12 +23,18 @@ function readRefs(paths: string[] | undefined): Array<{ mime: string; b64: strin
     }));
 }
 
+/** gpt-image-1 은 일부 계정에서 조직 인증(Verify Organization)을 요구한다 */
+export function needsOrgVerification(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /\b(400|403)\b/.test(msg) && /verif/i.test(msg);
+}
+
 /** Gemini — 기준 이미지가 있으면 이미지 입력을 지원하는 모델로, 없으면 Imagen으로 */
 class GeminiImage implements ImageProvider {
   readonly name = "gemini";
   async generate(req: { prompt: string; referenceImagePaths?: string[] }): Promise<Buffer> {
     const env = getEnv();
-    const configured = getSettings().imageModel || env.IMAGE_MODEL;
+    const configured = pickImageModel("gemini", getSettings().imageModel || env.IMAGE_MODEL, "");
     const refs = readRefs(req.referenceImagePaths);
 
     // 기준 이미지가 있으면 이미지 입력이 가능한 모델을 사용 (Imagen predict는 참조 입력 불가)
@@ -35,7 +45,7 @@ class GeminiImage implements ImageProvider {
           candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string }; inline_data?: { data?: string } }> } }>;
         }>(
           "gemini-image",
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolveSecret("IMAGE_API_KEY")}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(resolveSecret("IMAGE_API_KEY"))}`,
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -63,7 +73,7 @@ class GeminiImage implements ImageProvider {
     return withRetry("gemini-image", "generate", async () => {
       const out = await fetchJson<{ predictions?: Array<{ bytesBase64Encoded?: string }> }>(
         "gemini-image",
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${resolveSecret("IMAGE_API_KEY")}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${encodeURIComponent(resolveSecret("IMAGE_API_KEY"))}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -84,10 +94,29 @@ class GeminiImage implements ImageProvider {
 /** OpenAI — 기준 이미지가 있으면 images/edits(참조 입력), 없으면 generations */
 class OpenAIImage implements ImageProvider {
   readonly name = "openai";
+
   async generate(req: { prompt: string; referenceImagePaths?: string[] }): Promise<Buffer> {
     const env = getEnv();
-    const model = getSettings().imageModel || env.IMAGE_MODEL || "gpt-image-1";
+    const model = pickImageModel("openai", getSettings().imageModel || env.IMAGE_MODEL, "gpt-image-1");
     const refs = readRefs(req.referenceImagePaths);
+    try {
+      return await this.call(model, req, refs);
+    } catch (e) {
+      // gpt-image-1 은 계정에 따라 "Verify Organization"을 요구한다.
+      // 인증 없이 쓸 수 있는 dall-e-3 로 자동 전환해, 제작이 여기서 멈추지 않게 한다.
+      if (model !== "dall-e-3" && needsOrgVerification(e)) {
+        logWarn("openai-image", `${model} 은 조직 인증이 필요합니다 — dall-e-3 으로 대신 생성합니다`);
+        return await this.call("dall-e-3", req, []);
+      }
+      throw e;
+    }
+  }
+
+  private async call(
+    model: string,
+    req: { prompt: string },
+    refs: Array<{ mime: string; b64: string; path: string }>,
+  ): Promise<Buffer> {
     const size = model.startsWith("dall-e") ? "1024x1792" : "1024x1536";
 
     // dall-e 계열은 참조 이미지 편집 방식이 다르므로 기본 생성만 사용
@@ -197,6 +226,9 @@ export function friendlyImageError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (isQuotaError(msg ? new Error(msg) : e)) {
     return "이미지 API 사용 한도를 초과했습니다. 결제 설정을 확인하거나 잠시 후 다시 시도하세요.";
+  }
+  if (needsOrgVerification(e)) {
+    return "OpenAI 조직 인증이 필요한 모델입니다. 설정에서 모델을 dall-e-3 으로 바꾸거나 platform.openai.com 에서 조직 인증을 완료하세요.";
   }
   if (/401|403|API key|api_key/i.test(msg)) return "이미지 API 키가 올바르지 않습니다. 설정에서 확인하세요.";
   if (/응답이 .*오지 않았습니다/.test(msg)) return msg;

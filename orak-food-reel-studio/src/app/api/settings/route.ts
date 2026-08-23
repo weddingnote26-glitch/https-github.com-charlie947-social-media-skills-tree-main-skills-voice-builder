@@ -3,6 +3,7 @@ import { getSettings, saveSettings, kvSet } from "@/lib/settings";
 import { encrypt } from "@/lib/crypto";
 import { serviceReady } from "@/lib/env";
 import { setSecret, secretStatus, getAppMode, type SecretName } from "@/lib/secrets";
+import { clearStaleImageModel } from "@/lib/providers/image-model";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,12 @@ export async function PUT(req: Request) {
         setSecret(name, body[name] as string);
         delete body[name];
       }
+    }
+    // 공급자를 바꿨는데 예전 공급자의 모델 이름이 남으면 원인 모를 400이 난다 → 비운다
+    if (typeof body.imageProvider === "string") {
+      const provider = body.imageProvider as "gemini" | "openai" | "sample";
+      const model = typeof body.imageModel === "string" ? body.imageModel : getSettings().imageModel;
+      body.imageModel = clearStaleImageModel(provider, model);
     }
     try {
       const saved = saveSettings(body);

@@ -6,6 +6,31 @@ import { resolveSecret } from "@/lib/secrets";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * 실패 응답을 "무엇을 고쳐야 하는지"가 보이는 문장으로.
+ * `응답 400` 만 보여주면 사용자가 다음에 뭘 할지 알 수 없다.
+ */
+async function keyFailure(r: Response, provider: "gemini" | "openai"): Promise<string> {
+  const raw = await r.text().catch(() => "");
+  let reason = "";
+  try {
+    const j = JSON.parse(raw) as { error?: { message?: string } };
+    reason = j.error?.message ?? "";
+  } catch {
+    reason = raw.slice(0, 160);
+  }
+  const where = provider === "gemini"
+    ? "aistudio.google.com/apikey 에서 [API 키 만들기]로 받은 AIza… 값"
+    : "platform.openai.com → API keys 에서 받은 sk-… 값";
+  if (r.status === 400 || r.status === 401 || r.status === 403) {
+    return `키가 거부되었습니다 (${r.status}). ${where}인지 확인하세요.${reason ? ` — ${reason.slice(0, 120)}` : ""}`;
+  }
+  if (r.status === 429) {
+    return "사용 한도를 초과했습니다 (429). 결제(유료 등급) 설정을 확인하거나 잠시 후 다시 시도하세요.";
+  }
+  return `응답 ${r.status}${reason ? ` — ${reason.slice(0, 120)}` : ""}`;
+}
+
 /** §42 각 API [연결 테스트] */
 export async function POST(req: Request) {
   return handle(async () => {
@@ -40,13 +65,13 @@ export async function POST(req: Request) {
             const imageKey = resolveSecret("IMAGE_API_KEY");
             if (!imageKey) return { ok: false, detail: "이미지 API 키가 없습니다. 위 칸에 넣고 저장하세요." };
             if ((getSettings().imageProvider || env.IMAGE_PROVIDER) === "gemini") {
-              const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${imageKey}`, { signal: AbortSignal.timeout(10000) });
-              return r.ok ? { ok: true, detail: "Gemini 연결 성공" } : { ok: false, detail: `응답 ${r.status}` };
+              const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(imageKey)}`, { signal: AbortSignal.timeout(10000) });
+              return r.ok ? { ok: true, detail: "Gemini 연결 성공" } : { ok: false, detail: await keyFailure(r, "gemini") };
             }
             const r = await fetch("https://api.openai.com/v1/models", {
               headers: { authorization: `Bearer ${imageKey}` }, signal: AbortSignal.timeout(10000),
             });
-            return r.ok ? { ok: true, detail: "OpenAI 연결 성공" } : { ok: false, detail: `응답 ${r.status}` };
+            return r.ok ? { ok: true, detail: "OpenAI 연결 성공" } : { ok: false, detail: await keyFailure(r, "openai") };
           }
           case "instagram": {
             const { token, userId } = resolveIgAuth();
