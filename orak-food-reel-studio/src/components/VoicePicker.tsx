@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, useApi, ErrorBox } from "./ui";
 import { checkVoiceId } from "@/lib/providers/voice-id";
 
@@ -49,9 +49,12 @@ function ManualWarning({ value }: { value: string }) {
 export default function VoicePicker({
   value,
   onChange,
+  refreshToken = 0,
 }: {
   value: string;
   onChange: (voiceId: string) => void;
+  /** 이 값이 바뀌면 목록을 다시 불러온다 (키를 저장한 직후 등) */
+  refreshToken?: number;
 }) {
   const { data, error, loading, reload } = useApi<VoicesResponse>("/api/voices");
   const [playing, setPlaying] = useState<string | null>(null);
@@ -59,6 +62,16 @@ export default function VoicePicker({
   const [err, setErr] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 키를 저장해도 목록이 그대로여서 "키가 없습니다" 가 계속 보이던 문제.
+  // 저장 직후 다시 불러온다.
+  const lastToken = useRef(refreshToken);
+  useEffect(() => {
+    if (lastToken.current !== refreshToken) {
+      lastToken.current = refreshToken;
+      reload();
+    }
+  }, [refreshToken, reload]);
 
   const stop = () => {
     audioRef.current?.pause();

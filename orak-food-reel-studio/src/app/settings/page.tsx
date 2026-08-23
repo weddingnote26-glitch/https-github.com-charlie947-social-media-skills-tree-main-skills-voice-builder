@@ -26,6 +26,8 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<Record<string, string>>({});
   const [keyInput, setKeyInput] = useState<Partial<Record<SecretName, string>>>({});
   const toast = useToast();
+  // ElevenLabs 키를 저장하면 목소리 목록을 다시 불러오게 하는 신호
+  const [voiceRefresh, setVoiceRefresh] = useState(0);
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
   if (!data || !s) return <div className="text-gray-400 py-20 text-center">불러오는 중…</div>;
@@ -45,6 +47,7 @@ export default function SettingsPage() {
       });
       setMsg("저장했습니다."); reload();
       // 무엇이 바뀌었는지 문장으로 알린다 ("저장했습니다" 만으로는 확인이 안 된다)
+      if ("ELEVENLABS_API_KEY" in patch) setVoiceRefresh((n) => n + 1);
       const changes = describeSettingsChange(before, out.settings, patch);
       toast.success(changes.length === 1 ? changes[0] : "설정을 저장했습니다.", changes.length > 1 ? changes : undefined);
     } catch (e) {
@@ -164,7 +167,8 @@ export default function SettingsPage() {
           help="elevenlabs.io → 설정 → 워크스페이스 → API 키. 저장하면 아래에 목소리 목록이 나타납니다." />
         <div className="mb-4">
           <label className="label text-sm">목소리 고르기</label>
-          <VoicePicker value={s.tts.voiceId} onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
+          <VoicePicker value={s.tts.voiceId} refreshToken={voiceRefresh}
+            onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">Model</label>
