@@ -28,6 +28,21 @@ const LABEL_KO: Record<string, string> = {
 };
 const ko = (v: string) => LABEL_KO[v.toLowerCase()] ?? v;
 
+/**
+ * ElevenLabs 무료 요금제는 Voice Library 목소리를 API 로 쓸 수 없다(402).
+ * 고르는 자리에서 미리 알려주지 않으면, 제작을 다 돌리고 음성 단계에서야 막힌다.
+ * premade = ElevenLabs 기본 목소리로 무료 요금제에서도 쓸 수 있다.
+ */
+function planNote(category: string): { label: string; free: boolean } {
+  const c = (category || "").toLowerCase();
+  if (c === "premade") return { label: "기본 · 무료 요금제 가능", free: true };
+  if (c === "cloned") return { label: "내가 만든 목소리", free: true };
+  if (c === "professional" || c === "generated" || c === "voice_library") {
+    return { label: "라이브러리 · 유료 요금제 필요", free: false };
+  }
+  return { label: c ? ko(c) : "", free: true };
+}
+
 /** 직접 입력한 값이 목소리 ID 형태가 아니면 저장 전에 알려준다 */
 function ManualWarning({ value }: { value: string }) {
   const v = value.trim();
@@ -176,7 +191,15 @@ export default function VoicePicker({
                       {Object.entries(v.labels).slice(0, 4).map(([k, val]) => (
                         <span key={k} className="badge bg-gray-100 text-gray-600">{ko(String(val))}</span>
                       ))}
-                      {v.category && <span className="badge bg-gray-100 text-gray-600">{v.category}</span>}
+                      {(() => {
+                        const n = planNote(v.category);
+                        if (!n.label) return null;
+                        return (
+                          <span className={`badge ${n.free ? "bg-gray-200 text-gray-800" : "bg-amber-100 text-amber-900"}`}>
+                            {n.free ? "" : "⚠ "}{n.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -205,6 +228,10 @@ export default function VoicePicker({
         </div>
       )}
 
+      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        ⚠ ElevenLabs <b>무료 요금제</b>에서는 “라이브러리” 목소리를 프로그램에서 쓸 수 없습니다(오류 402).
+        <b>“기본 · 무료 요금제 가능”</b> 표시가 있는 목소리를 고르거나, elevenlabs.io 에서 유료 요금제로 올려 주세요.
+      </p>
       <p className="text-xs text-gray-600">
         ▶ 샘플은 ElevenLabs가 제공하는 기본 미리듣기(대부분 영어)이고,
         🇰🇷 한국어는 실제로 한 문장을 생성해 들려줍니다 — 크레딧이 조금 소모되니 최종 후보만 눌러 보세요.

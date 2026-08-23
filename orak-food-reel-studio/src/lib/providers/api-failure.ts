@@ -42,6 +42,15 @@ export function describeKeyFailure(service: KeyService, status: number, raw: str
       ? `키는 인식되지만 권한이 부족합니다. ElevenLabs 에서 키를 만들 때 Voices(읽기)와 Text to Speech 권한을 켜 주세요.${tail}`
       : `키는 인식되지만 이 작업에 대한 권한이 없습니다. 키 권한 설정을 확인하세요.${tail}`;
   }
+  // 402 = 요금제 제한. 키도 권한도 맞는데 요금제가 막는 경우라
+  // "키를 다시 발급하라"고 하면 아무리 해도 해결되지 않는다.
+  if (status === 402 || /payment_required|paid_plan_required|upgrade your subscription/i.test(reason)) {
+    return service === "elevenlabs"
+      ? "ElevenLabs 무료 요금제에서는 Voice Library 목소리를 API로 쓸 수 없습니다. " +
+        "① 목소리 고르기에서 '기본' 표시가 있는 목소리를 고르거나, " +
+        "② elevenlabs.io 에서 유료 요금제(Starter 이상)로 올리세요."
+      : `요금제가 이 기능을 허용하지 않습니다 (402).${tail}`;
+  }
   if (status === 401) {
     return `키가 거부되었습니다 (401). 폐기됐거나 오타일 수 있습니다. ${WHERE[service]}인지 확인하고, 필요하면 새로 발급해 주세요.${tail}`;
   }

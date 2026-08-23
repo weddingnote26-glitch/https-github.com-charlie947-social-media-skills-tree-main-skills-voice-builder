@@ -3,7 +3,8 @@ import fs from "node:fs";
 import { getEnv } from "../env";
 import { resolveSecret, isSampleMode } from "../secrets";
 import { getSettings } from "../settings";
-import { fetchBuffer, fetchJson, withRetry } from "./http";
+import { ApiError, fetchBuffer, fetchJson, withRetry } from "./http";
+import { describeKeyFailure } from "./api-failure";
 import type { TTSProvider } from "./types";
 import { runFFmpeg } from "../ffmpeg";
 import { DIRS } from "../paths";
@@ -66,6 +67,18 @@ class SampleTTS implements TTSProvider {
     fs.unlinkSync(tmp);
     return buf;
   }
+}
+
+/**
+ * 음성 생성 실패를 사용자가 다음에 할 일이 보이는 문장으로.
+ * ElevenLabs 가 돌려주는 영어 JSON 을 그대로 화면에 남기면 무엇을 고쳐야 할지 알 수 없다.
+ */
+export function friendlyTtsError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  const status = e instanceof ApiError ? e.status : (msg.match(/\b(40\d|429|5\d\d)\b/)?.[1] ?? "");
+  if (status) return describeKeyFailure("elevenlabs", Number(status), msg);
+  if (/목소리|voice/i.test(msg)) return msg.slice(0, 300);
+  return msg.slice(0, 300);
 }
 
 export function getTTS(): TTSProvider {

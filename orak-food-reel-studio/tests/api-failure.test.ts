@@ -47,3 +47,25 @@ describe("describeKeyFailure — 다음에 할 일을 알려준다", () => {
     expect(describeKeyFailure("openai", 418, "")).toBe("응답 418");
   });
 });
+
+describe("402 요금제 제한", () => {
+  it("키가 아니라 요금제 문제임을 알려준다", () => {
+    // 실제로 받은 응답: 무료 요금제는 라이브러리 목소리를 API 로 쓸 수 없다
+    const raw = '{"detail":{"type":"payment_required","code":"paid_plan_required","message":"Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.","status":"payment_required"}}';
+    const m = describeKeyFailure("elevenlabs", 402, raw);
+    expect(m).toContain("무료 요금제");
+    expect(m).toContain("기본");
+    // 키를 다시 발급하라고 하면 아무리 해도 해결되지 않는다
+    expect(m).not.toContain("새로 발급");
+    expect(m).not.toContain("오타");
+  });
+
+  it("본문만 보고도 알아본다 (상태 코드가 없을 때)", () => {
+    const m = describeKeyFailure("elevenlabs", 0, '{"detail":{"code":"paid_plan_required","message":"upgrade your subscription"}}');
+    expect(m).toContain("무료 요금제");
+  });
+
+  it("다른 서비스의 402 도 요금제 문제로 안내한다", () => {
+    expect(describeKeyFailure("openai", 402, "")).toContain("요금제");
+  });
+});

@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
-import { getTTS, audioDuration } from "../providers/tts";
+import { getTTS, audioDuration, friendlyTtsError } from "../providers/tts";
 import { runFFmpeg } from "../ffmpeg";
 import type { Scene } from "../schema";
 import { getSettings } from "../settings";
@@ -23,11 +23,17 @@ export async function generateVoice(
   const durations: number[] = [];
   for (let i = 0; i < scenes.length; i++) {
     const seg = path.join(segDir, `seg-${String(i + 1).padStart(2, "0")}.mp3`);
-    const buf = await tts.synthesize({
-      text: scenes[i].narration,
-      speed: s.speed, stability: s.stability, similarity: s.similarity,
-      voiceId: s.voiceId || undefined, model: s.model || undefined,
-    });
+    let buf: Buffer;
+    try {
+      buf = await tts.synthesize({
+        text: scenes[i].narration,
+        speed: s.speed, stability: s.stability, similarity: s.similarity,
+        voiceId: s.voiceId || undefined, model: s.model || undefined,
+      });
+    } catch (e) {
+      // 영어 원문 대신 무엇을 해야 하는지가 보이는 문장으로 바꿔 올린다
+      throw new Error(friendlyTtsError(e));
+    }
     fs.writeFileSync(seg, buf);
     durations.push(await audioDuration(seg));
     onProgress?.(i + 1, scenes.length);
