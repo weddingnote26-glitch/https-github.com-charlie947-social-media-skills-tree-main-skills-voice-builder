@@ -43,6 +43,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
     total?: number; pass?: boolean; parts?: Record<string, { score: number; max: number }>;
     suggestions?: string[]; fact_blocked?: boolean; fact_block_reasons?: string[];
     duplicate?: { tooSimilar: boolean; score: number };
+    image_notice?: string;
   };
   const facts = JSON.parse(reel.factcheck_json || "[]") as FactCheckItem[];
   const verdict = JSON.parse(reel.verdict_json || "{}") as Partial<Verdict>;
@@ -88,6 +89,12 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
 
       {msg && <div className="card p-3 px-4 bg-emerald-50 border-emerald-200 text-emerald-800 text-sm font-bold">{msg}</div>}
       <ErrorBox msg={err} />
+      {quality.image_notice && (
+        <div className="card p-4 bg-amber-50 border-amber-300">
+          <div className="font-extrabold text-amber-800 mb-1">🖼 임시 이미지가 포함되어 있습니다</div>
+          <div className="text-sm text-amber-900">{quality.image_notice}</div>
+        </div>
+      )}
       {quality.fact_blocked && (
         <div className="card p-4 bg-red-50 border-red-300">
           <div className="font-extrabold text-red-700 mb-1">⚠ 팩트체크 확인 필요 — 해결 전에는 발행할 수 없습니다</div>

@@ -102,6 +102,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
   };
 
   let reelId = input.reelId ?? newId("reel");
+  let imageNotice = "";
   if (running.has(reelId)) throw new Error("이 릴스는 이미 제작 중입니다.");
   running.add(reelId);
   try {
@@ -143,15 +144,25 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
 
     // 4) 이미지 (§12, 실패한 장면만 재시도 §43)
     mark("images", { status: "진행중", progress: 0 });
-    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), (done, total) => {
-      mark("images", { progress: Math.round((done / total) * 100), message: `${done}/${total} 장면` });
+    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), (done, total, note) => {
+      mark("images", { progress: Math.round((done / total) * 100), message: note ?? `${done}/${total} 장면` });
     });
     for (const img of images) {
       const sc = script.scenes.find((s) => s.scene === img.scene);
       if (sc) { sc.image_path = img.path; sc.image_hash = img.hash; }
     }
     saveScenes(reelId, script.scenes);
-    mark("images", { status: "완료", progress: 100, message: `${images.length}장 (캐시 ${images.filter((i) => i.cached).length})` });
+    // 실패해서 임시 이미지로 채운 장면이 있으면 제작은 계속하되 분명히 알린다
+    const placeholders = images.filter((i) => i.placeholder);
+    imageNotice = placeholders.length
+      ? `${placeholders.length}장이 임시 이미지입니다 (${placeholders[0].reason ?? "생성 실패"}). 해당 장면은 나중에 [🖼 이미지만 다시]로 만들 수 있습니다.`
+      : "";
+    mark("images", {
+      status: "완료", progress: 100,
+      message: placeholders.length
+        ? `${images.length}장 중 ⚠ 임시 ${placeholders.length}장 — ${placeholders[0].reason ?? "생성 실패"}`
+        : `${images.length}장 (캐시 ${images.filter((i) => i.cached).length})`,
+    });
 
     // 5) 음성 (§16) — 실제 음성 길이에 맞춰 장면 시간 재조정
     mark("voice", { status: "진행중", progress: 0 });
@@ -212,7 +223,10 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       verdict_json: JSON.stringify(script.verdict ?? {}),
       caption: script.caption,
       hashtags_json: JSON.stringify(script.hashtags),
-      quality_json: JSON.stringify({ ...quality, duplicate: dup, fact_blocked: fact.blocked, fact_block_reasons: fact.blockReasons }),
+      quality_json: JSON.stringify({
+        ...quality, duplicate: dup, fact_blocked: fact.blocked, fact_block_reasons: fact.blockReasons,
+        image_notice: imageNotice,
+      }),
       video_path: videoPath, thumb_path: thumbPath, srt_path: subs.srtPath, voice_path: voice.voicePath,
       duration_sec: rendered.totalSec,
       status: "검수",

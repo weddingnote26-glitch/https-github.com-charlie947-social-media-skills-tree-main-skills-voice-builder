@@ -181,6 +181,27 @@ function hsl(h: number, s: number, l: number): string {
   return `0x${f(0)}${f(8)}${f(4)}`;
 }
 
+/** 실패한 장면을 임시로 채우는 이미지(외부 API 불필요) */
+export function getPlaceholderImageProvider(): ImageProvider {
+  return new SampleImage();
+}
+
+/** 할당량 초과처럼 "더 시도해도 소용없는" 오류인지 */
+export function isQuotaError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /429/.test(msg) && /quota|billing|exceeded|한도/i.test(msg);
+}
+
+export function friendlyImageError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (isQuotaError(msg ? new Error(msg) : e)) {
+    return "이미지 API 사용 한도를 초과했습니다. 결제 설정을 확인하거나 잠시 후 다시 시도하세요.";
+  }
+  if (/401|403|API key|api_key/i.test(msg)) return "이미지 API 키가 올바르지 않습니다. 설정에서 확인하세요.";
+  if (/응답이 .*오지 않았습니다/.test(msg)) return msg;
+  return msg.slice(0, 200);
+}
+
 export function getImageProvider(): ImageProvider {
   const env = getEnv();
   const provider = getSettings().imageProvider || env.IMAGE_PROVIDER;
