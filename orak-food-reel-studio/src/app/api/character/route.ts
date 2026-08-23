@@ -2,6 +2,7 @@ import { handle, ok, fail } from "@/lib/api";
 import { masterReferenceStatus, ORAKI, ORAKI_SPEECH_SAMPLES, VERDICT_PHRASES } from "@/lib/character/oraki";
 import { ORAKI_ACTIONS, ORAKI_EXPRESSIONS } from "@/lib/schema";
 import { getSettings, saveSettings } from "@/lib/settings";
+import { isValidFolderName, resolveRef } from "@/lib/character/library";
 import { DIRS } from "@/lib/paths";
 import path from "node:path";
 import fs from "node:fs";
@@ -26,19 +27,29 @@ export async function GET() {
 export async function POST(req: Request) {
   return handle(async () => {
     const body = z.object({
-      file: z.string().regex(/^[\w가-힣.-]+\.(png|jpg|jpeg)$/i, "png/jpg 파일명만 가능합니다"),
+      file: z.string().regex(/^[\w가-힣ㄱ-ㅎㅏ-ㅣ.\- ]+\.(png|jpg|jpeg|webp)$/i, "png/jpg/webp 파일만 올릴 수 있습니다"),
+      folder: z.string().optional().default(""),
       dataBase64: z.string().min(100),
     }).parse(await req.json());
     const buf = Buffer.from(body.dataBase64.replace(/^data:[^,]+,/, ""), "base64");
     if (buf.length > 15 * 1024 * 1024) return fail("15MB 이하 이미지만 업로드할 수 있습니다");
-    fs.mkdirSync(DIRS.character, { recursive: true });
-    fs.writeFileSync(path.join(DIRS.character, body.file), buf);
+
+    // 폴더 안으로 올리는 경우 — 이름을 검사해 assets/character 밖으로 나가지 못하게 한다
+    const folder = body.folder.trim();
+    if (folder && !isValidFolderName(folder)) return fail(`폴더 이름이 올바르지 않습니다: "${folder}"`);
+    const dir = folder ? path.join(DIRS.character, folder) : DIRS.character;
+    fs.mkdirSync(dir, { recursive: true });
+
+    const rel = folder ? `${folder}/${body.file}` : body.file;
+    if (!resolveRef(rel)) return fail("파일 경로가 올바르지 않습니다");
+    fs.writeFileSync(path.join(dir, body.file), buf);
+
     // 참조 목록에 자동 등록
     const lock = getSettings().characterLock;
-    if (!lock.referenceImages.includes(body.file)) {
-      saveSettings({ characterLock: { ...lock, referenceImages: [...lock.referenceImages, body.file] } });
+    if (!lock.referenceImages.includes(rel)) {
+      saveSettings({ characterLock: { ...lock, referenceImages: [...lock.referenceImages, rel] } });
     }
-    return ok({ saved: body.file });
+    return ok({ saved: rel });
   });
 }
 

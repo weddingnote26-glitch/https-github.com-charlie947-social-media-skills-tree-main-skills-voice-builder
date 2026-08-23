@@ -1,14 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, ProgressBar, ErrorBox, api } from "@/components/ui";
+import { Card, ProgressBar, ErrorBox, StepRow, api } from "@/components/ui";
+import { jobProgress, type ProgressStep } from "@/lib/pipeline/progress";
+import { useToast } from "@/components/Toast";
 
 const AREAS = ["관악구", "신림", "봉천", "서울대입구", "낙성대", "기타 서울"];
 const TYPES = ["자동 추천", "가성비 맛집", "숨은 동네 맛집", "부모님과 가기 좋은 곳", "5070 추천 맛집", "혼밥 맛집", "데이트 맛집", "친구 모임 맛집", "메뉴 하나 집중 소개", "가격 대비 만족도", "오래된 동네 맛집", "반전 맛집", "직접 가보고 싶은 맛집"];
 
 interface Job {
   id: string; reel_id: string | null; status: string; error: string | null;
-  steps: Array<{ key: string; label: string; status: string; progress: number; message?: string }>;
+  steps: ProgressStep[];
 }
 
 export default function Today() {
@@ -22,6 +24,9 @@ export default function Today() {
   const [job, setJob] = useState<Job | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toast = useToast();
+  // 같은 작업에 대해 알림을 한 번만 띄우기 위한 표시
+  const notified = useRef<string | null>(null);
 
   const start = async () => {
     setErr(null);
@@ -34,8 +39,11 @@ export default function Today() {
         }),
       });
       setJobId(jobId);
+      notified.current = null;
+      toast.info("제작을 시작했습니다.", [`${name || url} · ${type}`]);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+      toast.fromError(e, "입력값을 확인하고 다시 시도해 주세요.");
     }
   };
 
@@ -45,7 +53,15 @@ export default function Today() {
       try {
         const j = await api<Job>(`/api/produce/${jobId}`);
         setJob(j);
-        if (j.status !== "진행중" && timer.current) clearInterval(timer.current);
+        if (j.status !== "진행중") {
+          if (timer.current) clearInterval(timer.current);
+          if (notified.current !== j.id) {
+            notified.current = j.id;
+            // 실패했을 때 성공 알림을 띄우지 않는다
+            if (j.status === "완료") toast.success("릴스 제작이 완료되었습니다.", [j.reel_id ? "미리보기에서 확인할 수 있습니다." : ""].filter(Boolean));
+            else toast.error(j.error ?? "제작에 실패했습니다.", "실패한 단계를 확인한 뒤 [다시 시도]를 눌러 주세요.");
+          }
+        }
       } catch { /* 다음 폴링에서 재시도 */ }
     };
     poll();
@@ -114,16 +130,15 @@ export default function Today() {
 
       {jobId && job && (
         <Card title={producing ? "🎬 제작 중입니다…" : done ? "✅ 제작 완료!" : "❌ 제작 실패"}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex-1">
+              <ProgressBar pct={jobProgress(job.steps)} label="전체 진행률"
+                tone={job.status === "실패" ? "bg-red-400" : job.status === "완료" ? "bg-emerald-500" : "bg-[#E86A3A]"} />
+            </div>
+            <span className="text-lg font-extrabold tabular-nums w-14 text-right">{jobProgress(job.steps)}%</span>
+          </div>
           <div className="space-y-3">
-            {job.steps.map((s) => (
-              <div key={s.key}>
-                <div className="flex justify-between text-sm font-bold mb-1">
-                  <span>{s.status === "완료" ? "✓" : s.status === "진행중" ? "▶" : s.status === "실패" ? "✗" : "·"} {s.label}</span>
-                  <span className="text-gray-500 font-normal">{s.message ?? (s.status === "대기중" ? "대기중" : `${s.progress}%`)}</span>
-                </div>
-                <ProgressBar pct={s.status === "완료" ? 100 : s.progress} tone={s.status === "실패" ? "bg-red-400" : "bg-[#E86A3A]"} />
-              </div>
-            ))}
+            {job.steps.map((s) => <StepRow key={s.key} step={s} />)}
           </div>
           {job.error && <div className="mt-4"><ErrorBox msg={job.error} /></div>}
           <div className="flex gap-3 mt-6">

@@ -54,7 +54,7 @@ function clean(bind: Bind): Bind {
 }
 
 export interface Statement {
-  run(...args: unknown[]): { changes: number };
+  run(...args: unknown[]): { changes: number; lastInsertRowid: number | bigint };
   get(...args: unknown[]): Row | undefined;
   all(...args: unknown[]): Row[];
 }
@@ -70,8 +70,10 @@ export class SqliteDatabase {
     const db = this.db;
     return {
       run(...args: unknown[]) {
-        db.run(sql, clean(normalize(sql, args)) as never);
-        return { changes: 0 };
+        // 드라이버가 돌려주는 변경 행 수를 그대로 넘긴다.
+        // 예전에는 0을 고정으로 돌려줬는데, 삭제 건수를 세는 화면이 늘 "0개"라고 말했다.
+        const res = db.run(sql, clean(normalize(sql, args)) as never);
+        return { changes: res?.changes ?? 0, lastInsertRowid: res?.lastInsertRowid ?? 0 };
       },
       get(...args: unknown[]) {
         return (db.get(sql, clean(normalize(sql, args)) as never) ?? undefined) as Row | undefined;

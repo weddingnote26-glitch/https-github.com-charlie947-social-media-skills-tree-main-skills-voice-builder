@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Card, api, useApi, ErrorBox } from "@/components/ui";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
+import { useToast } from "@/components/Toast";
+import { describeSettingsChange } from "@/lib/settings-diff";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
 type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY";
@@ -23,6 +25,9 @@ export default function SettingsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, string>>({});
   const [keyInput, setKeyInput] = useState<Partial<Record<SecretName, string>>>({});
+  const toast = useToast();
+  // ElevenLabs 키를 저장하면 목소리 목록을 다시 불러오게 하는 신호
+  const [voiceRefresh, setVoiceRefresh] = useState(0);
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
   if (!data || !s) return <div className="text-gray-400 py-20 text-center">불러오는 중…</div>;
@@ -30,6 +35,7 @@ export default function SettingsPage() {
   const save = async (patch: Partial<AppSettings> & Partial<Record<SecretName, string>> & { igAccessToken?: string; igUserId?: string }) => {
     setErr(null); setMsg(null);
     try {
+      const before = data.settings;
       const out = await api<{ settings: AppSettings }>("/api/settings", { method: "PUT", body: JSON.stringify(patch) });
       // 방금 저장한 항목만 서버 값으로 갱신한다.
       // 통째로 덮으면 다른 칸에서 편집 중이던 값(예: 공급자 선택)이 소리 없이 되돌아간다.
@@ -40,7 +46,15 @@ export default function SettingsPage() {
         return { ...base, ...picked };
       });
       setMsg("저장했습니다."); reload();
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+      // 무엇이 바뀌었는지 문장으로 알린다 ("저장했습니다" 만으로는 확인이 안 된다)
+      if ("ELEVENLABS_API_KEY" in patch) setVoiceRefresh((n) => n + 1);
+      const changes = describeSettingsChange(before, out.settings, patch);
+      toast.success(changes.length === 1 ? changes[0] : "설정을 저장했습니다.", changes.length > 1 ? changes : undefined);
+    } catch (e) {
+      // 저장에 실패하면 성공 알림을 띄우지 않는다
+      setErr(e instanceof Error ? e.message : String(e));
+      toast.fromError(e, "값을 확인한 뒤 다시 [저장]을 눌러 주세요.");
+    }
   };
 
   const test = async (service: string) => {
@@ -153,7 +167,8 @@ export default function SettingsPage() {
           help="elevenlabs.io → 설정 → 워크스페이스 → API 키. 저장하면 아래에 목소리 목록이 나타납니다." />
         <div className="mb-4">
           <label className="label text-sm">목소리 고르기</label>
-          <VoicePicker value={s.tts.voiceId} onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
+          <VoicePicker value={s.tts.voiceId} refreshToken={voiceRefresh}
+            onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">Model</label>

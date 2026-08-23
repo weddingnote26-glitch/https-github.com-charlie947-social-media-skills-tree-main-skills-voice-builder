@@ -4,34 +4,10 @@ import { getSettings } from "@/lib/settings";
 import { resolveIgAuth } from "@/lib/providers/instagram";
 import { resolveSecret } from "@/lib/secrets";
 import { imageKeyMismatch } from "@/lib/providers/image-model";
+import { describeKeyFailure } from "@/lib/providers/api-failure";
 import { redactError, redact } from "@/lib/redact";
 
 export const dynamic = "force-dynamic";
-
-/**
- * 실패 응답을 "무엇을 고쳐야 하는지"가 보이는 문장으로.
- * `응답 400` 만 보여주면 사용자가 다음에 뭘 할지 알 수 없다.
- */
-async function keyFailure(r: Response, provider: "gemini" | "openai"): Promise<string> {
-  const raw = await r.text().catch(() => "");
-  let reason = "";
-  try {
-    const j = JSON.parse(raw) as { error?: { message?: string } };
-    reason = j.error?.message ?? "";
-  } catch {
-    reason = raw.slice(0, 160);
-  }
-  const where = provider === "gemini"
-    ? "aistudio.google.com/apikey 에서 [API 키 만들기]로 받은 AIza… 값"
-    : "platform.openai.com → API keys 에서 받은 sk-… 값";
-  if (r.status === 400 || r.status === 401 || r.status === 403) {
-    return redact(`키가 거부되었습니다 (${r.status}). ${where}인지 확인하세요.${reason ? ` — ${reason.slice(0, 120)}` : ""}`);
-  }
-  if (r.status === 429) {
-    return "사용 한도를 초과했습니다 (429). 결제(유료 등급) 설정을 확인하거나 잠시 후 다시 시도하세요.";
-  }
-  return redact(`응답 ${r.status}${reason ? ` — ${reason.slice(0, 120)}` : ""}`);
-}
 
 /** §42 각 API [연결 테스트] */
 export async function POST(req: Request) {
@@ -48,7 +24,9 @@ export async function POST(req: Request) {
               headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
               signal: AbortSignal.timeout(10000),
             });
-            return r.ok ? { ok: true, detail: "Claude 연결 성공" } : { ok: false, detail: `응답 ${r.status}` };
+            return r.ok
+              ? { ok: true, detail: "Claude 연결 성공" }
+              : { ok: false, detail: redact(describeKeyFailure("anthropic", r.status, await r.text().catch(() => ""))) };
           }
           case "tts": {
             const elevenKey = resolveSecret("ELEVENLABS_API_KEY");
@@ -57,10 +35,17 @@ export async function POST(req: Request) {
               headers: { "xi-api-key": elevenKey },
               signal: AbortSignal.timeout(10000),
             });
-            if (!r.ok) return { ok: false, detail: `응답 ${r.status}` };
+            if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("elevenlabs", r.status, await r.text().catch(() => ""))) };
             const data = await r.json() as { voices?: Array<{ voice_id: string; name: string }> };
-            const found = data.voices?.find((v) => v.voice_id === env.ELEVENLABS_VOICE_ID);
-            return { ok: true, detail: `연결 성공 · 보이스 ${data.voices?.length ?? 0}개${found ? ` (선택: ${found.name})` : env.ELEVENLABS_VOICE_ID ? " · VOICE_ID를 찾지 못했습니다" : ""}` };
+            // 실제로 쓰이는 값은 설정에 저장된 목소리다 (.env 값은 예비)
+            const chosen = getSettings().tts.voiceId || env.ELEVENLABS_VOICE_ID;
+            const found = data.voices?.find((v) => v.voice_id === chosen);
+            const note = found
+              ? ` (선택: ${found.name})`
+              : chosen
+                ? " · 저장된 목소리를 계정에서 찾지 못했습니다. 아래 목록에서 다시 골라 주세요"
+                : " · 아직 목소리를 고르지 않았습니다";
+            return { ok: true, detail: `연결 성공 · 보이스 ${data.voices?.length ?? 0}개${note}` };
           }
           case "image": {
             if ((getSettings().imageProvider || env.IMAGE_PROVIDER) === "sample") return { ok: true, detail: "Sample Mode — 외부 API를 쓰지 않습니다" };
@@ -71,12 +56,12 @@ export async function POST(req: Request) {
             if (mismatch) return { ok: false, detail: mismatch };
             if (imageProvider === "gemini") {
               const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(imageKey)}`, { signal: AbortSignal.timeout(10000) });
-              return r.ok ? { ok: true, detail: "Gemini 연결 성공" } : { ok: false, detail: await keyFailure(r, "gemini") };
+              return r.ok ? { ok: true, detail: "Gemini 연결 성공" } : { ok: false, detail: redact(describeKeyFailure("gemini", r.status, await r.text().catch(() => ""))) };
             }
             const r = await fetch("https://api.openai.com/v1/models", {
               headers: { authorization: `Bearer ${imageKey}` }, signal: AbortSignal.timeout(10000),
             });
-            return r.ok ? { ok: true, detail: "OpenAI 연결 성공" } : { ok: false, detail: await keyFailure(r, "openai") };
+            return r.ok ? { ok: true, detail: "OpenAI 연결 성공" } : { ok: false, detail: redact(describeKeyFailure("openai", r.status, await r.text().catch(() => ""))) };
           }
           case "instagram": {
             const { token, userId } = resolveIgAuth();
