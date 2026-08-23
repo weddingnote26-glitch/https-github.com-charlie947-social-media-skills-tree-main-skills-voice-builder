@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-08-23 (일) — 집 · 3차 (설치 오류 수정)
+
+### 문제
+
+회사 PC(Node 24)에서 `npm install` 실패.
+`better-sqlite3`가 Node 24용 미리 빌드 파일을 제공하지 않아 C++ 컴파일로 넘어갔고,
+Visual Studio가 없어서 멈췄습니다. 일반 사용자에게 Visual Studio 설치를 요구하는 건
+설계 잘못이라 판단해 원인을 제거했습니다.
+
+### 고친 것
+
+- **DB를 네이티브 모듈 → WebAssembly로 교체** (`better-sqlite3` → `node-sqlite3-wasm`)
+  - 어떤 Node 버전에서도 컴파일 없이 설치됨. 이제 C++ 빌드 도구가 전혀 필요 없음
+  - 호출부가 86곳이라 `src/lib/sqlite.ts` 호환 계층을 만들어 기존 코드는 그대로 유지
+    (prepare/run/get/all, exec, pragma, transaction 동일하게 동작)
+  - WAL 모드는 WASM에서 이점이 없어 제거
+- `start.bat`: 설치 실패 시 node_modules를 정리하고 **자동으로 한 번 더 시도**,
+  실패 시 원인(방화벽 / 드라이브 동기화 폴더 / 백신) 안내
+- `doctor.mjs`: 예전 better-sqlite3 찌꺼기가 남아 있으면 경고
+- README 오류 해결표에 node-gyp·EPERM 사례 추가
+
+### 확인한 것
+
+- 테스트 42개 통과, `npm run build` 통과
+- 샘플 E2E 재실행 — 28.7초 MP4 정상 생성 (85점)
+- 서버 기동 후 DB 읽기/쓰기 API 정상 동작
+
 ## 2026-08-23 (일) — 집
 
 ### 오늘 한 일

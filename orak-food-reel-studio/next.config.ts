@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3 등 네이티브 모듈은 서버 외부 패키지로 유지
-  serverExternalPackages: ["better-sqlite3", "ffmpeg-static", "ffprobe-static"],
+  // WASM/바이너리 패키지는 번들에 넣지 않고 그대로 실행
+  serverExternalPackages: ["node-sqlite3-wasm", "ffmpeg-static", "ffprobe-static"],
   outputFileTracingIncludes: {
     "/**": ["./assets/**", "./sample/**", "./templates/**"],
   },

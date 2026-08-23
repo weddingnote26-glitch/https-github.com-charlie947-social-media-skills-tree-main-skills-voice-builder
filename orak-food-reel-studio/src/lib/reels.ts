@@ -94,7 +94,7 @@ export function listReels(where?: { status?: string; date?: string }): ReelRow[]
   if (where?.date) { cond.push("planned_date=?"); params.push(where.date); }
   if (cond.length) sql += " WHERE " + cond.join(" AND ");
   sql += " ORDER BY created_at DESC LIMIT 200";
-  return db().prepare(sql).all(...params) as ReelRow[];
+  return db().prepare(sql).all(...params) as unknown as ReelRow[];
 }
 
 export function reelFactcheck(row: ReelRow): FactCheckItem[] {

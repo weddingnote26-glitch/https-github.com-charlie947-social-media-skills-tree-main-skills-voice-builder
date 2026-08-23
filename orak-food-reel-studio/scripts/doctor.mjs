@@ -21,6 +21,11 @@ const major = parseInt(process.versions.node.split(".")[0]);
 if (major >= 20) ok(`Node.js v${process.versions.node}`);
 else bad(`Node.js v${process.versions.node} — 20 이상이 필요합니다. https://nodejs.org 에서 LTS 설치 후 다시 실행하세요.`);
 
+// 이 프로그램은 C++ 컴파일이 필요한 모듈을 쓰지 않으므로 Visual Studio 등은 필요 없습니다.
+if (fs.existsSync(path.join(ROOT, "node_modules", "better-sqlite3"))) {
+  warn("예전 버전의 찌꺼기(better-sqlite3)가 남아 있습니다. node_modules 폴더를 지우고 start.bat 을 다시 실행하세요.");
+}
+
 // 2) 폴더
 for (const d of ["data", "assets/images", "assets/audio", "assets/video", "assets/thumb", "assets/subtitles", "assets/bgm", "assets/character", "assets/fonts", "output", "logs", "templates"]) {
   fs.mkdirSync(path.join(ROOT, d), { recursive: true });

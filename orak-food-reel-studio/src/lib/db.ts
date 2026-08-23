@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { SqliteDatabase } from "./sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import { DIRS } from "./paths";
@@ -7,14 +7,13 @@ import { DIRS } from "./paths";
  * SQLite 기본. 테이블 구조는 추후 PostgreSQL 이전이 쉽도록
  * JSON 컬럼 + 표준 SQL 타입만 사용합니다.
  */
-let _db: Database.Database | null = null;
+let _db: SqliteDatabase | null = null;
 
-export function db(): Database.Database {
+export function db(): SqliteDatabase {
   if (_db) return _db;
   fs.mkdirSync(DIRS.data, { recursive: true });
   const file = process.env.ORAK_DB_PATH || path.join(DIRS.data, "orak-studio.db");
-  _db = new Database(file);
-  _db.pragma("journal_mode = WAL");
+  _db = new SqliteDatabase(file);
   _db.pragma("foreign_keys = ON");
   migrate(_db);
   return _db;
@@ -27,7 +26,7 @@ export function resetDbForTest(filePath: string): void {
   process.env.ORAK_DB_PATH = filePath;
 }
 
-function migrate(d: Database.Database): void {
+function migrate(d: SqliteDatabase): void {
   d.exec(`
   CREATE TABLE IF NOT EXISTS restaurants (
     id TEXT PRIMARY KEY,

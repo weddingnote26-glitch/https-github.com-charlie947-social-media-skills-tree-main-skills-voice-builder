@@ -22,9 +22,21 @@ if not exist node_modules (
   echo  [1/4] 처음 실행 - 필요한 프로그램을 설치합니다. 몇 분 걸릴 수 있어요...
   call npm install --no-audit --no-fund
   if errorlevel 1 (
-    echo  [X] 설치에 실패했습니다. 인터넷 연결을 확인하고 다시 실행하세요.
-    pause
-    exit /b 1
+    echo.
+    echo  설치가 한 번 실패했습니다. 남은 파일을 정리하고 다시 시도합니다...
+    rmdir /s /q node_modules 2>nul
+    del /f /q package-lock.json 2>nul
+    call npm install --no-audit --no-fund
+    if errorlevel 1 (
+      echo.
+      echo  [X] 설치에 실패했습니다. 아래를 확인해 주세요.
+      echo      1. 인터넷 연결 ^(회사 방화벽이 막고 있을 수 있습니다^)
+      echo      2. 이 폴더가 OneDrive/구글드라이브 동기화 폴더 안에 있으면
+      echo         C:\orak 처럼 동기화되지 않는 곳으로 옮겨 주세요
+      echo      3. 백신이 파일을 잠그는 경우가 있습니다. 잠시 끄고 다시 시도해 보세요
+      pause
+      exit /b 1
+    )
   )
 )
 
