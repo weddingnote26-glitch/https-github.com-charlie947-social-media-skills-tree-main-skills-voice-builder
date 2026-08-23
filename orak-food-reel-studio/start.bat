@@ -49,6 +49,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM .env 의 APP_PORT 를 읽어 PORT 환경변수로 (없으면 3000)
+set "PORT=3000"
+for /f "usebackq delims=" %%P in (`node scripts\port.mjs`) do set "PORT=%%P"
+
 if not exist .next\BUILD_ID (
   echo  [3/4] 프로그램을 빌드합니다. 처음 한 번만 5분 정도 걸립니다...
   call npm run build
@@ -59,7 +63,18 @@ if not exist .next\BUILD_ID (
   )
 )
 
+echo.
 echo  [4/4] 서버를 시작합니다...
-start "" http://localhost:3000
+echo.
+echo      주소: http://localhost:%PORT%
+echo      서버가 준비되면 브라우저가 자동으로 열립니다. ^(10~30초^)
+echo      * 이 검은 창을 닫으면 프로그램이 종료됩니다. 사용 중에는 닫지 마세요.
+echo.
+
+REM 서버가 실제로 응답할 때까지 기다렸다가 브라우저 열기 (너무 일찍 열면 "연결 거부"가 납니다)
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$u='http://localhost:%PORT%'; for($i=0; $i -lt 180; $i++){ try { $null = Invoke-WebRequest $u -UseBasicParsing -TimeoutSec 2; Start-Process $u; break } catch { Start-Sleep -Seconds 1 } }"
+
 call npm run start
+echo.
+echo  서버가 종료되었습니다.
 pause
