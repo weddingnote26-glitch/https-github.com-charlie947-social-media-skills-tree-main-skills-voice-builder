@@ -165,10 +165,23 @@ export default function SettingsPage() {
               <option value="openai">OpenAI 이미지</option>
             </select></div>
           <div><label className="label text-sm">모델 (비우면 기본값)</label>
-            <input className="input py-2 text-sm" placeholder="imagen-3.0-generate-002 / gpt-image-1" value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} /></div>
+            <input className="input py-2 text-sm" disabled={s.imageProvider === "sample"}
+              placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)" : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)" : "Sample 모드는 모델이 없습니다"}
+              value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} />
+            <p className="text-xs text-gray-400 mt-1">잘 모르면 비워 두세요. 공급자를 바꾸면 예전 모델 이름은 자동으로 지워집니다.</p></div>
         </div>
+        {s.imageProvider === "openai" && (
+          <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3">
+            기본 모델 <b>gpt-image-1</b>은 계정에 따라 OpenAI의 <b>조직 인증(Verify Organization)</b>을 요구합니다.
+            인증이 안 된 계정이면 프로그램이 자동으로 <b>dall-e-3</b>로 바꿔 계속 진행합니다.
+            다만 dall-e-3는 오락이 기준 이미지를 입력으로 받지 못해 <b>캐릭터 얼굴이 조금씩 달라질 수 있습니다</b> —
+            오락이가 나오는 릴스를 만들 거라면 조직 인증을 마치고 gpt-image-1을 쓰는 편이 좋습니다.
+          </p>
+        )}
         <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
-          help="Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요." />
+          help={s.imageProvider === "openai"
+            ? "platform.openai.com → API keys 에서 만든 sk- 로 시작하는 값. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."
+            : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />
         <div className="flex gap-3"><button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 
