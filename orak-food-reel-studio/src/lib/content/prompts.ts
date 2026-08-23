@@ -1,4 +1,4 @@
-import type { RestaurantInfo } from "../schema";
+import { CAMERA_MOTIONS, ORAKI_ACTIONS, ORAKI_EXPRESSIONS, type RestaurantInfo } from "../schema";
 import { ORAKI, ORAKI_SPEECH_SAMPLES } from "../character/oraki";
 
 /** §57 오락푸드 콘텐츠 PD 시스템 프롬프트 */
@@ -61,6 +61,33 @@ export const CAPTION_RULES = `Instagram 본문(caption) 구조:
 📍매장명, 📍주소 줄을 포함. 확인되지 않은 가격·시간은 쓰지 않는다.
 해시태그는 5~12개. 지역(#신림맛집 #관악구맛집 등) + 콘텐츠 특성 + #오락푸드 를 조합한다. 30개를 채우지 않는다.`;
 
+/**
+ * 값이 정해진 항목은 목록을 프롬프트에 그대로 넣어야 한다.
+ * 목록을 안 주면 AI가 값을 지어내고, 그러면 검증에서 대본 전체가 버려진다.
+ */
+export function ENUM_RULES(contentMode: string): string {
+  const lines = [
+    "■ 아래 항목은 제시된 값 중 하나를 그대로 쓸 것. 번역·변형·새 값 생성 금지.",
+    "",
+    `camera_motion (택 1): ${CAMERA_MOTIONS.join(" | ")}`,
+  ];
+  if (contentMode === "ORAKI_DETECTIVE") {
+    lines.push(
+      "",
+      `character_action (택 1 또는 null): ${ORAKI_ACTIONS.join(" | ")}`,
+      "",
+      `character_expression (택 1 또는 null): ${ORAKI_EXPRESSIONS.join(" | ")}`,
+      "",
+      "character_presence (택 1): none | corner | side | hero",
+      "  none = 캐릭터 없음(음식만) · corner = 구석에 작게(20% 미만) · side = 옆에(35% 미만) · hero = 전환 장면만",
+      "  음식 클로즈업·결정적 증거 장면은 반드시 none. 음식 60% / 오락이 40% 원칙.",
+    );
+  } else {
+    lines.push("", "character_action / character_expression 은 null, character_presence 는 none 으로 고정.");
+  }
+  return lines.join("\n");
+}
+
 /** 대본 생성 사용자 프롬프트 */
 export function scriptUserPrompt(info: RestaurantInfo, opts: {
   contentType: string; contentMode: string; duration: number; caseNumber?: number;
@@ -85,6 +112,7 @@ ${facts}
 {"title":"","restaurant":"","target":"","hook":"","duration":${opts.duration},"content_mode":"${opts.contentMode}","content_type":"${opts.contentType}",${opts.caseNumber ? `"case_number":${opts.caseNumber},"case_title":"",` : ""}"scenes":[{"scene":1,"start":0,"end":2.5,"narration":"","subtitle":"","visual_prompt":"","camera_motion":"slow_zoom_in","character_action":null,"character_expression":null,"character_presence":"none","fact_source":""}],"caption":"","hashtags":[],"cta":""${opts.contentMode === "ORAKI_DETECTIVE" ? `,"verdict":{"label":"오락이 탐정 판정","가성비":4,"맛":4,"양":4,"재방문":4,"한줄판정":""}` : ""}}
 
 visual_prompt는 영어로, 실제 스마트폰으로 찍은 듯한 사실적 한국 음식점 묘사로 쓸 것.
-character_presence 규칙: 음식이 주인공인 장면은 "none" 또는 "corner"(캐릭터 20% 미만), 전환 장면만 "hero". 음식 60% / 캐릭터 40% 원칙.
-narration은 TTS로 읽기 좋은 짧은 문장. subtitle은 한 줄 8~15자, 최대 2줄(\\n 구분).`;
+narration은 TTS로 읽기 좋은 짧은 문장. subtitle은 한 줄 8~15자, 최대 2줄(\\n 구분).
+
+${ENUM_RULES(opts.contentMode)}`;
 }

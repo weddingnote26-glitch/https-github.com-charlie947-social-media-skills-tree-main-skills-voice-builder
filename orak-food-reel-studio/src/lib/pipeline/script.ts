@@ -5,6 +5,7 @@ import { checkDuplicate } from "./quality";
 import { db, j, nextCaseNumber } from "../db";
 import { pickContentType } from "../content/strategy";
 import { logInfo, logWarn } from "../log";
+import { normalizeScriptDraft } from "../content/normalize";
 import type { ContentMode } from "../schema";
 
 export interface ScriptOptions {
@@ -35,14 +36,24 @@ export async function generateScript(info: RestaurantInfo, opts: ScriptOptions):
         caseNumber,
         avoidHooks: recent.hooks,
         avoidCtas: recent.ctas,
-      }) + (lastError ? `\n\n직전 시도 오류를 고쳐라: ${lastError}` : ""),
+      }) + (lastError
+        ? `\n\n[재시도] 직전 응답이 검증에서 거부됐다. 오류: ${lastError}\n` +
+          `위에 제시한 허용 값 목록을 벗어난 값은 절대 만들지 마라. ` +
+          `camera_motion / character_action / character_expression / character_presence 는 목록에 적힌 문자열을 그대로 복사해서 쓸 것.`
+        : ""),
       context: { info, contentType, contentMode: opts.contentMode, duration: opts.duration, caseNumber },
       maxTokens: 6000,
     });
 
     let script: ReelScript;
     try {
-      script = ReelScriptSchema.parse(JSON.parse(extractJson(raw)));
+      // AI가 enum을 살짝 벗어난 값을 만들어도 대본 전체를 버리지 않도록
+      // 검증 전에 고칠 수 있는 값은 내부 값으로 맞춘다 (못 맞추면 안전한 기본값)
+      const draft = normalizeScriptDraft(JSON.parse(extractJson(raw)), {
+        contentType, contentMode: opts.contentMode, duration: opts.duration,
+        caseNumber, restaurantName: info.name,
+      });
+      script = ReelScriptSchema.parse(draft);
     } catch (e) {
       lastError = e instanceof Error ? e.message.slice(0, 400) : String(e);
       logWarn("script", `검증 실패(시도 ${attempt + 1}): ${lastError}`);

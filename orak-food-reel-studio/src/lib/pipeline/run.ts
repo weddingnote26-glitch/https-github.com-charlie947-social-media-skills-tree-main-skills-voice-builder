@@ -57,9 +57,13 @@ function initSteps(): StepState[] {
 }
 
 function saveJob(jobId: string, steps: StepState[], status: string, reelId?: string, error?: string): void {
+  // production_jobs.reel_id 는 reels(id) 외래키다.
+  // 대본 생성이 실패하면 reels 행이 아직 없으므로, 존재를 확인한 뒤에만 연결한다.
+  // (확인 없이 넣으면 "FOREIGN KEY constraint failed" 로 실패 기록조차 남지 않는다)
+  const linkId = reelId && db().prepare("SELECT 1 AS x FROM reels WHERE id=?").get(reelId) ? reelId : null;
   db().prepare(
     `UPDATE production_jobs SET steps_json=?, status=?, reel_id=COALESCE(?, reel_id), error=?, updated_at=datetime('now') WHERE id=?`
-  ).run(JSON.stringify(steps), status, reelId ?? null, error ?? null, jobId);
+  ).run(JSON.stringify(steps), status, linkId, error ?? null, jobId);
 }
 
 export function getJob(jobId: string): { id: string; reel_id: string | null; steps: StepState[]; status: string; error: string | null } | null {
@@ -223,7 +227,9 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     const failing = steps.find((s) => s.status === "진행중");
     if (failing) Object.assign(failing, { status: "실패", message: msg.slice(0, 300) });
     saveJob(jobId, steps, "실패", reelId, msg.slice(0, 500));
-    updateReel(reelId, { status: "실패" });
+    if (db().prepare("SELECT 1 AS x FROM reels WHERE id=?").get(reelId)) {
+      updateReel(reelId, { status: "실패" });
+    }
     throw e;
   } finally {
     running.delete(reelId);

@@ -20,6 +20,40 @@
 
 ---
 
+## 2026-08-23 (일) — 집 · 5차 (실제 API 첫 제작 실패 수정)
+
+### 문제
+
+실제 키를 넣고 첫 제작을 돌리자 대본 생성 20%에서 멈춤. API 문제가 아니라 내 설계 결함.
+
+1. **프롬프트에 허용 값 목록이 없었음** — camera_motion / character_action /
+   character_expression / character_presence 는 정해진 값만 받는데,
+   프롬프트에는 JSON 예시에 값 하나만 들어 있고 목록이 없었다.
+   AI가 `zoom_in`, `close-up` 같은 값을 지어냈고 → Zod 검증에서 대본 전체가 폐기 → 3회 재시도 모두 실패.
+2. **값 하나 틀리면 전부 버림** — 회복 수단이 없었다.
+3. **FOREIGN KEY constraint failed** — 대본 실패 시 `reels` 행이 아직 없는데
+   `production_jobs.reel_id`(외래키)를 채우려 해서 실패 기록조차 남지 않았다.
+
+### 고친 것
+
+- `content/prompts.ts` — `ENUM_RULES()` 추가. 허용 값 전체 목록을 프롬프트에 넣고
+  "번역·변형·새 값 생성 금지" 명시. 재시도 시 규칙을 한 번 더 못박음
+- `content/normalize.ts` **(신규)** — 검증 전에 고칠 수 있는 값은 내부 값으로 맞춤
+  - `zoom_in→slow_zoom_in`, `close-up→slow_zoom_in`, `tilt up→push_up` 등
+  - `음식 가리키기→손가락으로 음식 가리키기` (2-gram 유사도)
+  - 못 맞추면 안전한 기본값: camera_motion→static, action→null, presence→none
+  - 장면 시간을 처음부터 다시 이어붙여 "시간 불연속" 오류 원천 차단
+  - 해시태그 개수·탐정 판정 필수값도 보정
+- `pipeline/run.ts` — `saveJob()`이 reels 행 존재를 확인한 뒤에만 reel_id 연결
+
+### 확인한 것
+
+- 사용자 실패 로그를 그대로 재현한 회귀 테스트 추가 (보정 전 거부 → 보정 후 통과)
+- 테스트 54개 통과, 빌드 통과
+- `신림동 오첨지 / 신림 / 자동 추천 / 만두탐정 오락이` 로 9단계 전부 완주 (27.3초, 84점)
+
+---
+
 ## 2026-08-23 (일) — 집 · 4차 (Windows 실행 오류 수정)
 
 ### 문제
