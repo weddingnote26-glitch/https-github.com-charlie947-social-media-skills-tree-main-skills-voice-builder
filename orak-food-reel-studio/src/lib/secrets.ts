@@ -2,6 +2,7 @@ import { getEnv } from "./env";
 import { kvGet, kvSet, getSettings } from "./settings";
 import { encrypt, decrypt } from "./crypto";
 import { logWarn } from "./log";
+import { rememberSecret } from "./redact";
 
 /**
  * API 키를 화면에서 바꿀 수 있게 하는 계층.
@@ -19,12 +20,16 @@ export function resolveSecret(name: SecretName): string {
   const stored = kvGet(KEY_PREFIX + name);
   if (stored) {
     try {
-      return decrypt(stored);
+      const v = decrypt(stored);
+      rememberSecret(v);
+      return v;
     } catch {
       logWarn("secrets", `${name} 복호화 실패 — .env 값을 사용합니다`);
     }
   }
-  return getEnv()[name] ?? "";
+  const v = getEnv()[name] ?? "";
+  rememberSecret(v);
+  return v;
 }
 
 /** 빈 문자열이면 저장된 키를 지운다(.env 값으로 되돌아감) */

@@ -1,13 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DIRS } from "./paths";
+import { redact } from "./redact";
 
 type Level = "info" | "warn" | "error";
 
 /** 구조화 로그: 콘솔 + /logs/app-YYYY-MM-DD.log (JSON Lines) */
 export function log(level: Level, scope: string, message: string, extra?: Record<string, unknown>): void {
   const entry = { ts: new Date().toISOString(), level, scope, message, ...extra };
-  const line = JSON.stringify(entry);
+  // 외부 오류 문구가 그대로 흘러들어오므로 기록 직전에 비밀값을 지운다
+  const line = redact(JSON.stringify(entry));
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
   else console.log(line);

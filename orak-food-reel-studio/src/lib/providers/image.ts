@@ -225,6 +225,14 @@ export function isQuotaError(e: unknown): boolean {
 export function friendlyImageError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (isQuotaError(msg ? new Error(msg) : e)) {
+    // 어디서 무엇을 확인해야 하는지까지 알려준다 — "한도 초과"만으로는 다음 행동이 안 보인다
+    const provider = getSettings().imageProvider || getEnv().IMAGE_PROVIDER;
+    if (provider === "openai") {
+      return "OpenAI 이미지 사용 한도를 초과했습니다. platform.openai.com → Billing 에서 결제 수단과 남은 크레딧을 확인하세요. (충전해도 몇 분 뒤 반영될 수 있습니다)";
+    }
+    if (provider === "gemini") {
+      return "Gemini 이미지 사용 한도를 초과했습니다. aistudio.google.com → Billing 에서 해당 프로젝트를 유료 등급으로 전환하세요.";
+    }
     return "이미지 API 사용 한도를 초과했습니다. 결제 설정을 확인하거나 잠시 후 다시 시도하세요.";
   }
   if (needsOrgVerification(e)) {

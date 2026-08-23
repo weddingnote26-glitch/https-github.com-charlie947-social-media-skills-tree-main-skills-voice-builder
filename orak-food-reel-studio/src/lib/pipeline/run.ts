@@ -17,6 +17,7 @@ import { getSettings } from "../settings";
 import { saveScenes, updateReel, getReel } from "../reels";
 import { logError, logInfo } from "../log";
 import { isSampleMode } from "../secrets";
+import { redactError } from "../redact";
 
 /** §44 제작 진행 단계 */
 export const STEP_DEFS = [
@@ -241,7 +242,8 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       autoSchedule(reelId);
     }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    // 외부 API 오류 문구는 우리가 만든 게 아니다 — 화면·DB에 남기기 전에 비밀값을 지운다
+    const msg = redactError(e);
     const failing = steps.find((s) => s.status === "진행중");
     if (failing) Object.assign(failing, { status: "실패", message: msg.slice(0, 300) });
     saveJob(jobId, steps, "실패", reelId, msg.slice(0, 500));

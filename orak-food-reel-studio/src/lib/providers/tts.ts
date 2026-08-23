@@ -8,6 +8,7 @@ import type { TTSProvider } from "./types";
 import { runFFmpeg } from "../ffmpeg";
 import { DIRS } from "../paths";
 import { newId } from "../id";
+import { checkVoiceId } from "./voice-id";
 
 /** §16 ElevenLabs 기본 지원 */
 class ElevenLabsTTS implements TTSProvider {
@@ -19,7 +20,9 @@ class ElevenLabsTTS implements TTSProvider {
     const env = getEnv();
     const s = getSettings().tts;
     const voice = req.voiceId || s.voiceId || env.ELEVENLABS_VOICE_ID;
-    if (!voice) throw new Error("ELEVENLABS_VOICE_ID가 설정되지 않았습니다");
+    // 잘못된 값이 주소에 실려 나가면 API 키가 오류 문구로 새어 나올 수 있다
+    const check = checkVoiceId(voice);
+    if (!check.ok) throw new Error(check.reason);
     return withRetry("elevenlabs", "tts", async () =>
       fetchBuffer("elevenlabs", `https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
         method: "POST",

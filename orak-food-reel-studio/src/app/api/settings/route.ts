@@ -4,6 +4,7 @@ import { encrypt } from "@/lib/crypto";
 import { serviceReady } from "@/lib/env";
 import { setSecret, secretStatus, getAppMode, type SecretName } from "@/lib/secrets";
 import { clearStaleImageModel } from "@/lib/providers/image-model";
+import { checkVoiceId } from "@/lib/providers/voice-id";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,15 @@ export async function PUT(req: Request) {
       if (typeof body[name] === "string") {
         setSecret(name, body[name] as string);
         delete body[name];
+      }
+    }
+    // 목소리 ID 칸에 API 키를 붙여넣는 실수를 저장 단계에서 막는다.
+    // 저장돼 버리면 제작 중에 그 값이 주소에 실려 나가 오류 문구로 새어 나온다.
+    if (body.tts && typeof body.tts === "object") {
+      const voiceId = (body.tts as { voiceId?: unknown }).voiceId;
+      if (typeof voiceId === "string" && voiceId.trim()) {
+        const check = checkVoiceId(voiceId);
+        if (!check.ok) return fail(check.reason ?? "목소리 ID가 올바르지 않습니다.");
       }
     }
     // 공급자를 바꿨는데 예전 공급자의 모델 이름이 남으면 원인 모를 400이 난다 → 비운다

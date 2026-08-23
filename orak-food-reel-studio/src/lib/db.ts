@@ -2,6 +2,7 @@ import { SqliteDatabase } from "./sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import { DIRS } from "./paths";
+import { redact } from "./redact";
 
 /**
  * SQLite 기본. 테이블 구조는 추후 PostgreSQL 이전이 쉽도록
@@ -205,7 +206,7 @@ export function apiLog(service: string, action: string, ok: boolean, status?: nu
   try {
     db().prepare(
       "INSERT INTO api_logs (service, action, ok, status, message) VALUES (?,?,?,?,?)"
-    ).run(service, action, ok ? 1 : 0, status ?? null, (message ?? "").slice(0, 500));
+    ).run(service, action, ok ? 1 : 0, status ?? null, redact(message ?? "").slice(0, 500));
   } catch { /* 로그 실패 무시 */ }
 }
 

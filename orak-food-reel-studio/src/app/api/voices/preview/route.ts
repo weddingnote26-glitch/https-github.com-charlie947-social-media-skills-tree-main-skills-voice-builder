@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/settings";
 import { resolveSecret } from "@/lib/secrets";
 import { logError } from "@/lib/log";
 import { z } from "zod";
+import { redactError } from "@/lib/redact";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
       headers: { "content-type": "audio/mpeg", "cache-control": "no-store" },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = redactError(e);
     logError("voices-preview", msg);
     return fail(msg, 500);
   }

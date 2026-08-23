@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/settings";
 import { resolveIgAuth } from "@/lib/providers/instagram";
 import { resolveSecret } from "@/lib/secrets";
 import { imageKeyMismatch } from "@/lib/providers/image-model";
+import { redactError, redact } from "@/lib/redact";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,12 @@ async function keyFailure(r: Response, provider: "gemini" | "openai"): Promise<s
     ? "aistudio.google.com/apikey 에서 [API 키 만들기]로 받은 AIza… 값"
     : "platform.openai.com → API keys 에서 받은 sk-… 값";
   if (r.status === 400 || r.status === 401 || r.status === 403) {
-    return `키가 거부되었습니다 (${r.status}). ${where}인지 확인하세요.${reason ? ` — ${reason.slice(0, 120)}` : ""}`;
+    return redact(`키가 거부되었습니다 (${r.status}). ${where}인지 확인하세요.${reason ? ` — ${reason.slice(0, 120)}` : ""}`);
   }
   if (r.status === 429) {
     return "사용 한도를 초과했습니다 (429). 결제(유료 등급) 설정을 확인하거나 잠시 후 다시 시도하세요.";
   }
-  return `응답 ${r.status}${reason ? ` — ${reason.slice(0, 120)}` : ""}`;
+  return redact(`응답 ${r.status}${reason ? ` — ${reason.slice(0, 120)}` : ""}`);
 }
 
 /** §42 각 API [연결 테스트] */
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
             return { ok: false, detail: `알 수 없는 서비스: ${service}` };
         }
       } catch (e) {
-        return { ok: false, detail: e instanceof Error ? e.message : String(e) };
+        return { ok: false, detail: redactError(e) };
       }
     };
     return ok(await test());
