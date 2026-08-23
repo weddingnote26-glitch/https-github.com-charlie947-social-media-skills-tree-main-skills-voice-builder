@@ -49,11 +49,24 @@ export function Stars({ n }: { n: number }) {
 /* ---------- API helpers ---------- */
 
 export async function api<T = unknown>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
-  const body = await res.json();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    });
+  } catch {
+    // 브라우저의 "Failed to fetch" 는 원인이 안 보인다. 실제로는 대부분 서버가 꺼진 경우.
+    throw new Error(
+      "프로그램 서버에 연결하지 못했습니다. 검은 창(start.bat)이 켜져 있는지 확인하고, 꺼져 있으면 다시 실행해 주세요.",
+    );
+  }
+  let body: { ok?: boolean; error?: string; data?: unknown };
+  try {
+    body = await res.json();
+  } catch {
+    throw new Error(`서버 응답을 읽지 못했습니다 (${res.status}). 검은 창의 오류 메시지를 확인해 주세요.`);
+  }
   if (!body.ok) throw new Error(body.error ?? `요청 실패 (${res.status})`);
   return body.data as T;
 }

@@ -35,7 +35,7 @@ class GeminiImage implements ImageProvider {
           candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string }; inline_data?: { data?: string } }> } }>;
         }>(
           "gemini-image",
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolveSecret("IMAGE_API_KEY")}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(resolveSecret("IMAGE_API_KEY"))}`,
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -63,7 +63,7 @@ class GeminiImage implements ImageProvider {
     return withRetry("gemini-image", "generate", async () => {
       const out = await fetchJson<{ predictions?: Array<{ bytesBase64Encoded?: string }> }>(
         "gemini-image",
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${resolveSecret("IMAGE_API_KEY")}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${encodeURIComponent(resolveSecret("IMAGE_API_KEY"))}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },

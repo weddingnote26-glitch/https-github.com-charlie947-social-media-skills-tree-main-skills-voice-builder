@@ -40,12 +40,31 @@ export default function SettingsPage() {
     try {
       const r = await api<{ ok: boolean; detail: string }>("/api/settings/test", { method: "POST", body: JSON.stringify({ service }) });
       setTestResult((t) => ({ ...t, [service]: `${r.ok ? "✅" : "❌"} ${r.detail}` }));
-    } catch (e) { setTestResult((t) => ({ ...t, [service]: `❌ ${e instanceof Error ? e.message : e}` })); }
+    } catch (e) { setTestResult((t) => ({ ...t, [service]: `❌ ${e instanceof Error ? e.message : String(e)}` })); }
+  };
+
+  /** 저장된 키가 그 서비스의 형식과 맞는지 (오타·다른 곳에서 복사한 값 걸러내기) */
+  const keyFormatWarning = (name: SecretName, hint: string): string | null => {
+    if (!hint) return null;
+    if (name === "ANTHROPIC_API_KEY" && !hint.startsWith("sk-ant")) {
+      return "Claude 키는 sk-ant- 로 시작합니다. console.anthropic.com → API Keys 에서 받은 값인지 확인하세요.";
+    }
+    if (name === "IMAGE_API_KEY") {
+      const provider = s.imageProvider;
+      if (provider === "gemini" && !hint.startsWith("AIza")) {
+        return "Gemini API 키는 AIza 로 시작합니다. aistudio.google.com/apikey 에서 [API 키 만들기]로 받은 값인지 확인하세요.";
+      }
+      if (provider === "openai" && !hint.startsWith("sk-")) {
+        return "OpenAI 키는 sk- 로 시작합니다. platform.openai.com → API keys 에서 받은 값인지 확인하세요.";
+      }
+    }
+    return null;
   };
 
   /** API 키 입력 — 키 자체는 화면에 다시 표시하지 않는다 */
   const KeyField = ({ name, label, help }: { name: SecretName; label: string; help?: string }) => {
     const st = data.secrets?.[name];
+    const warn = st?.set ? keyFormatWarning(name, st.hint) : null;
     return (
       <div className="mb-3">
         <label className="label text-sm">{label}</label>
@@ -68,6 +87,11 @@ export default function SettingsPage() {
               onClick={() => save({ [name]: "" } as never)}>지우기</button>
           )}
         </div>
+        {warn && (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 font-semibold">
+            ⚠ {warn}
+          </p>
+        )}
         {help && <p className="text-xs text-gray-400 mt-1">{help}</p>}
       </div>
     );
