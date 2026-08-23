@@ -49,6 +49,7 @@ class GeminiImage implements ImageProvider {
               generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
             }),
           },
+          180_000,
         );
         const parts = out.candidates?.[0]?.content?.parts ?? [];
         const b64 = parts.map((p) => p.inlineData?.data ?? p.inline_data?.data).find(Boolean);
@@ -70,6 +71,7 @@ class GeminiImage implements ImageProvider {
             parameters: { sampleCount: 1, aspectRatio: "9:16", personGeneration: "allow_adult" },
           }),
         },
+        180_000,
       );
       const b64 = out.predictions?.[0]?.bytesBase64Encoded;
       if (!b64) throw new Error("이미지 응답이 비어 있습니다");
@@ -105,6 +107,7 @@ class OpenAIImage implements ImageProvider {
           method: "POST",
           headers: { authorization: `Bearer ${env.IMAGE_API_KEY}` },
           body: form,
+          signal: AbortSignal.timeout(180_000),
         });
         const text = await res.text();
         if (!res.ok) throw new ApiError("openai-image", res.status, `${res.status} ${text.slice(0, 300)}`);
@@ -132,6 +135,7 @@ class OpenAIImage implements ImageProvider {
             ...(model.startsWith("dall-e") ? { response_format: "b64_json" } : {}),
           }),
         },
+        180_000,
       );
       const b64 = out.data?.[0]?.b64_json;
       if (!b64) throw new Error("이미지 응답이 비어 있습니다");

@@ -37,12 +37,37 @@ export async function withRetry<T>(
   throw lastErr;
 }
 
+/**
+ * 모든 외부 호출에 시간제한을 건다.
+ * 없으면 응답이 오지 않을 때 제작이 영원히 멈춘 것처럼 보인다(진행률 고정).
+ */
+export const DEFAULT_TIMEOUT_MS = 120_000;
+
+function withTimeout(init: RequestInit, ms: number): RequestInit {
+  if (init.signal) return init;
+  return { ...init, signal: AbortSignal.timeout(ms) };
+}
+
+function friendlyTimeout(service: string, ms: number, e: unknown): never {
+  const name = e instanceof Error ? e.name : "";
+  if (name === "TimeoutError" || name === "AbortError") {
+    throw new ApiError(service, 408, `응답이 ${Math.round(ms / 1000)}초 안에 오지 않았습니다. 인터넷 연결이나 서비스 상태를 확인해 주세요.`);
+  }
+  throw e;
+}
+
 export async function fetchJson<T>(
   service: string,
   url: string,
   init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<T> {
-  const res = await fetch(url, init);
+  let res: Response;
+  try {
+    res = await fetch(url, withTimeout(init, timeoutMs));
+  } catch (e) {
+    friendlyTimeout(service, timeoutMs, e);
+  }
   const text = await res.text();
   if (!res.ok) throw new ApiError(service, res.status, `${res.status} ${text.slice(0, 300)}`);
   return JSON.parse(text) as T;
@@ -52,8 +77,14 @@ export async function fetchBuffer(
   service: string,
   url: string,
   init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<Buffer> {
-  const res = await fetch(url, init);
+  let res: Response;
+  try {
+    res = await fetch(url, withTimeout(init, timeoutMs));
+  } catch (e) {
+    friendlyTimeout(service, timeoutMs, e);
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new ApiError(service, res.status, `${res.status} ${text.slice(0, 300)}`);

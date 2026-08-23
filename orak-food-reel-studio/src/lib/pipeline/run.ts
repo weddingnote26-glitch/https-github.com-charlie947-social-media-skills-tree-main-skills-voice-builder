@@ -115,13 +115,17 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     mark("research", { status: "완료", progress: 100, message: notice ?? `${info.name} (${info.area})` });
 
     // 2) 대본
-    mark("script", { status: "진행중", progress: 20 });
+    mark("script", { status: "진행중", progress: 20, message: "AI에게 대본을 요청했습니다 (최대 2분)" });
     const settings = getSettings();
     const duration = input.durationSec ?? settings.reelDurationSec;
     const mode: ContentMode = input.contentMode && input.contentMode !== "AUTO"
       ? input.contentMode
       : "ORAKI_DETECTIVE";
-    const script = await generateScript(info, { contentType: input.contentType, contentMode: mode, duration });
+    const script = await generateScript(
+      info,
+      { contentType: input.contentType, contentMode: mode, duration },
+      (p) => mark("script", { progress: p.progress, message: p.message }),
+    );
     const date = input.plannedDate ?? todayISO();
     const outDir = reelOutputDir(date, slugify(info.name));
     upsertReel(reelId, restaurantId, script, outDir, date);

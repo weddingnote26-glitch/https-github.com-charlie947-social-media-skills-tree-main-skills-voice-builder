@@ -14,8 +14,15 @@ export interface ScriptOptions {
   duration: number;
 }
 
+/** 진행 상황을 화면에 알리기 위한 콜백 (AI 응답을 기다리는 동안 멈춘 것처럼 보이지 않게) */
+export type ScriptProgress = (info: { attempt: number; tries: number; message: string; progress: number }) => void;
+
 /** 대본 생성 + Zod 검증 + 중복 검사(§28: 너무 비슷하면 자동 재생성) */
-export async function generateScript(info: RestaurantInfo, opts: ScriptOptions): Promise<ReelScript> {
+export async function generateScript(
+  info: RestaurantInfo,
+  opts: ScriptOptions,
+  onProgress?: ScriptProgress,
+): Promise<ReelScript> {
   const contentType = !opts.contentType || opts.contentType === "자동 추천"
     ? pickContentType()
     : (CONTENT_TYPES as readonly string[]).includes(opts.contentType) ? opts.contentType : pickContentType();
@@ -23,8 +30,13 @@ export async function generateScript(info: RestaurantInfo, opts: ScriptOptions):
   const caseNumber = opts.contentMode === "ORAKI_DETECTIVE" ? nextCaseNumber() : undefined;
   const recent = recentHooksCtas();
 
+  const TRIES = 3;
   let lastError = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < TRIES; attempt++) {
+    onProgress?.({
+      attempt: attempt + 1, tries: TRIES, progress: 20 + attempt * 20,
+      message: attempt === 0 ? "AI에게 대본을 요청했습니다 (최대 2분)" : `다시 요청 중… (${attempt + 1}/${TRIES})`,
+    });
     const llm = getLLM();
     const raw = await llm.complete({
       task: "script",
@@ -57,13 +69,21 @@ export async function generateScript(info: RestaurantInfo, opts: ScriptOptions):
     } catch (e) {
       lastError = e instanceof Error ? e.message.slice(0, 400) : String(e);
       logWarn("script", `검증 실패(시도 ${attempt + 1}): ${lastError}`);
+      onProgress?.({
+        attempt: attempt + 1, tries: TRIES, progress: 20 + attempt * 20,
+        message: `대본 형식이 맞지 않아 다시 만듭니다 (${attempt + 1}/${TRIES})`,
+      });
       continue;
     }
 
     const dup = checkDuplicate(script);
-    if (dup.tooSimilar && attempt < 2 && llm.name !== "sample") {
+    if (dup.tooSimilar && attempt < TRIES - 1 && llm.name !== "sample") {
       lastError = `최근 콘텐츠(${dup.against})와 유사도 ${dup.score}. 훅/구성/CTA를 다르게 다시 써라.`;
       logWarn("script", lastError);
+      onProgress?.({
+        attempt: attempt + 1, tries: TRIES, progress: 20 + attempt * 20,
+        message: `최근 콘텐츠와 비슷해서 다시 만듭니다 (${attempt + 1}/${TRIES})`,
+      });
       continue;
     }
     logInfo("script", `대본 생성 완료 — ${script.title} (${script.scenes.length}장면, 중복 ${dup.score})`);
