@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { modelOwner, pickImageModel, clearStaleImageModel } from "../src/lib/providers/image-model";
+import { modelOwner, pickImageModel, clearStaleImageModel, imageKeyMismatch } from "../src/lib/providers/image-model";
 import { needsOrgVerification } from "../src/lib/providers/image";
 
 describe("modelOwner", () => {
@@ -54,5 +54,20 @@ describe("needsOrgVerification", () => {
     expect(needsOrgVerification(new Error("401 Incorrect API key provided"))).toBe(false);
     expect(needsOrgVerification(new Error("429 quota exceeded"))).toBe(false);
     expect(needsOrgVerification(new Error("403 forbidden"))).toBe(false);
+  });
+});
+
+describe("imageKeyMismatch", () => {
+  it("공급자와 키 종류가 어긋나면 알려준다", () => {
+    // 실제로 겪은 상황: 화면은 OpenAI인데 저장된 공급자는 Gemini라 sk- 키를 구글로 보냈다
+    expect(imageKeyMismatch("gemini", "sk-proj-abc123")).toMatch(/OpenAI 이미지/);
+    expect(imageKeyMismatch("openai", "AIzaSyAbc123")).toMatch(/Gemini/);
+  });
+  it("맞는 조합에는 간섭하지 않는다", () => {
+    expect(imageKeyMismatch("openai", "sk-proj-abc123")).toBeNull();
+    expect(imageKeyMismatch("gemini", "AIzaSyAbc123")).toBeNull();
+    expect(imageKeyMismatch("sample", "sk-proj-abc123")).toBeNull();
+    // 형식이 애매한 값은 실제 호출로 판단하게 둔다
+    expect(imageKeyMismatch("openai", "AQ.Ab8xyz")).toBeNull();
   });
 });

@@ -31,12 +31,24 @@ export default function SettingsPage() {
     setErr(null); setMsg(null);
     try {
       const out = await api<{ settings: AppSettings }>("/api/settings", { method: "PUT", body: JSON.stringify(patch) });
-      setS(out.settings); setMsg("저장했습니다."); reload();
+      // 방금 저장한 항목만 서버 값으로 갱신한다.
+      // 통째로 덮으면 다른 칸에서 편집 중이던 값(예: 공급자 선택)이 소리 없이 되돌아간다.
+      const keys = Object.keys(patch) as Array<keyof AppSettings>;
+      setS((cur) => {
+        const base = cur ?? out.settings;
+        const picked = Object.fromEntries(keys.filter((k) => k in out.settings).map((k) => [k, out.settings[k]]));
+        return { ...base, ...picked };
+      });
+      setMsg("저장했습니다."); reload();
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
   };
 
   const test = async (service: string) => {
     setTestResult((t) => ({ ...t, [service]: "테스트 중…" }));
+    // 화면에 보이는 값과 저장된 값이 다르면 엉뚱한 서비스를 테스트하게 된다 → 먼저 맞춘다
+    if (service === "image" && data.settings.imageProvider !== s.imageProvider) {
+      await save({ imageProvider: s.imageProvider, imageModel: s.imageModel });
+    }
     try {
       const r = await api<{ ok: boolean; detail: string }>("/api/settings/test", { method: "POST", body: JSON.stringify({ service }) });
       setTestResult((t) => ({ ...t, [service]: `${r.ok ? "✅" : "❌"} ${r.detail}` }));
@@ -159,7 +171,14 @@ export default function SettingsPage() {
       <Card title="🖼 이미지 생성">
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">공급자</label>
-            <select className="input py-2 text-sm" value={s.imageProvider} onChange={(e) => setS({ ...s, imageProvider: e.target.value as AppSettings["imageProvider"] })}>
+            <select className="input py-2 text-sm" value={s.imageProvider}
+              onChange={(e) => {
+                // 고르는 즉시 저장한다. [저장]을 안 눌러 화면과 저장값이 어긋나면
+                // 엉뚱한 서비스로 연결 테스트가 나가 "키가 틀렸다"는 오해를 부른다.
+                const imageProvider = e.target.value as AppSettings["imageProvider"];
+                setS({ ...s, imageProvider });
+                void save({ imageProvider, imageModel: s.imageModel });
+              }}>
               <option value="sample">Sample (API 불필요)</option>
               <option value="gemini">Gemini / Imagen</option>
               <option value="openai">OpenAI 이미지</option>

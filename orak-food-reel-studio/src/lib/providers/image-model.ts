@@ -39,3 +39,18 @@ export function clearStaleImageModel(
   const owner = modelOwner(m);
   return owner && owner !== provider ? "" : m;
 }
+
+/**
+ * 저장된 키가 저장된 공급자와 아예 다른 종류인 경우.
+ * 화면에서 공급자를 바꾸고 [저장]을 누르지 않으면 여기서 걸린다 —
+ * 그때 "키가 틀렸다"고만 하면 멀쩡한 키를 계속 다시 발급받게 된다.
+ */
+export function imageKeyMismatch(provider: string, key: string): string | null {
+  if (provider === "gemini" && key.startsWith("sk-")) {
+    return "저장된 키는 OpenAI 키(sk-…)인데 공급자가 Gemini 로 저장되어 있습니다. 위 [공급자]를 'OpenAI 이미지'로 바꾸면 자동으로 저장됩니다.";
+  }
+  if (provider === "openai" && key.startsWith("AIza")) {
+    return "저장된 키는 Gemini 키(AIza…)인데 공급자가 OpenAI 로 저장되어 있습니다. 위 [공급자]를 'Gemini / Imagen'으로 바꾸거나 OpenAI 키를 넣으세요.";
+  }
+  return null;
+}

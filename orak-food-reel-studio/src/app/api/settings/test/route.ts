@@ -3,6 +3,7 @@ import { getEnv } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
 import { resolveIgAuth } from "@/lib/providers/instagram";
 import { resolveSecret } from "@/lib/secrets";
+import { imageKeyMismatch } from "@/lib/providers/image-model";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,10 @@ export async function POST(req: Request) {
             if ((getSettings().imageProvider || env.IMAGE_PROVIDER) === "sample") return { ok: true, detail: "Sample Mode — 외부 API를 쓰지 않습니다" };
             const imageKey = resolveSecret("IMAGE_API_KEY");
             if (!imageKey) return { ok: false, detail: "이미지 API 키가 없습니다. 위 칸에 넣고 저장하세요." };
-            if ((getSettings().imageProvider || env.IMAGE_PROVIDER) === "gemini") {
+            const imageProvider = getSettings().imageProvider || env.IMAGE_PROVIDER;
+            const mismatch = imageKeyMismatch(imageProvider, imageKey);
+            if (mismatch) return { ok: false, detail: mismatch };
+            if (imageProvider === "gemini") {
               const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(imageKey)}`, { signal: AbortSignal.timeout(10000) });
               return r.ok ? { ok: true, detail: "Gemini 연결 성공" } : { ok: false, detail: await keyFailure(r, "gemini") };
             }
