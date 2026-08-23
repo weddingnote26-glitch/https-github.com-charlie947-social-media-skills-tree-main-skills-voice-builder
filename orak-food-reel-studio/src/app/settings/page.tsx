@@ -283,9 +283,9 @@ export default function SettingsPage() {
         </div>
         <div className="flex items-center gap-3 mb-3">
           <label className="label text-sm m-0">발행 시간</label>
-          <input type="time" className="input w-36" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
+          <input type="time" className="input w-full sm:w-36 min-w-0" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
           <label className="label text-sm m-0 ml-4">주간 오락이 비율</label>
-          <select className="input w-40" value={s.orakiPerWeek} onChange={(e) => setS({ ...s, orakiPerWeek: parseInt(e.target.value) })}>
+          <select className="input w-full sm:w-40 min-w-0" value={s.orakiPerWeek} onChange={(e) => setS({ ...s, orakiPerWeek: parseInt(e.target.value) })}>
             {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>주 {n}개 오락이</option>)}
           </select>
         </div>

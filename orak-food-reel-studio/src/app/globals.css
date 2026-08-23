@@ -51,88 +51,96 @@ body {
   line-height: 1.6;
 }
 
-/* ── 화면 기본틀 ─────────────────────────────────────────
-   모든 화면이 같은 최대 너비와 좌우 여백을 쓴다. */
-.page {
-  width: 100%;
-  max-width: 60rem;   /* 960px */
-}
+/*
+ * 아래 공통 클래스는 components 층에 둔다.
+ * 층을 지정하지 않으면 Tailwind 유틸리티보다 나중에 적용되어,
+ * 화면에서 폭이나 여백을 따로 지정해도 공통 클래스가 눌러 버린다.
+ * (실제로 .input 의 w-full 이 w-56 을 이겨 옆 칸이 한 글자씩 세로로 뭉개졌다)
+ */
+@layer components {
+  /* ── 화면 기본틀 ─────────────────────────────────────────
+     모든 화면이 같은 최대 너비와 좌우 여백을 쓴다. */
+  .page {
+    width: 100%;
+    max-width: 60rem;   /* 960px */
+  }
 
-/* ── 박스 ────────────────────────────────────────────────
-   카드·설정 영역·작업 목록·결과 영역이 모두 이 한 가지 모양을 쓴다. */
-.card {
-  @apply bg-white rounded-2xl border border-gray-200 shadow-sm;
-}
+  /* ── 박스 ────────────────────────────────────────────────
+     카드·설정 영역·작업 목록·결과 영역이 모두 이 한 가지 모양을 쓴다. */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm;
+  }
 
-/* ── 버튼 ────────────────────────────────────────────────
-   네 종류만 쓴다. 크기를 따로 덧붙이지 않아도 되도록
-   각자 높이·글자 크기를 스스로 정한다.
-     primary   가장 중요한 실행 (화면당 하나)
-     secondary 보조 실행
-     ghost     목록 안의 작은 동작
-     danger    삭제처럼 되돌릴 수 없는 동작            */
-.btn-primary,
-.btn-secondary,
-.btn-ghost,
-.btn-danger {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold transition
-    disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none
-    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A];
-}
+  /* ── 버튼 ────────────────────────────────────────────────
+     네 종류만 쓴다. 크기를 따로 덧붙이지 않아도 되도록
+     각자 높이·글자 크기를 스스로 정한다.
+       primary   가장 중요한 실행 (화면당 하나)
+       secondary 보조 실행
+       ghost     목록 안의 작은 동작
+       danger    삭제처럼 되돌릴 수 없는 동작            */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold transition
+      disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none
+      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A];
+  }
 
-.btn-primary {
-  @apply bg-[#E86A3A] text-white hover:bg-[#d55c2e] px-6 text-lg shadow;
-  min-height: var(--control-h-lg);
-}
-.btn-secondary {
-  @apply bg-white border-2 border-gray-300 text-gray-800 hover:border-[#E86A3A] hover:text-[#B84A1B] px-5 text-base;
-  min-height: var(--control-h-md);
-}
-.btn-ghost {
-  @apply text-gray-700 hover:bg-gray-100 border border-transparent px-4 text-sm;
-  min-height: var(--control-h);
-}
-.btn-danger {
-  @apply bg-red-50 border border-red-300 text-red-800 hover:bg-red-100 px-4 text-sm;
-  min-height: var(--control-h);
-}
+  .btn-primary {
+    @apply bg-[#E86A3A] text-white hover:bg-[#d55c2e] px-6 text-lg shadow;
+    min-height: var(--control-h-lg);
+  }
+  .btn-secondary {
+    @apply bg-white border-2 border-gray-300 text-gray-800 hover:border-[#E86A3A] hover:text-[#B84A1B] px-5 text-base;
+    min-height: var(--control-h-md);
+  }
+  .btn-ghost {
+    @apply text-gray-700 hover:bg-gray-100 border border-transparent px-4 text-sm;
+    min-height: var(--control-h);
+  }
+  .btn-danger {
+    @apply bg-red-50 border border-red-300 text-red-800 hover:bg-red-100 px-4 text-sm;
+    min-height: var(--control-h);
+  }
 
-/* ── 칩(고르기 단추) ─────────────────────────────────────
-   목록 거르개·폴더 고르기처럼 "여럿 중 하나를 고르는" 자리에 쓴다.
-   고른 상태는 색만이 아니라 aria-pressed 로도 알린다. */
-.chip {
-  @apply inline-flex items-center gap-1.5 rounded-full border-2 px-4 text-sm font-bold
-    transition cursor-pointer select-none whitespace-nowrap
-    border-gray-300 bg-white text-gray-700 hover:border-gray-400
-    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A];
-  min-height: var(--control-h);
-}
-.chip[aria-pressed="true"] {
-  @apply border-[#E86A3A] bg-[#FDEDE5] text-[#B84A1B];
-}
+  /* ── 칩(고르기 단추) ─────────────────────────────────────
+     목록 거르개·폴더 고르기처럼 "여럿 중 하나를 고르는" 자리에 쓴다.
+     고른 상태는 색만이 아니라 aria-pressed 로도 알린다. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border-2 px-4 text-sm font-bold
+      transition cursor-pointer select-none whitespace-nowrap
+      border-gray-300 bg-white text-gray-700 hover:border-gray-400
+      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A];
+    min-height: var(--control-h);
+  }
+  .chip[aria-pressed="true"] {
+    @apply border-[#E86A3A] bg-[#FDEDE5] text-[#B84A1B];
+  }
 
-/* ── 입력 요소 ───────────────────────────────────────────
-   입력창·선택 상자·검색창이 같은 높이·테두리·글자 크기를 쓴다. */
-.input,
-select.input,
-textarea.input {
-  @apply w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900
-    focus:border-[#E86A3A] focus:outline-none placeholder:text-gray-500;
-  min-height: var(--control-h-md);
-}
-textarea.input { min-height: 6rem; }
+  /* ── 입력 요소 ───────────────────────────────────────────
+     입력창·선택 상자·검색창이 같은 높이·테두리·글자 크기를 쓴다. */
+  .input,
+  select.input,
+  textarea.input {
+    @apply w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900
+      focus:border-[#E86A3A] focus:outline-none placeholder:text-gray-500;
+    min-height: var(--control-h-md);
+  }
+  textarea.input { min-height: 6rem; }
 
-.label {
-  @apply block text-base font-bold text-gray-800 mb-1.5;
-}
+  .label {
+    @apply block text-base font-bold text-gray-800 mb-1.5;
+  }
 
-.badge {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold;
-}
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold;
+  }
 
-/* 보조 설명 — 회색을 너무 흐리게 쓰지 않는다 (WCAG AA) */
-.help {
-  @apply text-xs text-gray-600 leading-relaxed;
+  /* 보조 설명 — 회색을 너무 흐리게 쓰지 않는다 (WCAG AA) */
+  .help {
+    @apply text-xs text-gray-600 leading-relaxed;
+  }
 }
 
 /* ── 진행률 ──────────────────────────────────────────────

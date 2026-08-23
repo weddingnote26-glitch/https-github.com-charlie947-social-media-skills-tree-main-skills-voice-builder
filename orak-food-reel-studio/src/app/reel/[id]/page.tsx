@@ -237,7 +237,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <label className="text-xs font-bold text-gray-600">길이(초)</label>
-                        <input type="number" step="0.5" min="1.2" className="input w-24" value={(s.end - s.start).toFixed(1)}
+                        <input type="number" step="0.5" min="1.2" className="input w-full sm:w-24 min-w-0" value={(s.end - s.start).toFixed(1)}
                           onChange={(e) => {
                             const len = Math.max(1.2, parseFloat(e.target.value) || 2);
                             setScenes(scenes.map((x, xi) => xi === i ? { ...x, end: x.start + len } : x));

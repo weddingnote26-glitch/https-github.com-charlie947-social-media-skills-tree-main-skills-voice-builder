@@ -36,7 +36,7 @@ export default function WeekPage() {
 
   return (
     <div className="page space-y-6">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">🗓 이번 주 릴스 6개</h1>
           <p className="text-gray-600 mt-1">월~토 기획안을 먼저 확인하고, 전체 승인하면 순서대로 제작합니다.</p>
@@ -59,33 +59,33 @@ export default function WeekPage() {
         <Card title={`${data?.weekStart} 주간 기획안`} right={plan && <StatusBadge status={plan.status} />}>
           <div className="space-y-3">
             {shown.map((it, i) => (
-              <div key={it.date} className="flex items-center gap-4 rounded-xl border border-gray-200 p-3">
-                <div className="w-14 text-center">
-                  <div className="text-lg font-extrabold">{it.weekday}</div>
-                  <div className="text-xs text-gray-600">{it.date.slice(5)}</div>
+              /* 하루가 한 덩어리로 읽히게: 날짜 → 기획 내용 → 상태 → 맛집명 입력 */
+              <div key={it.date} className="rounded-xl border border-gray-200 p-4">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div className="w-16 shrink-0">
+                    <div className="text-lg font-extrabold">{it.weekday}</div>
+                    <div className="text-xs text-gray-600">{it.date.slice(5)}</div>
+                  </div>
+                  {/* 값이 길어도 줄로 넘어갈 뿐 칸이 좁아지지 않는다 */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 flex-1 min-w-0">
+                    <span><span className="text-xs text-gray-600 font-bold">지역 </span><span className="font-bold">{it.area}</span></span>
+                    <span><span className="text-xs text-gray-600 font-bold">유형 </span><span className="font-bold">{it.content_type}</span></span>
+                    <span><span className="text-xs text-gray-600 font-bold">스타일 </span><span className="font-bold">{it.content_mode === "ORAKI_DETECTIVE" ? "🥟 오락이 탐정" : "🍚 일반"}</span></span>
+                  </div>
+                  <div className="shrink-0">
+                    {it.reel_id
+                      ? <Link href={`/reel/${it.reel_id}`} className="btn-ghost">보기 →</Link>
+                      : <StatusBadge status={it.status} />}
+                  </div>
                 </div>
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  <div>
-                    <div className="text-xs text-gray-600 font-bold">지역</div>
-                    <div className="font-bold">{it.area}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-600 font-bold">유형</div>
-                    <div className="font-bold">{it.content_type}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-600 font-bold">스타일</div>
-                    <div className="font-bold">{it.content_mode === "ORAKI_DETECTIVE" ? "🥟 오락이 탐정" : "🍚 일반"}</div>
-                  </div>
-                </div>
-                <input className="input w-56" placeholder="맛집명(비우면 유형으로 샘플 기획)"
-                  value={it.restaurant_hint}
-                  onChange={(e) => {
-                    const next = [...shown]; next[i] = { ...it, restaurant_hint: e.target.value }; setItems(next);
-                  }} />
-                {it.reel_id
-                  ? <Link href={`/reel/${it.reel_id}`} className="btn-ghost">보기 →</Link>
-                  : <StatusBadge status={it.status} />}
+                <label className="block mt-3">
+                  <span className="sr-only">{it.weekday}요일 맛집명</span>
+                  <input className="input" placeholder="맛집명 — 비우면 유형에 맞춰 샘플로 기획합니다"
+                    value={it.restaurant_hint}
+                    onChange={(e) => {
+                      const next = [...shown]; next[i] = { ...it, restaurant_hint: e.target.value }; setItems(next);
+                    }} />
+                </label>
               </div>
             ))}
           </div>

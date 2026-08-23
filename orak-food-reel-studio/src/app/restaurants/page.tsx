@@ -31,9 +31,9 @@ export default function RestaurantsPage() {
   return (
     <div className="page space-y-6">
       <h1 className="text-2xl font-extrabold">🍽 맛집 DB</h1>
-      <div className="flex gap-2">
-        <button className={tab === "db" ? "btn-primary px-4 py-2 text-sm" : "btn-secondary px-4 py-2 text-sm"} onClick={() => setTab("db")}>조사된 맛집 ({data?.restaurants.length ?? 0})</button>
-        <button className={tab === "tips" ? "btn-primary px-4 py-2 text-sm" : "btn-secondary px-4 py-2 text-sm"} onClick={() => setTab("tips")}>📮 맛집 제보 ({tips?.tips.length ?? 0})</button>
+      <div className="flex flex-wrap gap-2">
+        <button className="chip" aria-pressed={tab === "db"} onClick={() => setTab("db")}>조사된 맛집 ({data?.restaurants.length ?? 0})</button>
+        <button className="chip" aria-pressed={tab === "tips"} onClick={() => setTab("tips")}>📮 맛집 제보 ({tips?.tips.length ?? 0})</button>
       </div>
       <ErrorBox msg={err} />
 
@@ -82,7 +82,7 @@ export default function RestaurantsPage() {
                     <div className="text-sm text-gray-600">{t.reason} {t.submitted_by && `— @${t.submitted_by}`}</div>
                   </div>
                   {t.case_number && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">#{String(t.case_number).padStart(3, "0")}</span>}
-                  <select className="input w-32" value={t.status} onChange={(e) => setTipStatus(t.id, e.target.value)}>
+                  <select className="input w-full sm:w-32 min-w-0" value={t.status} onChange={(e) => setTipStatus(t.id, e.target.value)}>
                     {["제보", "조사예정", "제작중", "완료"].map((s) => <option key={s}>{s}</option>)}
                   </select>
                   <StatusBadge status={t.status === "제보" ? "기획" : t.status === "완료" ? "완료" : "진행중"} />

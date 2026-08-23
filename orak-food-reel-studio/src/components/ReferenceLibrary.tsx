@@ -166,9 +166,9 @@ export default function ReferenceLibrary() {
             📁 {folderLabel(f.name)} <span className="ml-1 opacity-60">{f.count}</span>
           </button>
         ))}
-        <div className="flex items-center gap-1 ml-1">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <input
-            className="input w-40"
+            className="input w-full sm:w-40 min-w-0"
             placeholder="새 폴더 이름"
             value={newFolder}
             onChange={(e) => setNewFolder(e.target.value)}
@@ -207,7 +207,7 @@ export default function ReferenceLibrary() {
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDEDE5] border border-[#E86A3A] px-3 py-2">
           <span className="text-sm font-bold text-[#B84A1B]">{picked.size}개 선택됨</span>
           <span className="flex-1" />
-          <select className="input w-40" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="옮길 폴더">
+          <select className="input w-full sm:w-40 min-w-0" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="옮길 폴더">
             {folders.map((f) => <option key={f.name || "__root__"} value={f.name}>{folderLabel(f.name)}로 이동</option>)}
           </select>
           <button className="btn-ghost" onClick={move} disabled={busy}>이동</button>

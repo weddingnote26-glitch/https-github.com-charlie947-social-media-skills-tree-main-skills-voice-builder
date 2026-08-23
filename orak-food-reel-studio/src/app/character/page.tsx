@@ -52,7 +52,7 @@ export default function CharacterPage() {
           <p className="text-sm text-gray-600 mb-3">켜져 있으면 만두 형태·얼굴·눈·모자·비율·컬러·가방과 Character Seed가 모든 이미지 프롬프트에 고정됩니다. AI가 임의로 디자인을 바꾸지 않습니다.</p>
           <div className="flex items-center gap-2">
             <label className="text-sm font-bold text-gray-600">Character Seed</label>
-            <input type="number" className="input w-40" defaultValue={data.lock.seed}
+            <input type="number" className="input w-full sm:w-40 min-w-0" defaultValue={data.lock.seed}
               onBlur={(e) => setLock({ seed: parseInt(e.target.value) || data.lock.seed })} />
           </div>
         </Card>

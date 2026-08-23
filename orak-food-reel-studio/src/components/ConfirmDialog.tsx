@@ -86,7 +86,7 @@ export default function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={o.danger === false ? "btn-primary px-5 py-3 text-base" : "btn-danger px-5 py-3 text-base"}
+            className={o.danger === false ? "btn-primary" : "btn-danger"}
           >
             {busy ? "처리 중…" : (o.confirmLabel ?? "삭제")}
           </button>
