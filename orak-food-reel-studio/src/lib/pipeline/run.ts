@@ -37,8 +37,14 @@ export type StepKey = (typeof STEP_DEFS)[number]["key"];
 export interface StepState {
   key: StepKey; label: string;
   status: "대기중" | "진행중" | "완료" | "실패" | "건너뜀";
-  progress: number; // 0~100
+  progress: number; // 0~100 — indeterminate 인 단계에서는 의미 없음
   message?: string;
+  /**
+   * 실제 진행률을 셀 수 없는 단계.
+   * 외부 API 한 번 호출로 끝나는 단계는 "몇 % 됐는지" 알 방법이 없다.
+   * 숫자를 지어내는 대신 이 표시를 켜고 화면에는 "처리 중"으로 보여준다.
+   */
+  indeterminate?: boolean;
 }
 
 export interface ProduceInput {
@@ -108,16 +114,16 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
   running.add(reelId);
   try {
     // 1) 콘텐츠 조사
-    mark("research", { status: "진행중", progress: 10 });
+    mark("research", { status: "진행중", progress: 0, indeterminate: true });
     const research: ResearchInput = {
       name: input.restaurantName, url: input.restaurantUrl, area: input.area, manual: input.manual,
     };
     const { info, notice } = await researchRestaurant(research);
     const restaurantId = saveRestaurant(info);
-    mark("research", { status: "완료", progress: 100, message: notice ?? `${info.name} (${info.area})` });
+    mark("research", { status: "완료", progress: 100, indeterminate: false, message: notice ?? `${info.name} (${info.area})` });
 
     // 2) 대본
-    mark("script", { status: "진행중", progress: 20, message: "AI에게 대본을 요청했습니다 (최대 2분)" });
+    mark("script", { status: "진행중", progress: 0, indeterminate: true, message: "AI에게 대본을 요청했습니다 (최대 2분)" });
     const settings = getSettings();
     const duration = input.durationSec ?? settings.reelDurationSec;
     const mode: ContentMode = input.contentMode && input.contentMode !== "AUTO"
@@ -126,25 +132,27 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     const script = await generateScript(
       info,
       { contentType: input.contentType, contentMode: mode, duration },
-      (p) => mark("script", { progress: p.progress, message: p.message }),
+      // 재시도 횟수는 알지만 "몇 % 남았는지"는 알 수 없다 — 문구로만 알린다
+      (p) => mark("script", { indeterminate: true, message: p.message }),
     );
     const date = input.plannedDate ?? todayISO();
     const outDir = reelOutputDir(date, slugify(info.name));
     upsertReel(reelId, restaurantId, script, outDir, date);
     saveScenes(reelId, script.scenes);
-    mark("script", { status: "완료", progress: 100, message: script.title }, "진행중", reelId);
+    mark("script", { status: "완료", progress: 100, indeterminate: false, message: script.title }, "진행중", reelId);
 
     // 3) 팩트체크 (§26)
-    mark("factcheck", { status: "진행중", progress: 30 });
+    mark("factcheck", { status: "진행중", progress: 0, indeterminate: true });
     const fact = runFactCheck(script, info);
     updateReel(reelId, { factcheck_json: JSON.stringify(fact.items) });
     mark("factcheck", {
+      indeterminate: false,
       status: "완료", progress: 100,
       message: fact.blocked ? `⚠ 확인 필요 ${fact.blockReasons.length}건` : `확인 ${fact.items.filter((i) => i.status === "확인").length}/${fact.items.length}`,
     });
 
     // 4) 이미지 (§12, 실패한 장면만 재시도 §43)
-    mark("images", { status: "진행중", progress: 0 });
+    mark("images", { status: "진행중", progress: 0, indeterminate: false });
     const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), (done, total, note) => {
       mark("images", { progress: Math.round((done / total) * 100), message: note ?? `${done}/${total} 장면` });
     });
@@ -159,43 +167,43 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       ? `${placeholders.length}장이 임시 이미지입니다 (${placeholders[0].reason ?? "생성 실패"}). 해당 장면은 나중에 [🖼 이미지만 다시]로 만들 수 있습니다.`
       : "";
     mark("images", {
-      status: "완료", progress: 100,
+      status: "완료", progress: 100, indeterminate: false,
       message: placeholders.length
         ? `${images.length}장 중 ⚠ 임시 ${placeholders.length}장 — ${placeholders[0].reason ?? "생성 실패"}`
         : `${images.length}장 (캐시 ${images.filter((i) => i.cached).length})`,
     });
 
     // 5) 음성 (§16) — 실제 음성 길이에 맞춰 장면 시간 재조정
-    mark("voice", { status: "진행중", progress: 0 });
+    mark("voice", { status: "진행중", progress: 0, indeterminate: false });
     const voice = await generateVoice(script.scenes, outDir, (done, total) => {
       mark("voice", { progress: Math.round((done / total) * 100) });
     });
     script.scenes = voice.scenes as ReelScript["scenes"];
     script.duration = Math.round(voice.totalSec);
     saveScenes(reelId, script.scenes);
-    mark("voice", { status: "완료", progress: 100, message: `${voice.totalSec}s` });
+    mark("voice", { status: "완료", progress: 100, indeterminate: false, message: `${voice.totalSec}s` });
 
     // 6) 자막 (§18) — SRT + ASS, 엔딩 시그니처(§26 캐릭터)
-    mark("subtitles", { status: "진행중", progress: 50 });
+    mark("subtitles", { status: "진행중", progress: 0, indeterminate: true });
     const highlightWords = [info.name, ...(info.menus[0]?.name ? [info.menus[0].name] : [])];
     const endBadge = script.content_mode === "ORAKI_DETECTIVE"
       ? { from: Math.max(0, voice.totalSec - 1.1), to: voice.totalSec, text: "사건 해결" }
       : undefined;
     const subs = writeSubtitles(script.scenes, outDir, highlightWords, endBadge);
-    mark("subtitles", { status: "완료", progress: 100 });
+    mark("subtitles", { status: "완료", progress: 100, indeterminate: false });
 
     // 7) 렌더 (§20)
-    mark("render", { status: "진행중", progress: 10, message: "FFmpeg 렌더링 중" });
+    mark("render", { status: "진행중", progress: 0, indeterminate: true, message: "FFmpeg 렌더링 중" });
     const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
     const videoPath = path.join(outDir, "reel.mp4");
     const rendered = await renderReel({
       scenes: script.scenes, imageByScene, voicePath: voice.voicePath,
       assPath: subs.assPath, outPath: videoPath,
     });
-    mark("render", { status: "완료", progress: 100, message: `${rendered.totalSec.toFixed(1)}s` });
+    mark("render", { status: "완료", progress: 100, indeterminate: false, message: `${rendered.totalSec.toFixed(1)}s` });
 
     // 8) 썸네일 (§23)
-    mark("thumbnail", { status: "진행중", progress: 30 });
+    mark("thumbnail", { status: "진행중", progress: 0, indeterminate: true });
     const heroScene = script.scenes.find((s) => s.character_presence === "none") ?? script.scenes[Math.min(2, script.scenes.length - 1)];
     const thumbPath = path.join(outDir, "thumbnail.jpg");
     await makeThumbnail({
@@ -204,15 +212,16 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       lines: thumbnailLines(script.hook, info.area),
       caseNumber: script.case_number,
     });
-    mark("thumbnail", { status: "완료", progress: 100 });
+    mark("thumbnail", { status: "완료", progress: 100, indeterminate: false });
 
     // 9) 품질 점수 (§27) + 중복 (§28)
-    mark("quality", { status: "진행중", progress: 40 });
+    mark("quality", { status: "진행중", progress: 0, indeterminate: true });
     const okCount = fact.items.filter((i) => i.status === "확인").length;
     const quality = scoreQuality(script, fact.blocked, okCount, fact.items.length);
     const dup = checkDuplicate(script, reelId);
     script.quality_score = quality.total;
     mark("quality", {
+      indeterminate: false,
       status: "완료", progress: 100,
       message: `${quality.total}점${quality.pass ? "" : " (80점 미만 — 수정안 확인)"}${dup.tooSimilar ? " · 중복 주의" : ""}`,
     });

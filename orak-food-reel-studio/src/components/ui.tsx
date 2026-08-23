@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { stepView, type ProgressStep } from "@/lib/pipeline/progress";
 
 export function Card({ title, right, children, className = "" }: {
   title?: string; right?: React.ReactNode; children: React.ReactNode; className?: string;
@@ -34,10 +35,40 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`badge ${STATUS_COLOR[status] ?? "bg-gray-100 text-gray-600"}`}>{status}</span>;
 }
 
-export function ProgressBar({ pct, tone = "bg-[#E86A3A]" }: { pct: number; tone?: string }) {
+export function ProgressBar({ pct, tone = "bg-[#E86A3A]", indeterminate = false, label }: {
+  pct: number; tone?: string; indeterminate?: boolean; label?: string;
+}) {
+  const value = Math.min(100, Math.max(0, Math.round(pct)));
   return (
-    <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
-      <div className={`h-full rounded-full transition-all ${tone}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+    <div
+      className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden"
+      role="progressbar"
+      aria-label={label}
+      // 길이를 모를 때는 값을 비워 스크린리더가 "몇 %"라고 읽지 않게 한다
+      aria-valuenow={indeterminate ? undefined : value}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuetext={indeterminate ? "처리 중" : `${value}%`}
+    >
+      {indeterminate ? (
+        <div className={`h-full w-full progress-indeterminate ${tone.replace("bg-", "text-")}`} />
+      ) : (
+        <div className={`h-full rounded-full transition-all ${tone}`} style={{ width: `${value}%` }} />
+      )}
+    </div>
+  );
+}
+
+/** 제작 단계 한 줄 — 오늘의 릴스 화면과 제작중 화면이 같은 규칙을 쓴다 */
+export function StepRow({ step }: { step: ProgressStep }) {
+  const v = stepView(step);
+  return (
+    <div>
+      <div className="flex justify-between text-sm font-bold mb-1 gap-3">
+        <span className="shrink-0">{v.icon} {step.label}</span>
+        <span className="text-gray-500 font-normal text-right break-words">{v.text}</span>
+      </div>
+      <ProgressBar pct={v.barPct} tone={v.tone} indeterminate={v.animated} label={step.label} />
     </div>
   );
 }

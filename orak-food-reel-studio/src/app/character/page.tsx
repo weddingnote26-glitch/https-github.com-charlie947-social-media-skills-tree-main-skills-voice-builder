@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
-import { Card, api, useApi, ErrorBox, mediaUrl } from "@/components/ui";
+import { useState } from "react";
+import { Card, api, useApi, ErrorBox } from "@/components/ui";
+import ReferenceLibrary from "@/components/ReferenceLibrary";
 
 interface CharData {
   character: { name: string; world: string; brandColor: string; heightCm: number; personality: Record<string, number>; props: string[]; brandDevices: string[] };
@@ -15,24 +16,6 @@ interface CharData {
 export default function CharacterPage() {
   const { data, reload } = useApi<CharData>("/api/character");
   const [err, setErr] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [uploadTarget, setUploadTarget] = useState<string>("character_sheet.png");
-
-  const upload = async (file: File) => {
-    setErr(null);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        await api("/api/character", {
-          method: "POST",
-          body: JSON.stringify({ file: uploadTarget, dataBase64: String(reader.result) }),
-        });
-        reload();
-      } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const setLock = async (patch: Record<string, unknown>) => {
     try { await api("/api/character", { method: "PATCH", body: JSON.stringify(patch) }); reload(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
@@ -77,34 +60,14 @@ export default function CharacterPage() {
 
       <Card title="🖼 Master Reference — 캐릭터 일관성의 기준">
         <p className="text-sm text-gray-500 mb-4">
-          기준 이미지 7종이 <b>기본으로 준비돼 있습니다.</b> 이미지 생성 시 이 파일들이 참조로 함께 전달되어 모든 콘텐츠에서 같은 얼굴·의상·비율을 유지합니다.
-          직접 그린 오락이로 바꾸고 싶으면 아래에서 파일을 덮어쓰면 됩니다.
+          기준 이미지 7종이 <b>기본으로 준비돼 있습니다.</b> 이미지 생성 시 “기준”으로 표시한 파일들이 참조로 함께 전달되어
+          모든 콘텐츠에서 같은 얼굴·의상·비율을 유지합니다. 폴더를 만들어 용도별로 정리할 수 있습니다.
         </p>
-        <div className="grid grid-cols-7 gap-3">
-          {data.references.map((r) => (
-            <div key={r.file} className="text-center">
-              {r.exists && mediaUrl(r.path) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={mediaUrl(r.path)!} alt={r.file} className="aspect-square w-full object-cover rounded-xl border" />
-              ) : (
-                <div className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-300 text-2xl">＋</div>
-              )}
-              <div className="text-[11px] font-bold mt-1 text-gray-600">{r.file}</div>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-3 mt-4">
-          <select className="input w-56 py-2 text-sm" value={uploadTarget} onChange={(e) => setUploadTarget(e.target.value)}>
-            {data.references.map((r) => <option key={r.file}>{r.file}</option>)}
-          </select>
-          <button className="btn-secondary" onClick={() => fileInput.current?.click()}>이미지 업로드</button>
-          <input ref={fileInput} type="file" accept="image/png,image/jpeg" hidden
-            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-        </div>
-        <p className="text-xs text-gray-400 mt-3">
+        <ReferenceLibrary />
+        <p className="text-xs text-gray-400 mt-4">
           기본 이미지는 <code className="bg-gray-100 px-1 rounded">assets/character/svg/</code> 의 SVG 원본으로 만들어졌습니다.
           색·소품을 고치려면 <code className="bg-gray-100 px-1 rounded">scripts/character/oraki-art.mjs</code> 를 수정하고
-          <code className="bg-gray-100 px-1 rounded">npm run character</code> 를 실행하세요.
+          <code className="bg-gray-100 px-1 rounded">npm run character</code> 를 실행하세요. (지운 기본 이미지도 이 명령으로 되살아납니다)
         </p>
       </Card>
 

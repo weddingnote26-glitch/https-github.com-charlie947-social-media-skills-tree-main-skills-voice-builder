@@ -3,6 +3,9 @@ import type { Scene } from "../schema";
 import path from "node:path";
 import fs from "node:fs";
 import { DIRS } from "../paths";
+import { resolveRef, MASTER_REFERENCE_FILES } from "./library";
+
+export { MASTER_REFERENCE_FILES };
 
 /**
  * 만두탐정 오락이 — 오락푸드 전속 맛집 탐정 캐릭터 IP.
@@ -21,13 +24,6 @@ export const ORAKI = {
   // §23 브랜드 반복 장치 — 매 영상 최소 1개 이상
   brandDevices: ["탐정 모자", "돋보기", "오렌지색 가방", "사건 파일", "탐정 수첩", "사건 해결"],
 } as const;
-
-/** §14 Character Master Reference 파일 목록 */
-export const MASTER_REFERENCE_FILES = [
-  "front.png", "side.png", "back.png",
-  "face_happy.png", "face_surprised.png", "face_detective.png",
-  "character_sheet.png",
-] as const;
 
 export function masterReferenceStatus(): Array<{ file: string; exists: boolean; path: string }> {
   return MASTER_REFERENCE_FILES.map((f) => {
@@ -48,8 +44,10 @@ export function resolvedReferencePaths(): string[] {
   if (!lock.enabled) return [];
   const chosen = lock.referenceImages.length ? lock.referenceImages : DEFAULT_REFERENCES;
   return chosen
-    .map((f) => path.join(DIRS.character, f))
-    .filter((p) => fs.existsSync(p))
+    // 하위 폴더에 넣은 이미지도 쓸 수 있게 상대 경로를 그대로 푼다.
+    // resolveRef 는 assets/character 밖으로 나가는 값을 거부한다.
+    .map((f) => resolveRef(f))
+    .filter((p): p is string => !!p && fs.existsSync(p))
     .slice(0, 3);
 }
 
