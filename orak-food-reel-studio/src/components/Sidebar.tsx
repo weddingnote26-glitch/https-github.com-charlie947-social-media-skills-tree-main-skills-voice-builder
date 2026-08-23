@@ -21,8 +21,11 @@ const MENU = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-60 shrink-0 border-r border-gray-200 bg-white px-3 py-5 flex flex-col gap-1">
-      <Link href="/" className="flex items-center gap-2 px-3 pb-4">
+    // 메뉴가 화면보다 길어지면 아래 항목(설정 등)이 잘려 보였다.
+    // 화면에 고정하고, 넘칠 때는 본문이 아니라 메뉴 자체가 스크롤되게 한다.
+    <aside className="w-60 shrink-0 border-r border-gray-200 bg-white px-3 py-4
+      sticky top-0 h-screen overflow-y-auto overscroll-contain flex flex-col gap-0.5">
+      <Link href="/" className="flex items-center gap-2 px-3 pb-3 shrink-0">
         <span className="text-2xl">🥟</span>
         <div>
           <div className="font-extrabold text-lg leading-tight">오락푸드</div>
@@ -35,16 +38,17 @@ export default function Sidebar() {
           <Link
             key={m.href}
             href={m.href}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition ${
+            // shrink-0 이 없으면 세로 공간이 모자랄 때 항목들이 눌려 글자가 겹친다
+            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[15px] font-semibold transition shrink-0 whitespace-nowrap ${
               active ? "bg-[#FDEDE5] text-[#E86A3A]" : "text-gray-700 hover:bg-gray-100"
             }`}
           >
-            <span className="text-lg w-6 text-center">{m.icon}</span>
+            <span className="text-lg w-6 text-center shrink-0">{m.icon}</span>
             {m.label}
           </Link>
         );
       })}
-      <div className="mt-auto px-3 pt-4 text-[11px] text-gray-400">
+      <div className="mt-auto px-3 pt-4 text-[11px] text-gray-400 shrink-0">
         @orak_food · 신림/관악구
         <br />주 6회 (월~토) 운영
       </div>
