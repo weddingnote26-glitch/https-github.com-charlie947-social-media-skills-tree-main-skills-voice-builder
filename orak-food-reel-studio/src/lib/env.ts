@@ -3,7 +3,7 @@ import { z } from "zod";
 /** .env 검증 — 키가 없어도 프로그램은 뜨고, 해당 기능만 "연결 필요"로 표시 */
 export const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional().default(""),
-  ANTHROPIC_MODEL: z.string().optional().default("claude-sonnet-5"),
+  ANTHROPIC_MODEL: z.string().optional().default("claude-opus-5"),
   ELEVENLABS_API_KEY: z.string().optional().default(""),
   ELEVENLABS_VOICE_ID: z.string().optional().default(""),
   ELEVENLABS_MODEL: z.string().optional().default("eleven_multilingual_v2"),
