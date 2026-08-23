@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { api, useApi, ErrorBox } from "./ui";
+import { checkVoiceId } from "@/lib/providers/voice-id";
 
 interface Voice {
   id: string;
@@ -26,6 +27,19 @@ const LABEL_KO: Record<string, string> = {
   news: "뉴스", "social media": "소셜미디어", characters: "캐릭터",
 };
 const ko = (v: string) => LABEL_KO[v.toLowerCase()] ?? v;
+
+/** 직접 입력한 값이 목소리 ID 형태가 아니면 저장 전에 알려준다 */
+function ManualWarning({ value }: { value: string }) {
+  const v = value.trim();
+  if (!v) return null;
+  const check = checkVoiceId(v);
+  if (check.ok) return null;
+  return (
+    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 font-semibold">
+      ⚠ {check.reason}
+    </p>
+  );
+}
 
 /**
  * §16 ElevenLabs 목소리 선택기.
@@ -96,6 +110,7 @@ export default function VoicePicker({
           <label className="label text-sm">VOICE ID 직접 입력</label>
           <input className="input py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}
             placeholder="21m00Tcm4TlvDq8ikWAM" />
+          <ManualWarning value={value} />
         </div>
         <button className="btn-secondary px-4 py-2 text-sm" onClick={reload}>다시 불러오기</button>
       </div>
@@ -119,8 +134,11 @@ export default function VoicePicker({
       <ErrorBox msg={err} />
 
       {manual ? (
-        <input className="input py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}
-          placeholder="21m00Tcm4TlvDq8ikWAM" />
+        <div>
+          <input className="input py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}
+            placeholder="21m00Tcm4TlvDq8ikWAM" />
+          <ManualWarning value={value} />
+        </div>
       ) : (
         <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
           {data.voices.map((v) => {

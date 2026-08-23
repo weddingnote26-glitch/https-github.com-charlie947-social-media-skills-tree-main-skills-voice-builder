@@ -3,6 +3,7 @@ import { kvGet, kvSet, getSettings } from "./settings";
 import { encrypt, decrypt } from "./crypto";
 import { logWarn } from "./log";
 import { rememberSecret } from "./redact";
+import { cleanPastedSecret } from "./secrets-input";
 
 /**
  * API 키를 화면에서 바꿀 수 있게 하는 계층.
@@ -34,7 +35,8 @@ export function resolveSecret(name: SecretName): string {
 
 /** 빈 문자열이면 저장된 키를 지운다(.env 값으로 되돌아감) */
 export function setSecret(name: SecretName, value: string): void {
-  const v = value.trim();
+  // .env 한 줄을 통째로 붙여넣는 경우가 많다 — 이름·따옴표·줄바꿈을 걷어낸다
+  const v = cleanPastedSecret(value);
   if (!v) {
     kvSet(KEY_PREFIX + name, "");
     return;

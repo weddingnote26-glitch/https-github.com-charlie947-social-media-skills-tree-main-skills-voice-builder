@@ -4,7 +4,7 @@ import { encrypt } from "@/lib/crypto";
 import { serviceReady } from "@/lib/env";
 import { setSecret, secretStatus, getAppMode, type SecretName } from "@/lib/secrets";
 import { clearStaleImageModel } from "@/lib/providers/image-model";
-import { checkVoiceId } from "@/lib/providers/voice-id";
+import { checkVoiceId, checkTtsModel, detectSwappedVoiceFields } from "@/lib/providers/voice-id";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +44,20 @@ export async function PUT(req: Request) {
     // 목소리 ID 칸에 API 키를 붙여넣는 실수를 저장 단계에서 막는다.
     // 저장돼 버리면 제작 중에 그 값이 주소에 실려 나가 오류 문구로 새어 나온다.
     if (body.tts && typeof body.tts === "object") {
-      const voiceId = (body.tts as { voiceId?: unknown }).voiceId;
-      if (typeof voiceId === "string" && voiceId.trim()) {
+      const tts = body.tts as { voiceId?: unknown; model?: unknown };
+      const voiceId = typeof tts.voiceId === "string" ? tts.voiceId : "";
+      const model = typeof tts.model === "string" ? tts.model : "";
+
+      // 두 칸을 바꿔 넣은 경우가 가장 흔하다 — 어느 값이 어디로 가야 하는지까지 알려준다
+      const swap = detectSwappedVoiceFields(voiceId, model);
+      if (swap.swapped) return fail(swap.reason ?? "목소리 ID와 Model 칸을 확인해 주세요.");
+
+      if (voiceId.trim()) {
         const check = checkVoiceId(voiceId);
         if (!check.ok) return fail(check.reason ?? "목소리 ID가 올바르지 않습니다.");
       }
+      const modelCheck = checkTtsModel(model);
+      if (!modelCheck.ok) return fail(modelCheck.reason ?? "Model 값이 올바르지 않습니다.");
     }
     // 공급자를 바꿨는데 예전 공급자의 모델 이름이 남으면 원인 모를 400이 난다 → 비운다
     if (typeof body.imageProvider === "string") {
