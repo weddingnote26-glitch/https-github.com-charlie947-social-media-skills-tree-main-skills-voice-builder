@@ -28,7 +28,7 @@ export default function ReferenceLibrary() {
   const [newFolder, setNewFolder] = useState("");
   const [moveTo, setMoveTo] = useState("");
 
-  if (!data) return <div className="text-sm text-gray-400 py-6">보관함을 불러오는 중…</div>;
+  if (!data) return <div className="text-sm text-gray-600 py-6">보관함을 불러오는 중…</div>;
 
   const folders = data.folders;
   const shown = data.images.filter((i) => i.folder === folder);
@@ -161,43 +161,41 @@ export default function ReferenceLibrary() {
             key={f.name || "__root__"}
             onClick={() => { setFolder(f.name); setPicked(new Set()); }}
             aria-pressed={folder === f.name}
-            className={`badge px-3 py-1.5 border-2 cursor-pointer transition ${
-              folder === f.name ? "border-[#E86A3A] bg-[#FDEDE5] text-[#E86A3A]" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-            }`}
+            className="chip"
           >
             📁 {folderLabel(f.name)} <span className="ml-1 opacity-60">{f.count}</span>
           </button>
         ))}
         <div className="flex items-center gap-1 ml-1">
           <input
-            className="input py-1.5 px-3 text-sm w-40"
+            className="input w-40"
             placeholder="새 폴더 이름"
             value={newFolder}
             onChange={(e) => setNewFolder(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addFolder()}
             aria-label="새 폴더 이름"
           />
-          <button className="btn-ghost text-xs" onClick={addFolder} disabled={busy}>＋ 폴더 만들기</button>
+          <button className="btn-ghost" onClick={addFolder} disabled={busy}>＋ 폴더 만들기</button>
         </div>
       </div>
 
       {/* 현재 폴더 도구 */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-bold text-gray-700">{folderLabel(folder)}</span>
-        <span className="text-gray-400">이미지 {shown.length}개</span>
+        <span className="text-gray-600">이미지 {shown.length}개</span>
         {folder && (
           <>
-            <button className="btn-ghost text-xs" onClick={rename} disabled={busy}>이름 바꾸기</button>
-            <button className="btn-ghost text-xs text-red-600 hover:bg-red-50" onClick={() => removeFolder("move")} disabled={busy}>
+            <button className="btn-ghost" onClick={rename} disabled={busy}>이름 바꾸기</button>
+            <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => removeFolder("move")} disabled={busy}>
               폴더만 삭제
             </button>
-            <button className="btn-ghost text-xs text-red-600 hover:bg-red-50" onClick={() => removeFolder("delete")} disabled={busy}>
+            <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => removeFolder("delete")} disabled={busy}>
               폴더+이미지 삭제
             </button>
           </>
         )}
         <span className="flex-1" />
-        <button className="btn-ghost text-xs" onClick={() =>
+        <button className="btn-ghost" onClick={() =>
           setPicked(picked.size === shown.length ? new Set() : new Set(shown.map((i) => i.rel)))
         }>
           {picked.size === shown.length && shown.length > 0 ? "선택 해제" : "전체 선택"}
@@ -207,13 +205,13 @@ export default function ReferenceLibrary() {
       {/* 선택했을 때 나오는 작업 줄 */}
       {picked.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDEDE5] border border-[#E86A3A] px-3 py-2">
-          <span className="text-sm font-bold text-[#E86A3A]">{picked.size}개 선택됨</span>
+          <span className="text-sm font-bold text-[#B84A1B]">{picked.size}개 선택됨</span>
           <span className="flex-1" />
-          <select className="input py-1.5 px-3 text-sm w-40" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="옮길 폴더">
+          <select className="input w-40" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="옮길 폴더">
             {folders.map((f) => <option key={f.name || "__root__"} value={f.name}>{folderLabel(f.name)}로 이동</option>)}
           </select>
-          <button className="btn-ghost text-xs" onClick={move} disabled={busy}>이동</button>
-          <button className="btn-danger text-xs px-3 py-1.5" onClick={() => removeImages([...picked])} disabled={busy}>
+          <button className="btn-ghost" onClick={move} disabled={busy}>이동</button>
+          <button className="btn-danger" onClick={() => removeImages([...picked])} disabled={busy}>
             {picked.size}개 삭제
           </button>
         </div>
@@ -221,9 +219,9 @@ export default function ReferenceLibrary() {
 
       {/* 이미지 격자 */}
       {shown.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">이 폴더에 이미지가 없습니다.</p>
+        <p className="text-sm text-gray-600 py-8 text-center">이 폴더에 이미지가 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {shown.map((img) => {
             const checked = picked.has(img.rel);
             const isRef = selected.has(img.rel);
@@ -243,15 +241,15 @@ export default function ReferenceLibrary() {
                     onChange={() => toggle(img.rel)}
                     aria-label={`${img.file} 선택`}
                   />
-                  {isRef && <span className="absolute top-1.5 right-1.5 badge bg-[#E86A3A] text-white">기준</span>}
+                  {isRef && <span className="absolute top-1.5 right-1.5 badge bg-[#B84A1B] text-white">기준</span>}
                 </div>
-                <div className="text-[11px] font-bold mt-1 text-gray-700 truncate" title={img.file}>{img.file}</div>
-                <div className="text-[10px] text-gray-400 mb-1">{img.sizeKb}KB{img.builtin && " · 기본"}</div>
+                <div className="text-xs font-bold mt-1 text-gray-700 truncate" title={img.file}>{img.file}</div>
+                <div className="text-xs text-gray-600 mb-1">{img.sizeKb}KB{img.builtin && " · 기본"}</div>
                 <div className="flex gap-1">
-                  <button className="btn-ghost text-[11px] px-2 py-1 flex-1" onClick={() => toggleSelected(img.rel)} disabled={busy}>
+                  <button className="btn-ghost flex-1" onClick={() => toggleSelected(img.rel)} disabled={busy}>
                     {isRef ? "기준 해제" : "기준으로"}
                   </button>
-                  <button className="btn-ghost text-[11px] px-2 py-1 text-red-600 hover:bg-red-50" onClick={() => removeImages([img.rel])} disabled={busy}>
+                  <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => removeImages([img.rel])} disabled={busy}>
                     삭제
                   </button>
                 </div>
@@ -267,7 +265,7 @@ export default function ReferenceLibrary() {
         </button>
         <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-600">
           “기준”으로 표시한 이미지가 이미지 생성 시 함께 전달됩니다 (앞의 3개까지).
           하나도 고르지 않으면 기본 Master Reference 를 씁니다.
         </p>

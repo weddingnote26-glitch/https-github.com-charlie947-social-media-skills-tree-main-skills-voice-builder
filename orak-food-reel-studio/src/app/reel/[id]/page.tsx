@@ -37,7 +37,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   }, [data, scenes]);
 
   if (error) return <ErrorBox msg={error} />;
-  if (!data || !scenes) return <div className="text-gray-400 py-20 text-center">불러오는 중…</div>;
+  if (!data || !scenes) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
   const { reel } = data;
   const quality = JSON.parse(reel.quality_json || "{}") as {
     total?: number; pass?: boolean; parts?: Record<string, { score: number; max: number }>;
@@ -73,16 +73,16 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <StatusBadge status={reel.status} />
-            {reel.case_number && <span className="badge bg-[#FDEDE5] text-[#E86A3A]">맛집사건 #{String(reel.case_number).padStart(3, "0")}</span>}
+            {reel.case_number && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">맛집사건 #{String(reel.case_number).padStart(3, "0")}</span>}
             <span className="badge bg-gray-100 text-gray-600">{reel.content_type}</span>
           </div>
           <h1 className="text-2xl font-extrabold mt-2">{reel.title || "제목 없음"}</h1>
-          <p className="text-gray-500 text-sm mt-1">{reel.planned_date} · {reel.duration_sec ? `${reel.duration_sec.toFixed(1)}초` : "영상 없음"} · {reel.content_mode === "ORAKI_DETECTIVE" ? "🥟 만두탐정 오락이" : "🍚 일반 맛집"}</p>
+          <p className="text-gray-600 text-sm mt-1">{reel.planned_date} · {reel.duration_sec ? `${reel.duration_sec.toFixed(1)}초` : "영상 없음"} · {reel.content_mode === "ORAKI_DETECTIVE" ? "🥟 만두탐정 오락이" : "🍚 일반 맛집"}</p>
         </div>
         <button className="btn-ghost" onClick={() => router.push("/library")}>← 목록</button>
       </header>
@@ -109,10 +109,10 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             {videoUrl ? (
               <video key={videoUrl + (reel.duration_sec ?? 0)} src={videoUrl} controls playsInline className="w-full rounded-xl bg-black aspect-9/16" />
             ) : (
-              <div className="aspect-9/16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">영상이 아직 없습니다</div>
+              <div className="aspect-9/16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600">영상이 아직 없습니다</div>
             )}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              <button className="btn-primary col-span-2" disabled={!!busy || !reel.video_path || quality.fact_blocked}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+              <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path || quality.fact_blocked}
                 onClick={() => run("schedule", () => api(`/api/reels/${id}/schedule`, { method: "POST", body: "{}" }), "다음 발행 슬롯에 예약했습니다.")}>
                 📅 예약 발행 {busy === "schedule" && "…"}
               </button>
@@ -129,14 +129,14 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
               <div className="mt-4 text-sm space-y-1">
                 {data.schedules.map((s) => (
                   <div key={s.id} className="flex justify-between">
-                    <span className="text-gray-500">{s.publish_at.replace("T", " ").slice(0, 16)}</span>
+                    <span className="text-gray-600">{s.publish_at.replace("T", " ").slice(0, 16)}</span>
                     <StatusBadge status={s.status} />
                   </div>
                 ))}
               </div>
             )}
             {data.posts.map((p) => (
-              <a key={p.ig_media_id} href={p.permalink ?? "#"} target="_blank" className="block mt-2 text-sm font-bold text-[#E86A3A]">
+              <a key={p.ig_media_id} href={p.permalink ?? "#"} target="_blank" className="block mt-2 text-sm font-bold text-[#B84A1B]">
                 ↗ Instagram에서 보기
               </a>
             ))}
@@ -173,14 +173,14 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
 
           {verdict?.한줄판정 && (
             <Card title="🕵️ 오락이 탐정 판정">
-              <div className="text-lg font-extrabold text-[#E86A3A] mb-2">“{verdict.한줄판정}”</div>
-              <div className="grid grid-cols-2 gap-1 text-sm">
+              <div className="text-lg font-extrabold text-[#B84A1B] mb-2">“{verdict.한줄판정}”</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-sm">
                 <div>가성비 <Stars n={verdict.가성비 ?? 0} /></div>
                 <div>맛 <Stars n={verdict.맛 ?? 0} /></div>
                 <div>양 <Stars n={verdict.양 ?? 0} /></div>
                 <div>재방문 <Stars n={verdict.재방문 ?? 0} /></div>
               </div>
-              <p className="text-[11px] text-gray-400 mt-2">* 오락푸드 자체 콘텐츠 평가입니다 (실사용자 리뷰 아님)</p>
+              <p className="text-xs text-gray-600 mt-2">* 오락푸드 자체 콘텐츠 평가입니다 (실사용자 리뷰 아님)</p>
             </Card>
           )}
 
@@ -202,7 +202,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
         {/* 편집 (§46) */}
         <div className="space-y-4">
           <Card title="🎬 장면 편집" right={
-            <button className="btn-primary px-4 py-2 text-sm" disabled={!!busy} onClick={saveEdits}>
+            <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
               {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
             </button>
           }>
@@ -211,12 +211,12 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 <div key={s.scene + "-" + i} className="rounded-xl border border-gray-200 p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="badge bg-gray-800 text-white">SCENE {i + 1}</span>
-                    <span className="text-xs text-gray-400">{s.start}s ~ {s.end}s</span>
-                    {s.character_action && <span className="badge bg-[#FDEDE5] text-[#E86A3A]">🥟 {s.character_action}</span>}
+                    <span className="text-xs text-gray-600">{s.start}s ~ {s.end}s</span>
+                    {s.character_action && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">🥟 {s.character_action}</span>}
                     <div className="ml-auto flex gap-1">
-                      <button className="btn-ghost px-2 py-1" onClick={() => move(i, -1)} title="위로">↑</button>
-                      <button className="btn-ghost px-2 py-1" onClick={() => move(i, 1)} title="아래로">↓</button>
-                      <button className="btn-ghost px-2 py-1 text-red-500" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제">🗑</button>
+                      <button className="btn-ghost" onClick={() => move(i, -1)} title="위로">↑</button>
+                      <button className="btn-ghost" onClick={() => move(i, 1)} title="아래로">↓</button>
+                      <button className="btn-ghost text-red-500" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제">🗑</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-[96px_1fr] gap-3">
@@ -226,27 +226,27 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                     ) : <div className="w-24 aspect-9/16 bg-gray-100 rounded-lg" />}
                     <div className="space-y-2">
                       <div>
-                        <span className="text-xs font-bold text-gray-500">나레이션</span>
-                        <textarea className="input py-2 text-sm" rows={2} value={s.narration}
+                        <span className="text-xs font-bold text-gray-600">나레이션</span>
+                        <textarea className="input" rows={2} value={s.narration}
                           onChange={(e) => setScenes(scenes.map((x, xi) => xi === i ? { ...x, narration: e.target.value } : x))} />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-gray-500">자막 (한 줄 8~15자, 최대 2줄)</span>
-                        <textarea className="input py-2 text-sm" rows={2} value={s.subtitle}
+                        <span className="text-xs font-bold text-gray-600">자막 (한 줄 8~15자, 최대 2줄)</span>
+                        <textarea className="input" rows={2} value={s.subtitle}
                           onChange={(e) => setScenes(scenes.map((x, xi) => xi === i ? { ...x, subtitle: e.target.value } : x))} />
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <label className="text-xs font-bold text-gray-500">길이(초)</label>
-                        <input type="number" step="0.5" min="1.2" className="input w-24 py-1.5 text-sm" value={(s.end - s.start).toFixed(1)}
+                        <label className="text-xs font-bold text-gray-600">길이(초)</label>
+                        <input type="number" step="0.5" min="1.2" className="input w-24" value={(s.end - s.start).toFixed(1)}
                           onChange={(e) => {
                             const len = Math.max(1.2, parseFloat(e.target.value) || 2);
                             setScenes(scenes.map((x, xi) => xi === i ? { ...x, end: x.start + len } : x));
                           }} />
-                        <button className="btn-ghost text-xs" disabled={!!busy}
+                        <button className="btn-ghost" disabled={!!busy}
                           onClick={() => run(`img${i}`, () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ scene: s.scene, what: "image" }) }), `SCENE ${i + 1} 이미지를 다시 만들었습니다. 저장하면 영상에 반영됩니다.`)}>
                           {busy === `img${i}` ? "생성 중…" : "🖼 이미지만 다시"}
                         </button>
-                        <button className="btn-ghost text-xs" disabled={!!busy}
+                        <button className="btn-ghost" disabled={!!busy}
                           onClick={() => run(`voice${i}`, () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ scene: s.scene, what: "voice" }) }), "음성을 다시 만들었습니다. 저장하면 영상에 반영됩니다.")}>
                           {busy === `voice${i}` ? "생성 중…" : "🎙 음성 전체 다시"}
                         </button>
@@ -260,9 +260,9 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
 
           <Card title="📝 Instagram 본문 · 해시태그">
             <label className="label text-sm">본문 (Caption)</label>
-            <textarea className="input text-sm" rows={8} value={caption ?? ""} onChange={(e) => setCaption(e.target.value)} />
+            <textarea className="input" rows={8} value={caption ?? ""} onChange={(e) => setCaption(e.target.value)} />
             <label className="label text-sm mt-3">해시태그 (공백으로 구분, 5~12개 권장)</label>
-            <textarea className="input text-sm" rows={2} value={hashtags ?? ""} onChange={(e) => setHashtags(e.target.value)} />
+            <textarea className="input" rows={2} value={hashtags ?? ""} onChange={(e) => setHashtags(e.target.value)} />
           </Card>
         </div>
       </div>

@@ -37,7 +37,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold">📅 콘텐츠 캘린더</h1>
         <div className="flex items-center gap-3">
@@ -47,10 +47,13 @@ export default function CalendarPage() {
         </div>
       </header>
       <ErrorBox msg={err} />
-      <p className="text-sm text-gray-500">카드를 끌어서 다른 날짜에 놓으면 일정이 이동합니다. 예약 시각도 같이 이동합니다.</p>
+      <p className="text-sm text-gray-600">카드를 끌어서 다른 날짜에 놓으면 일정이 이동합니다. 예약 시각도 같이 이동합니다.</p>
 
       <Card>
-        <div className="grid grid-cols-7 gap-2 text-center text-sm font-extrabold text-gray-500 mb-2">
+        {/* 달력은 7칸이 요일을 뜻하므로 접지 않는다. 좁은 화면에서는 이 부분만 옆으로 넘긴다. */}
+        <div className="scroll-x-sm">
+        <div className="min-w-[38rem]">
+        <div className="grid grid-cols-7 gap-2 text-center text-sm font-extrabold text-gray-700 mb-2">
           {["월", "화", "수", "목", "금", "토", "일"].map((d) => <div key={d}>{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-2">
@@ -59,7 +62,7 @@ export default function CalendarPage() {
               onDragOver={(e) => date && e.preventDefault()}
               onDrop={() => date && drop(date)}
               className={`min-h-28 rounded-xl border p-2 ${date ? "border-gray-200 bg-white" : "border-transparent"} ${dragId && date ? "border-dashed border-[#E86A3A]" : ""}`}>
-              {date && <div className="text-xs font-bold text-gray-400 mb-1">{parseInt(date.slice(8))}</div>}
+              {date && <div className="text-xs font-bold text-gray-600 mb-1">{parseInt(date.slice(8))}</div>}
               {date && (data?.reels ?? []).filter((r) => r.planned_date === date).map((r) => {
                 const sch = (data?.schedules ?? []).find((s) => s.reel_id === r.id);
                 return (
@@ -70,14 +73,16 @@ export default function CalendarPage() {
                         <span>{r.content_mode === "ORAKI_DETECTIVE" ? "🥟" : "🍚"}</span>
                         <StatusBadge status={r.status} />
                       </div>
-                      <div className="text-[11px] font-bold truncate mt-0.5">{r.title || "제목 없음"}</div>
-                      {sch && <div className="text-[10px] text-gray-400">{sch.publish_at.slice(11, 16)} 발행</div>}
+                      <div className="text-xs font-bold truncate mt-0.5">{r.title || "제목 없음"}</div>
+                      {sch && <div className="text-xs text-gray-600">{sch.publish_at.slice(11, 16)} 발행</div>}
                     </Link>
                   </div>
                 );
               })}
             </div>
           ))}
+        </div>
+        </div>
         </div>
       </Card>
     </div>

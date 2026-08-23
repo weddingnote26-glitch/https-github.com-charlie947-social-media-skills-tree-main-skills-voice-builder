@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const [voiceRefresh, setVoiceRefresh] = useState(0);
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
-  if (!data || !s) return <div className="text-gray-400 py-20 text-center">불러오는 중…</div>;
+  if (!data || !s) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
 
   const save = async (patch: Partial<AppSettings> & Partial<Record<SecretName, string>> & { igAccessToken?: string; igUserId?: string }) => {
     setErr(null); setMsg(null);
@@ -100,16 +100,16 @@ export default function SettingsPage() {
           </div>
         )}
         <div className="flex gap-2">
-          <input type="password" className="input py-2 text-sm flex-1"
+          <input type="password" className="input flex-1"
             placeholder={st?.set ? "바꾸려면 새 키를 붙여넣으세요" : "여기에 키를 붙여넣으세요"}
             value={keyInput[name] ?? ""}
             onChange={(e) => setKeyInput({ ...keyInput, [name]: e.target.value })} />
-          <button className="btn-primary px-4 py-2 text-sm" disabled={!(keyInput[name] ?? "").trim()}
+          <button className="btn-primary" disabled={!(keyInput[name] ?? "").trim()}
             onClick={() => { save({ [name]: keyInput[name] } as never); setKeyInput({ ...keyInput, [name]: "" }); }}>
             저장
           </button>
           {st?.set && st.source === "설정" && (
-            <button className="btn-ghost text-xs" title="설정에 저장된 키를 지웁니다(.env 값으로 되돌아감)"
+            <button className="btn-ghost" title="설정에 저장된 키를 지웁니다(.env 값으로 되돌아감)"
               onClick={() => save({ [name]: "" } as never)}>지우기</button>
           )}
         </div>
@@ -118,14 +118,14 @@ export default function SettingsPage() {
             ⚠ {warn}
           </p>
         )}
-        {help && <p className="text-xs text-gray-400 mt-1">{help}</p>}
+        {help && <p className="text-xs text-gray-600 mt-1">{help}</p>}
       </div>
     );
   };
 
   const TestBtn = ({ service }: { service: string }) => (
     <div className="flex items-center gap-3">
-      <button className="btn-secondary px-4 py-2 text-sm" onClick={() => test(service)}>🔌 연결 테스트</button>
+      <button className="btn-secondary" onClick={() => test(service)}>🔌 연결 테스트</button>
       {testResult[service] && <span className="text-sm font-semibold">{testResult[service]}</span>}
     </div>
   );
@@ -133,25 +133,25 @@ export default function SettingsPage() {
   const DAY_KO: Record<string, string> = { mon: "월", tue: "화", wed: "수", thu: "목", fri: "금", sat: "토", sun: "일" };
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="page space-y-6">
       <h1 className="text-2xl font-extrabold">⚙️ 설정</h1>
       {msg && <div className="card p-3 px-4 bg-emerald-50 border-emerald-200 text-emerald-800 text-sm font-bold">{msg}</div>}
       <ErrorBox msg={err} />
 
       <Card title="⚡ 실행 모드">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <button onClick={() => save({ appMode: "live" })}
             className={`rounded-xl border-2 p-4 text-left ${data.mode === "live" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
             <div className="font-extrabold">🚀 실제 모드</div>
-            <div className="text-sm text-gray-500">진짜 AI로 대본·이미지·음성을 만듭니다. 요금이 발생합니다.</div>
+            <div className="text-sm text-gray-600">진짜 AI로 대본·이미지·음성을 만듭니다. 요금이 발생합니다.</div>
           </button>
           <button onClick={() => save({ appMode: "sample" })}
             className={`rounded-xl border-2 p-4 text-left ${data.mode === "sample" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
             <div className="font-extrabold">🧪 연습 모드</div>
-            <div className="text-sm text-gray-500">외부 API를 쓰지 않고 샘플로 전체 흐름만 확인합니다. 무료.</div>
+            <div className="text-sm text-gray-600">외부 API를 쓰지 않고 샘플로 전체 흐름만 확인합니다. 무료.</div>
           </button>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-600">
           현재: <b>{data.mode === "live" ? "실제 모드" : "연습 모드"}</b> · 바꾸면 바로 적용되며 프로그램을 다시 켜지 않아도 됩니다.
         </p>
       </Card>
@@ -170,9 +170,9 @@ export default function SettingsPage() {
           <VoicePicker value={s.tts.voiceId} refreshToken={voiceRefresh}
             onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
         </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">Model</label>
-            <input className="input py-2 text-sm" value={s.tts.model} onChange={(e) => setS({ ...s, tts: { ...s.tts, model: e.target.value } })} /></div>
+            <input className="input" value={s.tts.model} onChange={(e) => setS({ ...s, tts: { ...s.tts, model: e.target.value } })} /></div>
           <div><label className="label text-sm">Speed ({s.tts.speed})</label>
             <input type="range" min="0.7" max="1.2" step="0.01" className="w-full accent-[#E86A3A]" value={s.tts.speed} onChange={(e) => setS({ ...s, tts: { ...s.tts, speed: parseFloat(e.target.value) } })} /></div>
           <div><label className="label text-sm">Stability ({s.tts.stability})</label>
@@ -180,13 +180,13 @@ export default function SettingsPage() {
           <div><label className="label text-sm">Similarity ({s.tts.similarity})</label>
             <input type="range" min="0" max="1" step="0.05" className="w-full accent-[#E86A3A]" value={s.tts.similarity} onChange={(e) => setS({ ...s, tts: { ...s.tts, similarity: parseFloat(e.target.value) } })} /></div>
         </div>
-        <div className="flex gap-3"><button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ tts: s.tts })}>저장</button><TestBtn service="tts" /></div>
+        <div className="flex gap-3"><button className="btn-primary" onClick={() => save({ tts: s.tts })}>저장</button><TestBtn service="tts" /></div>
       </Card>
 
       <Card title="🖼 이미지 생성">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">공급자</label>
-            <select className="input py-2 text-sm" value={s.imageProvider}
+            <select className="input" value={s.imageProvider}
               onChange={(e) => {
                 // 고르는 즉시 저장한다. [저장]을 안 눌러 화면과 저장값이 어긋나면
                 // 엉뚱한 서비스로 연결 테스트가 나가 "키가 틀렸다"는 오해를 부른다.
@@ -199,13 +199,13 @@ export default function SettingsPage() {
               <option value="openai">OpenAI 이미지</option>
             </select></div>
           <div><label className="label text-sm">모델 (비우면 기본값)</label>
-            <input className="input py-2 text-sm" disabled={s.imageProvider === "sample"}
+            <input className="input" disabled={s.imageProvider === "sample"}
               placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)" : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)" : "Sample 모드는 모델이 없습니다"}
               value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} />
-            <p className="text-xs text-gray-400 mt-1">잘 모르면 비워 두세요. 공급자를 바꾸면 예전 모델 이름은 자동으로 지워집니다.</p></div>
+            <p className="text-xs text-gray-600 mt-1">잘 모르면 비워 두세요. 공급자를 바꾸면 예전 모델 이름은 자동으로 지워집니다.</p></div>
         </div>
         {s.imageProvider === "openai" && (
-          <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3">
+          <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3">
             기본 모델 <b>gpt-image-1</b>은 계정에 따라 OpenAI의 <b>조직 인증(Verify Organization)</b>을 요구합니다.
             인증이 안 된 계정이면 프로그램이 자동으로 <b>dall-e-3</b>로 바꿔 계속 진행합니다.
             다만 dall-e-3는 오락이 기준 이미지를 입력으로 받지 못해 <b>캐릭터 얼굴이 조금씩 달라질 수 있습니다</b> —
@@ -216,25 +216,25 @@ export default function SettingsPage() {
           help={s.imageProvider === "openai"
             ? "platform.openai.com → API keys 에서 만든 sk- 로 시작하는 값. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."
             : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />
-        <div className="flex gap-3"><button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
+        <div className="flex gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 
       <Card title="📸 Instagram — Meta 공식 API">
         <ol className="text-sm text-gray-600 space-y-1 mb-4 list-decimal pl-5">
           <li>Instagram을 <b>Professional(비즈니스/크리에이터) 계정</b>으로 전환</li>
-          <li>Facebook 페이지와 연결 후 <a className="text-[#E86A3A] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
+          <li>Facebook 페이지와 연결 후 <a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
           <li>권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code> 포함 Access Token 발급</li>
           <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다)</li>
           <li>.env의 <code className="bg-gray-100 px-1 rounded">PUBLIC_MEDIA_BASE_URL</code>에 영상 공개 주소 설정 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">Access Token</label>
-            <input type="password" className="input py-2 text-sm" placeholder="붙여넣기 (저장 시 암호화)" value={igToken} onChange={(e) => setIgToken(e.target.value)} /></div>
+            <input type="password" className="input" placeholder="붙여넣기 (저장 시 암호화)" value={igToken} onChange={(e) => setIgToken(e.target.value)} /></div>
           <div><label className="label text-sm">Instagram User ID</label>
-            <input className="input py-2 text-sm" placeholder="1784..." value={igUser} onChange={(e) => setIgUser(e.target.value)} /></div>
+            <input className="input" placeholder="1784..." value={igUser} onChange={(e) => setIgUser(e.target.value)} /></div>
         </div>
         <div className="flex gap-3">
-          <button className="btn-primary px-4 py-2 text-sm" disabled={!igToken && !igUser}
+          <button className="btn-primary" disabled={!igToken && !igUser}
             onClick={() => { save({ ...(igToken ? { igAccessToken: igToken } : {}), ...(igUser ? { igUserId: igUser } : {}) } as never); setIgToken(""); setIgUser(""); }}>
             암호화 저장
           </button>
@@ -243,9 +243,9 @@ export default function SettingsPage() {
       </Card>
 
       <Card title="🎬 영상 · 자막">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">기본 릴스 길이</label>
-            <select className="input py-2 text-sm" value={s.reelDurationSec} onChange={(e) => setS({ ...s, reelDurationSec: parseInt(e.target.value) })}>
+            <select className="input" value={s.reelDurationSec} onChange={(e) => setS({ ...s, reelDurationSec: parseInt(e.target.value) })}>
               {s.durationChoices.map((d) => <option key={d} value={d}>{d}초{d === 25 ? " (맛집 기본 22~27초)" : ""}</option>)}
             </select></div>
           <div><label className="label text-sm">자막 크기 ({s.subtitle.fontSize}px)</label>
@@ -253,59 +253,59 @@ export default function SettingsPage() {
           <div><label className="label text-sm">자막 위치 — 아래에서 {s.subtitle.marginBottomPct}% (Instagram UI 회피)</label>
             <input type="range" min="12" max="35" className="w-full accent-[#E86A3A]" value={s.subtitle.marginBottomPct} onChange={(e) => setS({ ...s, subtitle: { ...s.subtitle, marginBottomPct: parseInt(e.target.value) } })} /></div>
           <div><label className="label text-sm">강조 색</label>
-            <input type="color" className="h-10 w-20 rounded cursor-pointer" value={s.subtitle.highlightColor} onChange={(e) => setS({ ...s, subtitle: { ...s.subtitle, highlightColor: e.target.value } })} /></div>
+            <input type="color" className="h-12 w-24 rounded-xl border-2 border-gray-300 cursor-pointer" value={s.subtitle.highlightColor} onChange={(e) => setS({ ...s, subtitle: { ...s.subtitle, highlightColor: e.target.value } })} /></div>
         </div>
         <div className="flex gap-3">
-          <button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ reelDurationSec: s.reelDurationSec, subtitle: s.subtitle })}>저장</button>
+          <button className="btn-primary" onClick={() => save({ reelDurationSec: s.reelDurationSec, subtitle: s.subtitle })}>저장</button>
           <TestBtn service="ffmpeg" />
         </div>
       </Card>
 
       <Card title="🎵 BGM">
-        <p className="text-sm text-gray-500 mb-3">직접 등록한 음원 또는 상업적 사용이 허용된 음원만 사용하세요. 파일을 <b>assets/bgm/</b> 폴더에 넣고 파일명을 입력하면 나레이션에 맞춰 자동으로 소리가 줄어듭니다(더킹).</p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <p className="text-sm text-gray-600 mb-3">직접 등록한 음원 또는 상업적 사용이 허용된 음원만 사용하세요. 파일을 <b>assets/bgm/</b> 폴더에 넣고 파일명을 입력하면 나레이션에 맞춰 자동으로 소리가 줄어듭니다(더킹).</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div><label className="label text-sm">BGM 파일명 (비우면 BGM 없음)</label>
-            <input className="input py-2 text-sm" placeholder="my-bgm.mp3" value={s.bgm.file} onChange={(e) => setS({ ...s, bgm: { ...s.bgm, file: e.target.value } })} /></div>
+            <input className="input" placeholder="my-bgm.mp3" value={s.bgm.file} onChange={(e) => setS({ ...s, bgm: { ...s.bgm, file: e.target.value } })} /></div>
           <div><label className="label text-sm">BGM 볼륨 ({s.bgm.volumeDb}dB)</label>
             <input type="range" min="-35" max="-10" className="w-full accent-[#E86A3A]" value={s.bgm.volumeDb} onChange={(e) => setS({ ...s, bgm: { ...s.bgm, volumeDb: parseInt(e.target.value) } })} /></div>
         </div>
-        <button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ bgm: s.bgm })}>저장</button>
+        <button className="btn-primary" onClick={() => save({ bgm: s.bgm })}>저장</button>
       </Card>
 
       <Card title="📆 발행 스케줄 (§주 6회)">
         <div className="flex gap-2 mb-3">
           {Object.entries(s.publishDays).map(([k, v]) => (
             <button key={k} onClick={() => setS({ ...s, publishDays: { ...s.publishDays, [k]: !v } })}
-              className={`w-12 h-12 rounded-xl font-extrabold border-2 ${v ? "border-[#E86A3A] bg-[#FDEDE5] text-[#E86A3A]" : "border-gray-200 text-gray-400"}`}>
+              className={`w-12 h-12 rounded-xl font-extrabold border-2 ${v ? "border-[#E86A3A] bg-[#FDEDE5] text-[#B84A1B]" : "border-gray-200 text-gray-600"}`}>
               {DAY_KO[k]}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-3 mb-3">
           <label className="label text-sm m-0">발행 시간</label>
-          <input type="time" className="input w-36 py-2 text-sm" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
+          <input type="time" className="input w-36" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
           <label className="label text-sm m-0 ml-4">주간 오락이 비율</label>
-          <select className="input w-40 py-2 text-sm" value={s.orakiPerWeek} onChange={(e) => setS({ ...s, orakiPerWeek: parseInt(e.target.value) })}>
+          <select className="input w-40" value={s.orakiPerWeek} onChange={(e) => setS({ ...s, orakiPerWeek: parseInt(e.target.value) })}>
             {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>주 {n}개 오락이</option>)}
           </select>
         </div>
-        <button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ publishDays: s.publishDays, publishTime: s.publishTime, orakiPerWeek: s.orakiPerWeek })}>저장</button>
+        <button className="btn-primary" onClick={() => save({ publishDays: s.publishDays, publishTime: s.publishTime, orakiPerWeek: s.orakiPerWeek })}>저장</button>
       </Card>
 
       <Card title="✅ 승인 모드 (§SAFE/AUTO)">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <button onClick={() => setS({ ...s, approvalMode: "SAFE" })}
             className={`rounded-xl border-2 p-4 text-left ${s.approvalMode === "SAFE" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200"}`}>
             <div className="font-extrabold">SAFE MODE (기본)</div>
-            <div className="text-sm text-gray-500">AI 제작 → 사람 확인 → 예약/발행</div>
+            <div className="text-sm text-gray-600">AI 제작 → 사람 확인 → 예약/발행</div>
           </button>
           <button onClick={() => setS({ ...s, approvalMode: "AUTO" })}
             className={`rounded-xl border-2 p-4 text-left ${s.approvalMode === "AUTO" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200"}`}>
             <div className="font-extrabold">AUTO MODE</div>
-            <div className="text-sm text-gray-500">AI 제작 → 팩트체크·품질검사 통과 시 자동 예약. 팩트체크 실패 콘텐츠는 절대 발행하지 않습니다.</div>
+            <div className="text-sm text-gray-600">AI 제작 → 팩트체크·품질검사 통과 시 자동 예약. 팩트체크 실패 콘텐츠는 절대 발행하지 않습니다.</div>
           </button>
         </div>
-        <button className="btn-primary px-4 py-2 text-sm" onClick={() => save({ approvalMode: s.approvalMode })}>저장</button>
+        <button className="btn-primary" onClick={() => save({ approvalMode: s.approvalMode })}>저장</button>
       </Card>
 
       <Card title="📁 저장 폴더">

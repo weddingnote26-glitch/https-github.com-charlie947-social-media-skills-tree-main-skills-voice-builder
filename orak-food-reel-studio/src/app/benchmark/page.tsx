@@ -23,10 +23,10 @@ export default function BenchmarkPage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="page space-y-6">
       <header>
         <h1 className="text-2xl font-extrabold">🔍 릴스 벤치마킹</h1>
-        <p className="text-gray-500 mt-1">콘텐츠의 구조와 연출 방식만 분석합니다. 원본 영상·문구는 복제하지 않습니다.</p>
+        <p className="text-gray-600 mt-1">콘텐츠의 구조와 연출 방식만 분석합니다. 원본 영상·문구는 복제하지 않습니다.</p>
       </header>
       <Card>
         <div className="flex gap-3">
@@ -38,16 +38,16 @@ export default function BenchmarkPage() {
       {(data?.benchmarks ?? []).map((b) => {
         const a = JSON.parse(b.analysis_json) as Record<string, string>;
         return (
-          <Card key={b.id} title={b.source_url.slice(0, 60)} right={<span className="text-xs text-gray-400">{b.created_at.slice(0, 10)}</span>}>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+          <Card key={b.id} title={b.source_url.slice(0, 60)} right={<span className="text-xs text-gray-600">{b.created_at.slice(0, 10)}</span>}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               {Object.entries(a).map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-gray-50 p-3">
-                  <div className="text-xs font-extrabold text-gray-400 mb-1">{FIELD_KO[k] ?? k}</div>
+                  <div className="text-xs font-extrabold text-gray-600 mb-1">{FIELD_KO[k] ?? k}</div>
                   <div className="font-semibold">{v}</div>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-3">💾 오락푸드용 재구성 템플릿으로 저장되어 다음 대본 생성에 참고됩니다.</p>
+            <p className="text-xs text-gray-600 mt-3">💾 오락푸드용 재구성 템플릿으로 저장되어 다음 대본 생성에 참고됩니다.</p>
           </Card>
         );
       })}

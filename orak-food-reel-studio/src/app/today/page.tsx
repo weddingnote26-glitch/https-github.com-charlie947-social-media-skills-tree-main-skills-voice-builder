@@ -73,10 +73,10 @@ export default function Today() {
   const done = job?.status === "완료";
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="page space-y-6">
       <header>
         <h1 className="text-2xl font-extrabold">✨ 오늘의 릴스 만들기</h1>
-        <p className="text-gray-500 mt-1">맛집 이름이나 주소 하나만 넣으면, 나머지는 오락이가 조사합니다.</p>
+        <p className="text-gray-600 mt-1">맛집 이름이나 주소 하나만 넣으면, 나머지는 오락이가 조사합니다.</p>
       </header>
 
       {!jobId && (
@@ -87,10 +87,10 @@ export default function Today() {
               <input className="input" placeholder="예: 신림동 ○○식당" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
-              <label className="label">맛집 URL <span className="font-normal text-gray-400">(선택 — Instagram / 지도 / 블로그)</span></label>
+              <label className="label">맛집 URL <span className="font-normal text-gray-600">(선택 — Instagram / 지도 / 블로그)</span></label>
               <input className="input" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">지역</label>
                 <select className="input" value={area} onChange={(e) => setArea(e.target.value)}>
@@ -106,24 +106,24 @@ export default function Today() {
             </div>
             <div>
               <label className="label">영상 스타일</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button type="button" onClick={() => setMode("ORAKI_DETECTIVE")}
                   className={`rounded-xl border-2 p-4 text-left transition ${mode === "ORAKI_DETECTIVE" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
                   <div className="text-lg font-extrabold">🥟 만두탐정 오락이</div>
-                  <div className="text-sm text-gray-500 mt-0.5">맛집 사건 파일 — 오락이가 조사하고 판정합니다</div>
+                  <div className="text-sm text-gray-600 mt-0.5">맛집 사건 파일 — 오락이가 조사하고 판정합니다</div>
                 </button>
                 <button type="button" onClick={() => setMode("NORMAL_FOOD")}
                   className={`rounded-xl border-2 p-4 text-left transition ${mode === "NORMAL_FOOD" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
                   <div className="text-lg font-extrabold">🍚 일반 맛집 영상</div>
-                  <div className="text-sm text-gray-500 mt-0.5">음식 중심의 정보형 릴스</div>
+                  <div className="text-sm text-gray-600 mt-0.5">음식 중심의 정보형 릴스</div>
                 </button>
               </div>
             </div>
             <ErrorBox msg={err} />
-            <button className="btn-primary w-full text-xl py-4" onClick={start} disabled={!name.trim() && !url.trim()}>
+            <button className="btn-primary w-full" onClick={start} disabled={!name.trim() && !url.trim()}>
               🚀 AI 자동제작 시작
             </button>
-            <p className="text-xs text-gray-400 text-center">대본 → 팩트체크 → 이미지 → 음성 → 자막 → 영상 → 썸네일까지 자동으로 만듭니다. 발행 전 항상 미리보기로 확인할 수 있어요.</p>
+            <p className="text-xs text-gray-600 text-center">대본 → 팩트체크 → 이미지 → 음성 → 자막 → 영상 → 썸네일까지 자동으로 만듭니다. 발행 전 항상 미리보기로 확인할 수 있어요.</p>
           </div>
         </Card>
       )}

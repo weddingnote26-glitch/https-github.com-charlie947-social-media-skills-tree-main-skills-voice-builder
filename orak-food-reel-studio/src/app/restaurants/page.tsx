@@ -29,7 +29,7 @@ export default function RestaurantsPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="page space-y-6">
       <h1 className="text-2xl font-extrabold">🍽 맛집 DB</h1>
       <div className="flex gap-2">
         <button className={tab === "db" ? "btn-primary px-4 py-2 text-sm" : "btn-secondary px-4 py-2 text-sm"} onClick={() => setTab("db")}>조사된 맛집 ({data?.restaurants.length ?? 0})</button>
@@ -40,7 +40,7 @@ export default function RestaurantsPage() {
       {tab === "db" && (
         <Card>
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-gray-400 font-bold border-b"><th className="py-2">매장명</th><th>지역</th><th>대표 메뉴</th><th>정보 상태</th></tr></thead>
+            <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2">매장명</th><th>지역</th><th>대표 메뉴</th><th>정보 상태</th></tr></thead>
             <tbody>
               {(data?.restaurants ?? []).map((r) => {
                 const menus = JSON.parse(r.menus_json || "[]") as Array<{ name: string; price: string; verified: boolean }>;
@@ -55,7 +55,7 @@ export default function RestaurantsPage() {
                   </tr>
                 );
               })}
-              {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={4} className="text-center text-gray-400 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작해보세요.</td></tr>}
+              {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={4} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작해보세요.</td></tr>}
             </tbody>
           </table>
           <button className="btn-ghost mt-3" onClick={reload}>새로고침</button>
@@ -65,7 +65,7 @@ export default function RestaurantsPage() {
       {tab === "tips" && (
         <>
           <Card title="새 제보 등록 — 댓글 제보를 여기 기록해두면 다음 사건이 됩니다">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input className="input" placeholder="맛집 이름 *" value={tip.restaurant_name} onChange={(e) => setTip({ ...tip, restaurant_name: e.target.value })} />
               <input className="input" placeholder="위치 (예: 신림역 3번 출구)" value={tip.location} onChange={(e) => setTip({ ...tip, location: e.target.value })} />
               <input className="input" placeholder="제보 이유" value={tip.reason} onChange={(e) => setTip({ ...tip, reason: e.target.value })} />
@@ -78,17 +78,17 @@ export default function RestaurantsPage() {
               {(tips?.tips ?? []).map((t) => (
                 <div key={t.id} className="flex items-center gap-3 rounded-xl border border-gray-200 p-3">
                   <div className="flex-1">
-                    <div className="font-bold">{t.restaurant_name} <span className="text-gray-400 font-normal text-sm">{t.location}</span></div>
-                    <div className="text-sm text-gray-500">{t.reason} {t.submitted_by && `— @${t.submitted_by}`}</div>
+                    <div className="font-bold">{t.restaurant_name} <span className="text-gray-600 font-normal text-sm">{t.location}</span></div>
+                    <div className="text-sm text-gray-600">{t.reason} {t.submitted_by && `— @${t.submitted_by}`}</div>
                   </div>
-                  {t.case_number && <span className="badge bg-[#FDEDE5] text-[#E86A3A]">#{String(t.case_number).padStart(3, "0")}</span>}
-                  <select className="input w-32 py-1.5 text-sm" value={t.status} onChange={(e) => setTipStatus(t.id, e.target.value)}>
+                  {t.case_number && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">#{String(t.case_number).padStart(3, "0")}</span>}
+                  <select className="input w-32" value={t.status} onChange={(e) => setTipStatus(t.id, e.target.value)}>
                     {["제보", "조사예정", "제작중", "완료"].map((s) => <option key={s}>{s}</option>)}
                   </select>
                   <StatusBadge status={t.status === "제보" ? "기획" : t.status === "완료" ? "완료" : "진행중"} />
                 </div>
               ))}
-              {(tips?.tips?.length ?? 0) === 0 && <div className="text-gray-400 text-sm py-6 text-center">아직 제보가 없습니다.</div>}
+              {(tips?.tips?.length ?? 0) === 0 && <div className="text-gray-600 text-sm py-6 text-center">아직 제보가 없습니다.</div>}
             </div>
           </Card>
         </>

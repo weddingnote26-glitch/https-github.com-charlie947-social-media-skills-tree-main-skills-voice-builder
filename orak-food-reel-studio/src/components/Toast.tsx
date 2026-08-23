@@ -122,7 +122,7 @@ function ToastViewport({ items, onDismiss }: { items: Toast[]; onDismiss: (id: n
             <span className="text-lg leading-6" aria-hidden="true">{s.icon}</span>
             <div className="flex-1 min-w-0">
               <span className="sr-only">{s.label}: </span>
-              <p className="font-bold text-[15px] text-gray-900 break-words">{t.title}</p>
+              <p className="font-bold text-sm text-gray-900 break-words">{t.title}</p>
               {t.details && t.details.length > 0 && (
                 <ul className="mt-1 space-y-0.5">
                   {t.details.map((d, i) => (
@@ -136,7 +136,7 @@ function ToastViewport({ items, onDismiss }: { items: Toast[]; onDismiss: (id: n
               type="button"
               onClick={() => onDismiss(t.id)}
               aria-label="알림 닫기"
-              className="shrink-0 rounded-lg px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 font-bold cursor-pointer"
+              className="shrink-0 rounded-lg px-2 py-1 text-gray-600 hover:bg-gray-100 hover:text-gray-700 font-bold cursor-pointer"
             >
               ✕
             </button>

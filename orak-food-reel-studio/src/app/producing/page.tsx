@@ -121,7 +121,7 @@ export default function Producing() {
     );
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="page space-y-6">
       <h1 className="text-2xl font-extrabold">🎬 제작중</h1>
       <ErrorBox msg={err} />
 
@@ -132,15 +132,15 @@ export default function Producing() {
             <div className="flex-1"><ProgressBar pct={overall} label="전체 진행률" /></div>
             <span className="text-lg font-extrabold tabular-nums w-14 text-right">{overall}%</span>
           </div>
-          <p className="text-xs text-gray-400 mt-2">끝난 단계만 세어 계산합니다. 진행률을 알 수 없는 단계는 완료 전까지 반영하지 않습니다.</p>
+          <p className="text-xs text-gray-600 mt-2">끝난 단계만 세어 계산합니다. 진행률을 알 수 없는 단계는 완료 전까지 반영하지 않습니다.</p>
         </Card>
       )}
 
       {jobs.length === 0 && failedJobs.length === 0 && (
         <Card>
-          <div className="text-center text-gray-400 py-14">
+          <div className="text-center text-gray-600 py-14">
             지금 제작 중인 작업이 없습니다.<br />
-            <Link href="/today" className="text-[#E86A3A] font-bold">✨ 오늘의 릴스 만들기 →</Link>
+            <Link href="/today" className="text-[#B84A1B] font-bold">✨ 오늘의 릴스 만들기 →</Link>
           </div>
         </Card>
       )}
@@ -173,21 +173,21 @@ export default function Producing() {
           title={`❌ 실패한 작업 ${failedJobs.length}개`}
           right={
             <div className="flex gap-2">
-              <button className="btn-ghost text-xs" onClick={() =>
+              <button className="btn-ghost" onClick={() =>
                 setPicked(picked.size === failedJobs.length ? new Set() : new Set(failedJobs.map((j) => j.id)))
               }>
                 {picked.size === failedJobs.length ? "선택 해제" : "전체 선택"}
               </button>
-              <button className="btn-danger text-xs px-3 py-1.5" disabled={picked.size === 0} onClick={deletePicked}>
+              <button className="btn-danger" disabled={picked.size === 0} onClick={deletePicked}>
                 선택 {picked.size}개 삭제
               </button>
-              <button className="btn-danger text-xs px-3 py-1.5" onClick={deleteAllFailed}>
+              <button className="btn-danger" onClick={deleteAllFailed}>
                 전체 삭제
               </button>
             </div>
           }
         >
-          <p className="text-xs text-gray-400 mb-3">
+          <p className="text-xs text-gray-600 mb-3">
             작업 기록만 지웁니다. 이미 만들어진 릴스와 영상 파일은 <b>그대로 남습니다.</b>
           </p>
           <ul className="space-y-2">
@@ -207,17 +207,17 @@ export default function Producing() {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm">
                         작업 {shortId(jb.id)}
-                        {jb.reel_title && <span className="text-gray-500 font-normal"> — {jb.reel_title}</span>}
+                        {jb.reel_title && <span className="text-gray-600 font-normal"> — {jb.reel_title}</span>}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
+                      <div className="text-xs text-gray-600 mt-0.5">
                         {jb.updated_at}
                         {failedStep && <> · <b className="text-red-600">{failedStep.label}</b> 에서 멈춤</>}
                       </div>
                       {jb.error && <p className="text-xs text-red-700 mt-1 break-words line-clamp-3">{jb.error}</p>}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {jb.reel_id && <Link href={`/reel/${jb.reel_id}`} className="btn-ghost text-xs px-2.5">보기</Link>}
-                      <button className="btn-ghost text-xs px-2.5 text-red-600 hover:bg-red-50" onClick={() => deleteOne(jb)}>
+                      {jb.reel_id && <Link href={`/reel/${jb.reel_id}`} className="btn-ghost">보기</Link>}
+                      <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => deleteOne(jb)}>
                         삭제
                       </button>
                     </div>

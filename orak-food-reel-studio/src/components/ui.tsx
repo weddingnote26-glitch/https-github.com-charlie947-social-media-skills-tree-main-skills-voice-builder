@@ -2,15 +2,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { stepView, type ProgressStep } from "@/lib/pipeline/progress";
 
+/**
+ * 모든 박스가 쓰는 한 가지 모양.
+ * 제목 → (오른쪽 도구) → 내용 순서를 고정해, 화면마다 배치가 달라지지 않게 한다.
+ * 오른쪽 도구가 많은 화면에서도 좁은 폭에서 겹치지 않도록 줄바꿈을 허용한다.
+ */
 export function Card({ title, right, children, className = "" }: {
   title?: string; right?: React.ReactNode; children: React.ReactNode; className?: string;
 }) {
   return (
-    <section className={`card p-5 ${className}`}>
+    <section className={`card p-6 ${className}`}>
       {(title || right) && (
-        <div className="flex items-center justify-between mb-4">
-          {title && <h2 className="text-lg font-extrabold">{title}</h2>}
-          {right}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          {title && <h2 className="text-lg font-extrabold text-gray-900">{title}</h2>}
+          {right && <div className="flex flex-wrap items-center gap-2">{right}</div>}
         </div>
       )}
       {children}
@@ -19,20 +24,20 @@ export function Card({ title, right, children, className = "" }: {
 }
 
 export const STATUS_COLOR: Record<string, string> = {
-  기획: "bg-gray-100 text-gray-600",
+  기획: "bg-gray-200 text-gray-800",
   제작중: "bg-blue-100 text-blue-700",
   검수: "bg-amber-100 text-amber-800",
   승인: "bg-emerald-100 text-emerald-700",
   예약: "bg-violet-100 text-violet-700",
   발행완료: "bg-emerald-100 text-emerald-800",
   실패: "bg-red-100 text-red-700",
-  대기: "bg-gray-100 text-gray-600",
+  대기: "bg-gray-200 text-gray-800",
   진행중: "bg-blue-100 text-blue-700",
   완료: "bg-emerald-100 text-emerald-700",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge ${STATUS_COLOR[status] ?? "bg-gray-100 text-gray-600"}`}>{status}</span>;
+  return <span className={`badge ${STATUS_COLOR[status] ?? "bg-gray-200 text-gray-800"}`}>{status}</span>;
 }
 
 export function ProgressBar({ pct, tone = "bg-[#E86A3A]", indeterminate = false, label }: {
@@ -66,7 +71,7 @@ export function StepRow({ step }: { step: ProgressStep }) {
     <div>
       <div className="flex justify-between text-sm font-bold mb-1 gap-3">
         <span className="shrink-0">{v.icon} {step.label}</span>
-        <span className="text-gray-500 font-normal text-right break-words">{v.text}</span>
+        <span className="text-gray-600 font-normal text-right break-words">{v.text}</span>
       </div>
       <ProgressBar pct={v.barPct} tone={v.tone} indeterminate={v.animated} label={step.label} />
     </div>
@@ -137,5 +142,11 @@ export function mediaUrl(absPath: string | null | undefined): string | null {
 
 export function ErrorBox({ msg }: { msg: string | null }) {
   if (!msg) return null;
-  return <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm font-semibold">{msg}</div>;
+  // 색만으로 구분하지 않는다 — 아이콘과 "오류" 글자를 함께 둔다
+  return (
+    <div role="alert" className="rounded-xl bg-red-50 border-2 border-red-300 text-red-900 px-4 py-3 font-semibold flex gap-2 items-start">
+      <span aria-hidden="true">❌</span>
+      <span><span className="sr-only">오류: </span>{msg}</span>
+    </div>
+  );
 }

@@ -15,17 +15,17 @@ export default function PublishPage() {
       {(reels ?? []).map((r) => (
         <Link key={r.id} href={`/reel/${r.id}`} className="flex items-center justify-between rounded-xl border border-gray-200 p-3 hover:border-[#E86A3A]">
           <span className="font-bold truncate">{r.title || "제목 없음"}</span>
-          <span className="flex items-center gap-2 text-sm text-gray-500">{r.planned_date}<StatusBadge status={r.status} /></span>
+          <span className="flex items-center gap-2 text-sm text-gray-600">{r.planned_date}<StatusBadge status={r.status} /></span>
         </Link>
       ))}
-      {(reels?.length ?? 0) === 0 && <div className="text-gray-400 text-sm py-6 text-center">{empty}</div>}
+      {(reels?.length ?? 0) === 0 && <div className="text-gray-600 text-sm py-6 text-center">{empty}</div>}
     </div>
   );
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="page space-y-6">
       <h1 className="text-2xl font-extrabold">🚀 예약/발행</h1>
-      <p className="text-gray-500 text-sm -mt-3">발행은 Meta 공식 Instagram API로 진행됩니다. 30초마다 자동으로 대기열을 확인합니다.</p>
+      <p className="text-gray-600 text-sm -mt-3">발행은 Meta 공식 Instagram API로 진행됩니다. 30초마다 자동으로 대기열을 확인합니다.</p>
       <Card title="검수 대기 — 승인 후 예약하세요"><List reels={review?.reels} empty="검수 대기 콘텐츠가 없습니다." /></Card>
       <Card title="📅 예약됨"><List reels={scheduled?.reels} empty="예약된 콘텐츠가 없습니다." /></Card>
       <Card title="✅ 발행 완료"><List reels={published?.reels} empty="발행된 콘텐츠가 없습니다." /></Card>

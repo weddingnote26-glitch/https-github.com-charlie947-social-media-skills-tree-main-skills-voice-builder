@@ -35,11 +35,11 @@ export default function WeekPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="page space-y-6">
       <header className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">🗓 이번 주 릴스 6개</h1>
-          <p className="text-gray-500 mt-1">월~토 기획안을 먼저 확인하고, 전체 승인하면 순서대로 제작합니다.</p>
+          <p className="text-gray-600 mt-1">월~토 기획안을 먼저 확인하고, 전체 승인하면 순서대로 제작합니다.</p>
         </div>
         <button className="btn-secondary" onClick={gen} disabled={busy}>♻️ 기획안 새로 만들기</button>
       </header>
@@ -49,7 +49,7 @@ export default function WeekPage() {
         <Card>
           <div className="text-center py-14">
             <div className="text-5xl mb-4">🥟</div>
-            <p className="text-gray-500 mb-6">아직 이번 주 기획안이 없습니다.</p>
+            <p className="text-gray-600 mb-6">아직 이번 주 기획안이 없습니다.</p>
             <button className="btn-primary" onClick={gen} disabled={busy}>✨ 이번 주 릴스 6개 만들기</button>
           </div>
         </Card>
@@ -62,23 +62,23 @@ export default function WeekPage() {
               <div key={it.date} className="flex items-center gap-4 rounded-xl border border-gray-200 p-3">
                 <div className="w-14 text-center">
                   <div className="text-lg font-extrabold">{it.weekday}</div>
-                  <div className="text-xs text-gray-400">{it.date.slice(5)}</div>
+                  <div className="text-xs text-gray-600">{it.date.slice(5)}</div>
                 </div>
-                <div className="flex-1 grid grid-cols-3 gap-2">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   <div>
-                    <div className="text-xs text-gray-400 font-bold">지역</div>
+                    <div className="text-xs text-gray-600 font-bold">지역</div>
                     <div className="font-bold">{it.area}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 font-bold">유형</div>
+                    <div className="text-xs text-gray-600 font-bold">유형</div>
                     <div className="font-bold">{it.content_type}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 font-bold">스타일</div>
+                    <div className="text-xs text-gray-600 font-bold">스타일</div>
                     <div className="font-bold">{it.content_mode === "ORAKI_DETECTIVE" ? "🥟 오락이 탐정" : "🍚 일반"}</div>
                   </div>
                 </div>
-                <input className="input w-56 py-2 text-sm" placeholder="맛집명(비우면 유형으로 샘플 기획)"
+                <input className="input w-56" placeholder="맛집명(비우면 유형으로 샘플 기획)"
                   value={it.restaurant_hint}
                   onChange={(e) => {
                     const next = [...shown]; next[i] = { ...it, restaurant_hint: e.target.value }; setItems(next);
@@ -90,7 +90,7 @@ export default function WeekPage() {
             ))}
           </div>
           {plan && plan.status === "기획" && (
-            <button className="btn-primary w-full mt-5 py-4 text-lg" onClick={approve} disabled={busy}>
+            <button className="btn-primary w-full mt-5" onClick={approve} disabled={busy}>
               ✅ 전체 승인 — 순서대로 제작 시작
             </button>
           )}
