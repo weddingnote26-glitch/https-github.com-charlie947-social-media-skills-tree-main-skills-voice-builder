@@ -1,0 +1,42 @@
+{
+  "name": "orak-food-reel-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "오락푸드 AI 릴스 자동제작 스튜디오 — 맛집 입력부터 Instagram Reels 발행까지",
+  "scripts": {
+    "dev": "next dev -p ${APP_PORT:-3000}",
+    "build": "next build",
+    "start": "next start -p ${APP_PORT:-3000}",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "doctor": "node scripts/doctor.mjs",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

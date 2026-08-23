@@ -1,0 +1,34 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# 실행 중 생성되는 데이터 — 저장소에 올리지 않습니다
+/data/*.db
+/data/*.db-*
+/data/.secret
+/logs/*.log
+/output/*
+!/output/.gitkeep
+/assets/audio/*
+!/assets/audio/.gitkeep
+/assets/video/*
+!/assets/video/.gitkeep
+/assets/images/*
+!/assets/images/.gitkeep
+/assets/thumb/*
+!/assets/thumb/.gitkeep
+/assets/subtitles/*
+!/assets/subtitles/.gitkeep
+/assets/fonts/*.ttf
+/assets/fonts/*.otf
+
+# 비밀키
+.env
+.env.local
+.env.*.local
+.test-tmp/
+
+# 예시 환경파일은 저장소에 포함 (실제 .env는 계속 제외)
+!.env.example
