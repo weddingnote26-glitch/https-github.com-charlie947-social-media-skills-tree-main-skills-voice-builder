@@ -12,7 +12,7 @@ interface Dash {
 
 export default function Home() {
   const { data, loading } = useApi<Dash>("/api/dashboard", 5000);
-  const { data: health } = useApi<{ mode: string; ffmpeg: { found: boolean }; services: Record<string, boolean>; settings: { wizardDone: boolean } }>("/api/health");
+  const { data: health } = useApi<{ mode: string; builtAt: string | null; ffmpeg: { found: boolean }; services: Record<string, boolean>; settings: { wizardDone: boolean } }>("/api/health");
 
   return (
     <div className="space-y-6">
@@ -89,6 +89,12 @@ export default function Home() {
             );
           })}
         </Card>
+      )}
+
+      {health?.builtAt && (
+        <div className="text-xs text-gray-400 text-right -mb-2">
+          실행 중인 버전 · {new Date(health.builtAt).toLocaleString("ko-KR")} 빌드
+        </div>
       )}
 
       <Card title="최근 콘텐츠" right={<Link className="btn-ghost" href="/library">전체 보기 →</Link>}>
