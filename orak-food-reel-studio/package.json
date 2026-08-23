@@ -2,7 +2,7 @@
   "name": "orak-food-reel-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "오락푸드 AI 릴스 자동제작 스튜디오 — 맛집 입력부터 Instagram Reels 발행까지",
+  "description": "오락푸드 AI릴스 자동제작 스튜디오",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +15,10 @@
     "smoke": "tsx scripts/smoke.ts",
     "character": "node scripts/make-character.mjs",
     "fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
-    "ffmpeg": "node scripts/fix-ffmpeg.mjs"
+    "ffmpeg": "node scripts/fix-ffmpeg.mjs",
+    "desktop:prepare": "npm run build && node scripts/prepare-desktop.mjs",
+    "desktop:dev": "electron electron/main.js",
+    "desktop:build": "npm run desktop:prepare && electron-builder --win --x64"
   },
   "dependencies": {
     "next": "16.3.2",
@@ -33,6 +36,8 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
     "playwright-core": "^1.62.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.20.3",
@@ -41,5 +46,59 @@
   },
   "engines": {
     "node": ">=20.9"
+  },
+  "author": {
+    "name": "주식회사 리미트"
+  },
+  "main": "electron/main.js",
+  "build": {
+    "appId": "kr.co.limit.orakfood.reelsstudio",
+    "productName": "오락푸드 AI릴스 자동제작 스튜디오",
+    "copyright": "Copyright © 주식회사 리미트",
+    "directories": {
+      "output": "dist-installer",
+      "buildResources": "electron"
+    },
+    "files": [
+      "electron/**/*",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-app",
+        "to": "app"
+      },
+      {
+        "from": "dist-bin",
+        "to": "bin"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "오락푸드-AI릴스-자동제작-스튜디오-Setup-x64.${ext}",
+      "icon": "electron/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "오락푸드 AI릴스 자동제작 스튜디오",
+      "installerLanguages": [
+        "ko-KR"
+      ],
+      "language": "1042",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    }
   }
 }

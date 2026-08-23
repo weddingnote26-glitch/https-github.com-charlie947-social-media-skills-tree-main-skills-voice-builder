@@ -32,3 +32,8 @@ next-env.d.ts
 
 # 예시 환경파일은 저장소에 포함 (실제 .env는 계속 제외)
 !.env.example
+
+# 설치 파일 만들기 결과물 — 용량이 크고 PC마다 다시 만들면 된다
+/dist-app/
+/dist-bin/
+/dist-installer/

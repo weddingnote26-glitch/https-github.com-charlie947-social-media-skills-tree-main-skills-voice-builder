@@ -36,6 +36,9 @@ function existing(p: string | null | undefined): string | null {
 
 export function findFFmpeg(): string | null {
   if (ffmpegPath !== undefined) return ffmpegPath;
+  // 설치본에는 FFmpeg 가 함께 들어 있다 — 다운로드나 PATH 에 기대지 않는다
+  ffmpegPath = existing(process.env.ORAK_FFMPEG_PATH);
+  if (ffmpegPath) return ffmpegPath;
   ffmpegPath = which("ffmpeg");
   if (!ffmpegPath) {
     try { ffmpegPath = existing(require_("ffmpeg-static") as string); } catch { ffmpegPath = null; }
@@ -45,6 +48,8 @@ export function findFFmpeg(): string | null {
 
 export function findFFprobe(): string | null {
   if (ffprobePath !== undefined) return ffprobePath;
+  ffprobePath = existing(process.env.ORAK_FFPROBE_PATH);
+  if (ffprobePath) return ffprobePath;
   ffprobePath = which("ffprobe");
   if (!ffprobePath) {
     try { ffprobePath = existing((require_("ffprobe-static") as { path: string }).path); } catch { ffprobePath = null; }
