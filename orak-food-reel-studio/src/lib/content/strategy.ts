@@ -125,7 +125,8 @@ export function similarityAgainstRecent(candidate: { title: string; hook: string
 /** 2-gram 자카드 유사도 (0~1) */
 export function bigramSimilarity(a: string, b: string): number {
   const grams = (s: string) => {
-    const t = s.replace(/\s+/g, "");
+    // 예전 대본 기록에 값이 비어 있는 줄이 섞여 있어도 제작이 멈추면 안 된다
+    const t = String(s ?? "").replace(/\s+/g, "");
     const set = new Set<string>();
     for (let i = 0; i < t.length - 1; i++) set.add(t.slice(i, i + 2));
     return set;

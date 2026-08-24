@@ -18,6 +18,7 @@ import { saveScenes, updateReel, getReel } from "../reels";
 import { logError, logInfo } from "../log";
 import { isSampleMode } from "../secrets";
 import { redactError } from "../redact";
+import { bugTag } from "../where";
 
 /** §44 제작 진행 단계 */
 export const STEP_DEFS = [
@@ -252,8 +253,17 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     }
   } catch (e) {
     // 외부 API 오류 문구는 우리가 만든 게 아니다 — 화면·DB에 남기기 전에 비밀값을 지운다
-    const msg = redactError(e);
+    // 프로그램이 터진 경우에는 어느 파일 몇 번째 줄인지 짧게 붙인다.
+    // 화면만 보고도 어디를 봐야 하는지 알 수 있어야 한다.
+    const msg = redactError(e) + bugTag(e);
     const failing = steps.find((s) => s.status === "진행중");
+    // 코드가 터진 경우(TypeError 등)는 화면 문구만으로는 어디가 문제인지 알 수 없다.
+    // 어느 파일 몇 번째 줄인지 로그 파일에 남겨 둔다 — 화면에는 남기지 않는다.
+    logError("produce", `${failing?.label ?? "제작"} 단계 실패 — ${msg}`, {
+      step: failing?.key,
+      kind: e instanceof Error ? e.name : typeof e,
+      stack: e instanceof Error && e.stack ? e.stack.split("\n").slice(0, 8).join(" | ") : undefined,
+    });
     if (failing) Object.assign(failing, { status: "실패", message: msg.slice(0, 300) });
     saveJob(jobId, steps, "실패", reelId, msg.slice(0, 500));
     if (db().prepare("SELECT 1 AS x FROM reels WHERE id=?").get(reelId)) {
