@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi } from "@/components/ui";
+import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
 import type { Scene, ReelScript, FactCheckItem, Verdict } from "@/lib/schema";
 
 interface ReelDetail {
@@ -9,7 +9,7 @@ interface ReelDetail {
     id: string; title: string; status: string; content_mode: string; content_type: string;
     case_number: number | null; caption: string; hashtags_json: string; quality_json: string;
     factcheck_json: string; video_path: string | null; thumb_path: string | null;
-    duration_sec: number | null; planned_date: string | null;
+    duration_sec: number | null; planned_date: string | null; output_dir: string | null;
     script: ReelScript | null; scenes: Scene[]; verdict_json: string;
   };
   schedules: Array<{ id: string; publish_at: string; status: string }>;
@@ -35,6 +35,22 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
       setHashtags((JSON.parse(data.reel.hashtags_json || "[]") as string[]).join(" "));
     }
   }, [data, scenes]);
+
+  /** 클립보드에 담고 결과를 알린다 (복사는 한 번만 시도한다) */
+  const copyAnd = async (what: string, text: string | null) => {
+    setErr(null);
+    if (!text) { setErr(`${what} 칸이 비어 있습니다.`); return; }
+    if (await copyText(text)) setMsg(`${what} 복사 완료 — Instagram 에 붙여넣으세요.`);
+    else setErr(`${what} 복사에 실패했습니다 — 아래 칸에서 직접 선택해 복사해 주세요.`);
+  };
+
+  /** 완성 영상 폴더 열기 (설치형 앱에서만) */
+  const openFolder = async () => {
+    setErr(null);
+    const folder = (data?.reel.output_dir ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    const r = await openOutputFolder(folder);
+    if (!r.ok) setErr(r.reason ?? "폴더를 열지 못했습니다.");
+  };
 
   if (error) return <ErrorBox msg={error} />;
   if (!data || !scenes) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
@@ -158,6 +174,30 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 </button>
               </div>
             ))}
+          </Card>
+
+          {/* Instagram 자동 발행은 영상 공개 주소가 있어야 한다.
+              그 전까지는 휴대폰으로 옮겨 직접 올리는 편이 빠르다 — 그 길을 막지 않는다. */}
+          <Card title="📱 휴대폰으로 직접 올리기">
+            <ol className="text-sm text-gray-700 space-y-1 mb-3 list-decimal pl-5">
+              <li>아래에서 영상 폴더를 열고 <b>reel.mp4</b> 를 휴대폰으로 옮깁니다</li>
+              <li>Instagram 앱에서 릴스로 올립니다</li>
+              <li>본문과 해시태그는 아래 단추로 복사해 붙여넣습니다</li>
+            </ol>
+            <div className="flex flex-wrap items-center gap-3">
+              {canOpenFolder() && (
+                <button className="btn-primary" onClick={openFolder}>📁 영상 폴더 열기</button>
+              )}
+              <button className="btn-secondary" disabled={!caption}
+                onClick={() => copyAnd("본문", caption)}>📋 본문 복사</button>
+              <button className="btn-secondary" disabled={!hashtags}
+                onClick={() => copyAnd("해시태그", hashtags)}>📋 해시태그 복사</button>
+            </div>
+            {reel.output_dir && (
+              <p className="text-xs text-gray-600 mt-3 break-all">
+                저장 위치: <code className="bg-gray-100 px-1 rounded">{reel.output_dir}</code>
+              </p>
+            )}
           </Card>
 
           {quality.total !== undefined && (

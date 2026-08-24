@@ -84,10 +84,43 @@ export function Stars({ n }: { n: number }) {
 
 /* ---------- API helpers ---------- */
 
+interface OrakBridge {
+  isDesktopApp?: boolean;
+  openOutputFolder?: (folderName: string) => Promise<{ ok: boolean; reason?: string; opened?: string }>;
+}
+function bridge(): OrakBridge | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { orak?: OrakBridge }).orak;
+}
+
 /** 설치형 앱인지 (Electron 껍데기가 preload 로 알려 준다) */
 export function isDesktopApp(): boolean {
-  if (typeof window === "undefined") return false;
-  return !!(window as unknown as { orak?: { isDesktopApp?: boolean } }).orak?.isDesktopApp;
+  return !!bridge()?.isDesktopApp;
+}
+
+/** 완성 영상 폴더를 탐색기로 연다. 설치형 앱에서만 된다 */
+export function canOpenFolder(): boolean {
+  return typeof bridge()?.openOutputFolder === "function";
+}
+
+export async function openOutputFolder(folderName: string): Promise<{ ok: boolean; reason?: string }> {
+  const fn = bridge()?.openOutputFolder;
+  if (!fn) return { ok: false, reason: "설치한 프로그램에서만 폴더를 열 수 있습니다" };
+  try {
+    return await fn(folderName);
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** 글을 클립보드에 담는다 (Instagram 에 붙여넣기용) */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function api<T = unknown>(url: string, init?: RequestInit): Promise<T> {
