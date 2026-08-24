@@ -227,6 +227,11 @@ export function isQuotaError(e: unknown): boolean {
 }
 
 export function friendlyImageError(e: unknown): string {
+  // 오류가 없는데 불릴 수 있다(고른 공급자가 처음부터 Sample 인 경우).
+  // 그대로 String(undefined) 하면 화면에 "undefined" 라고 찍힌다 — 실제로 그랬다.
+  if (e === undefined || e === null || e === "") {
+    return "이미지 공급자가 Sample 로 되어 있어 임시 이미지를 넣었습니다. 설정 → 이미지 생성에서 공급자와 키를 확인해 주세요.";
+  }
   if (e instanceof ApiError && e.service === "cloudflare-image") return friendlyCloudflareError(e);
   const msg = e instanceof Error ? e.message : String(e);
   if (isQuotaError(msg ? new Error(msg) : e)) {

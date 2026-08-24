@@ -64,6 +64,8 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   const facts = JSON.parse(reel.factcheck_json || "[]") as FactCheckItem[];
   const verdict = JSON.parse(reel.verdict_json || "{}") as Partial<Verdict>;
   const videoUrl = mediaUrl(reel.video_path);
+  // 영상이 없을 때 "왜 없는지" 를 함께 보여주기 위해 마지막 발행 오류를 찾아 둔다
+  const lastPublishError = data.publishingJobs.find((jb) => jb.phase === "실패")?.last_error ?? null;
 
   const run = async (label: string, fn: () => Promise<unknown>, doneMsg: string) => {
     setBusy(label); setErr(null); setMsg(null);
@@ -129,7 +131,20 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             {videoUrl ? (
               <video key={videoUrl + (reel.duration_sec ?? 0)} src={videoUrl} controls playsInline className="w-full rounded-xl bg-black aspect-9/16" />
             ) : (
-              <div className="aspect-9/16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600">영상이 아직 없습니다</div>
+              <div className="aspect-9/16 rounded-xl bg-gray-100 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <div className="text-lg font-extrabold text-gray-800">영상이 아직 없습니다</div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {reel.status === "발행완료" || reel.status === "예약"
+                    ? "발행 기록은 있는데 영상 파일이 없습니다. 예전에 만들다 만 릴스일 수 있습니다."
+                    : "대본은 있지만 영상이 아직 만들어지지 않았습니다."}
+                  <br />아래 [저장하고 영상 다시 만들기]를 누르면 지금 있는 대본·음성·이미지로 영상을 만듭니다.
+                </p>
+                {lastPublishError && (
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">
+                    마지막 오류: {lastPublishError}
+                  </p>
+                )}
+              </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
               <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path || quality.fact_blocked}

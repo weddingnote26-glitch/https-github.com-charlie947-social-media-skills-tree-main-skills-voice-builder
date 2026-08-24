@@ -166,7 +166,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     // 실패해서 임시 이미지로 채운 장면이 있으면 제작은 계속하되 분명히 알린다
     const placeholders = images.filter((i) => i.placeholder);
     imageNotice = placeholders.length
-      ? `${placeholders.length}장이 임시 이미지입니다 (${placeholders[0].reason ?? "생성 실패"}). 해당 장면은 나중에 [🖼 이미지만 다시]로 만들 수 있습니다.`
+      ? `${placeholders.length}장이 임시 이미지입니다. ${placeholders[0].reason?.trim() || "이미지 생성 한도 또는 설정 문제로 임시 이미지가 사용되었습니다."} 해당 장면은 [🖼 이미지 전체 다시]로 다시 만들 수 있습니다.`
       : "";
     // 사용량을 사람 말로 — 새로 만든 것/재사용/호출 수를 보여줘야 아끼는 게 눈에 보인다
     const u = lastImageUsage.value;

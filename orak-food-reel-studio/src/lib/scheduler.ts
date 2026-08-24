@@ -63,6 +63,23 @@ export function autoSchedule(reelId: string): void {
 
 /** 지금 발행 — 예약 없이 즉시 발행 잡 생성 */
 export function publishNow(reelId: string): { jobId: string } {
+  /**
+   * 영상이 없는 릴스를 발행하려 하면 여기서 막는다.
+   *
+   * 예약(scheduleReel)에는 이 검사가 있었는데 [지금 발행]에는 없었다. 그래서
+   * 영상이 안 만들어진 릴스도 발행 잡으로 넘어갔고, 샘플 발행기가 성공 처리해
+   * "발행완료 인데 영상이 없는" 상태가 만들어졌다 — 실제로 그 화면을 받았다.
+   */
+  const reel = getReel(reelId);
+  if (!reel) throw new Error("릴스를 찾을 수 없습니다");
+  if (!reel.video_path) {
+    throw new Error("아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 다시 만들기]로 영상을 만들어 주세요.");
+  }
+  // §33 팩트체크 차단 콘텐츠는 예약과 마찬가지로 발행하지 않는다
+  const q = j<{ fact_blocked?: boolean; fact_block_reasons?: string[] }>(reel.quality_json, {});
+  if (q.fact_blocked) {
+    throw new Error("팩트체크에서 막힌 내용이 있어 발행할 수 없습니다: " + (q.fact_block_reasons ?? []).join(" / "));
+  }
   const jobId = newId("pub");
   db().prepare("INSERT INTO publishing_jobs (id, reel_id, phase) VALUES (?,?,'대기')").run(jobId, reelId);
   updateReel(reelId, { status: "예약" });
