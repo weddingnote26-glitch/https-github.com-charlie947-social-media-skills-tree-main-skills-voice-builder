@@ -327,47 +327,78 @@ class PostsScreen(Screen):
 
     # ── 상세 탭 만들기 ──────────────────────────────────────
     def _build_tab_edit(self) -> None:
+        """
+        본문 입력창이 남는 세로 공간을 전부 쓰도록,
+        라벨은 입력창 왼쪽에 붙이고 글자 수는 본문 라벨 줄 오른쪽에 둡니다.
+        """
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(16, 16, 16, 16)
-        v.setSpacing(10)
+        v.setContentsMargins(12, 12, 12, 12)
+        v.setSpacing(6)
 
-        def field_label(text: str) -> QLabel:
+        def field_label(text: str, width: int = 0) -> QLabel:
             lb = QLabel(text)
             lb.setObjectName("FieldLabel")
+            if width:
+                lb.setFixedWidth(width)
             return lb
 
-        v.addWidget(field_label("제목"))
+        # 제목 — 라벨과 입력창을 한 줄에
+        r1 = QHBoxLayout()
+        r1.setSpacing(10)
+        r1.addWidget(field_label("제목", 76))
         self.ed_title = QLineEdit()
         self.ed_title.textEdited.connect(self._mark_dirty)
-        v.addWidget(self.ed_title)
+        r1.addWidget(self.ed_title, 1)
+        h1 = QWidget()
+        h1.setLayout(r1)
+        v.addWidget(h1)
 
-        v.addWidget(field_label("본문"))
+        # 본문 라벨 줄 — 오른쪽 끝에 글자 수
+        r2 = QHBoxLayout()
+        r2.setSpacing(10)
+        r2.addWidget(field_label("본문"))
+        r2.addStretch(1)
+        self.lbl_count = QLabel("")
+        self.lbl_count.setStyleSheet(
+            f"color: {theme.SUB}; font-size: {theme.FONT_SUB}px;")
+        r2.addWidget(self.lbl_count)
+        h2 = QWidget()
+        h2.setLayout(r2)
+        v.addWidget(h2)
+
         self.ed_body = QPlainTextEdit()
         self.ed_body.setObjectName("BodyEdit")   # 로그 창과 달리 본문 글꼴을 씁니다
-        self.ed_body.setMinimumHeight(300)       # 1366x768 에서도 본문 11줄 이상
+        self.ed_body.setMinimumHeight(260)       # 1366x768 에서도 본문 10줄 이상
         self.ed_body.textChanged.connect(self._mark_dirty)
         v.addWidget(self.ed_body, 1)             # 남는 세로 공간을 본문이 다 씁니다
 
-        v.addWidget(field_label("해시태그 (띄어쓰기로 구분)"))
+        # 해시태그 — 라벨과 입력창을 한 줄에
+        r3 = QHBoxLayout()
+        r3.setSpacing(10)
+        r3.addWidget(field_label("해시태그", 76))
         self.ed_tags = QLineEdit()
+        self.ed_tags.setPlaceholderText("#태그를 띄어쓰기로 구분해 적습니다")
         self.ed_tags.textEdited.connect(self._mark_dirty)
-        v.addWidget(self.ed_tags)
+        r3.addWidget(self.ed_tags, 1)
+        h3 = QWidget()
+        h3.setLayout(r3)
+        v.addWidget(h3)
 
-        self.lbl_count = QLabel("")
+        # 저장 줄 — 본문 바로 아래 고정
         self.lbl_saved = QLabel("")
         self.lbl_saved.setStyleSheet(f"color: {theme.SUB};")
         self.btn_save = button("저장하기", "Primary")
         self.btn_save.clicked.connect(self._save_edit)
-        v.addWidget(_hrow([self.btn_save, self.lbl_count, self.lbl_saved]))
+        v.addWidget(_hrow([self.btn_save, self.lbl_saved]))
         self.ed_body.textChanged.connect(self._update_count)
         self.tabs.addTab(w, "원고")
 
     def _build_tab_images(self) -> None:
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(16, 16, 16, 16)
-        v.setSpacing(10)
+        v.setContentsMargins(12, 12, 12, 12)
+        v.setSpacing(8)
 
         self.img_table = QTableWidget(0, 4)
         self.img_table.setHorizontalHeaderLabels(["미리보기", "파일", "상태", "설명(대체 텍스트)"])
