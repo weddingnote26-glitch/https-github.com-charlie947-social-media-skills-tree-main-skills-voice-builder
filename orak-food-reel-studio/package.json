@@ -18,8 +18,9 @@
     "ffmpeg": "node scripts/fix-ffmpeg.mjs",
     "desktop:prepare": "npm run build && node scripts/prepare-desktop.mjs",
     "desktop:dev": "electron electron/main.js",
-    "desktop:build": "npm run desktop:prepare && npm run desktop:tools && electron-builder --win --x64",
-    "desktop:tools": "npm install --no-save --no-audit --no-fund electron@^33.2.0 electron-builder@^25.1.8"
+    "desktop:build": "npm run desktop:prepare && npm run desktop:tools && npm run desktop:fixcache && electron-builder --win --x64",
+    "desktop:tools": "npm install --no-save --no-audit --no-fund electron@^33.2.0 electron-builder@^25.1.8",
+    "desktop:fixcache": "node scripts/fix-builder-cache.mjs"
   },
   "dependencies": {
     "next": "16.3.2",

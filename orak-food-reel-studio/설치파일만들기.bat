@@ -74,13 +74,36 @@ if errorlevel 1 (
 
 echo.
 echo  [6/6] 설치 파일을 만듭니다. 5~15분 걸립니다...
+echo.
 call npx electron-builder --win --x64
-if errorlevel 1 (
-  echo  [X] 설치 파일 만들기에 실패했습니다. 화면의 오류 내용을 확인하세요.
-  pause
-  exit /b 1
-)
+if not errorlevel 1 goto BUILD_OK
 
+echo.
+echo  [!] 한 번 실패했습니다. 코드 서명 도구 문제일 수 있어 정리하고 다시 시도합니다...
+echo.
+call node scripts\fix-builder-cache.mjs
+echo.
+call npx electron-builder --win --x64
+if not errorlevel 1 goto BUILD_OK
+
+echo.
+echo  [X] 설치 파일 만들기에 실패했습니다.
+echo.
+echo      화면에 "Cannot create symbolic link" 또는 "권한이 없습니다" 가 보이면
+echo      아래 둘 중 하나로 해결됩니다.
+echo.
+echo      1^) 개발자 모드 켜기 ^(권장, 한 번만^)
+echo         설정 - 개인 정보 및 보안 - 개발자용 - 개발자 모드 켬
+echo         그다음 이 파일을 다시 실행하세요.
+echo.
+echo      2^) 이 파일을 마우스 오른쪽 클릭 - 관리자 권한으로 실행
+echo.
+echo      * 설치 파일을 못 만들어도 프로그램은 start.bat 으로 계속 쓸 수 있습니다.
+echo.
+pause
+exit /b 1
+
+:BUILD_OK
 echo.
 echo  ================================================
 echo    완료
