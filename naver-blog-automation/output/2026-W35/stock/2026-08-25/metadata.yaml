@@ -52,7 +52,7 @@ review:
   passed: true
   blocking_issues: 0
   warnings: 1
-  checked_at: 2026-08-24 15:29:18 KST
+  checked_at: 2026-08-24 17:31:16 KST
 approval:
   approved: true
   approved_at: 2026-08-24 12:07:09 KST
@@ -70,7 +70,7 @@ write_mode: advance
 needs_live_data: false
 content_hash: a1c99cf6ec507df8
 package:
-  built_at: 2026-08-24 13:53:01 KST
+  built_at: 2026-08-24 16:06:53 KST
   path: output/2026-W35/stock/2026-08-25/publish
   blocks: 29
   images: 3
