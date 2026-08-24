@@ -8,7 +8,9 @@
     "generate": "python scripts/generate_week.py",
     "review": "python scripts/review.py",
     "prepare": "python scripts/prepare_publish.py",
-    "browser:install": "playwright install chromium"
+    "browser:install": "playwright install chromium",
+    "update:sources": ".venv\\Scripts\\python.exe scripts/update_sources.py",
+    "test:sources": ".venv\\Scripts\\python.exe scripts/test_update_sources.py"
   },
   "devDependencies": {},
   "engines": {

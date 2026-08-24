@@ -92,14 +92,20 @@ MENU = """
 def menu_9() -> None:
     c.header("9. 오늘 시세 확인하기")
     c.say()
-    c.say("  시황 글에 넣을 시세는 사람이 화면에서 읽어야 합니다.")
-    c.say("  아래 주소를 열어 값을 확인한 뒤, 나온 표를 sources.md 에 붙여 넣으세요.")
+    c.say("  공개 자료에서 8개 항목을 자동으로 받아 sources.md 에 적어 둡니다.")
+    c.say("  받지 못한 값은 지어내지 않고 '확인 필요' 로 남깁니다.")
     c.say()
+
+    run("update_sources.py")
+
+    c.say()
+    c.info("값을 직접 눈으로 맞춰 보실 때는 아래 주소를 여세요.")
+    c.say()
+
     import quotes
     ds = quotes.load()
     rows = quotes.items(ds, None)
     quotes.show_links(ds, rows)
-    quotes.show_table(ds, rows)
 
 
 def menu_0() -> None:

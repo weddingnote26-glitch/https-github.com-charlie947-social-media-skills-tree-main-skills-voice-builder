@@ -13,6 +13,9 @@ storage_state.json
 config/settings.yaml
 config/settings.local.yaml
 
+# 자동 갱신 잠금 파일
+.update-sources.lock
+
 # API 키·환경변수
 .env
 .env.*

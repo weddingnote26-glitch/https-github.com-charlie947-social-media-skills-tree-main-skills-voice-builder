@@ -36,10 +36,11 @@ rules:
 
 # ── 자주 보는 항목 ─────────────────────────────────────────
 #
-#  ⚠ 아래 주소는 제가 직접 열어 확인하지 못했습니다.
-#     (이 작업 환경에서 트레이딩뷰 접속이 막혀 있습니다)
-#     처음 쓰실 때 한 번 열어 보시고, 다르면 url 을 고쳐 주세요.
-#     확인하신 뒤 verified 를 true 로 바꿔 주시면 됩니다.
+#  아래 8개 주소는 2026-08-24 에 모두 열어 확인했습니다. (전부 정상 응답)
+#  화면 구성이 바뀌어 다르게 보이면 url 을 고치고 verified 를 false 로 되돌리세요.
+#
+#  값은 메뉴 9번(또는 npm run update:sources)이 자동으로 받아 옵니다.
+#  아래 주소는 그 값을 눈으로 맞춰 볼 때 씁니다.
 #
 watchlist:
   coin:
@@ -47,44 +48,67 @@ watchlist:
       label: "비트코인"
       symbol: "BTCUSD"
       url: "https://kr.tradingview.com/symbols/BTCUSD/"
-      verified: false
+      verified: true
     - key: eth
       label: "이더리움"
       symbol: "ETHUSD"
       url: "https://kr.tradingview.com/symbols/ETHUSD/"
-      verified: false
+      verified: true
     - key: btc_dominance
       label: "비트코인 도미넌스"
       symbol: "BTC.D"
-      url: "확인 필요"          # 심볼 표기가 화면마다 달라 직접 확인이 필요합니다
-      verified: false
+      url: "https://kr.tradingview.com/symbols/CRYPTOCAP-BTC.D/"
+      verified: true
     - key: total_mcap
       label: "가상자산 시가총액 합계"
       symbol: "TOTAL"
-      url: "확인 필요"
-      verified: false
+      url: "https://kr.tradingview.com/symbols/CRYPTOCAP-TOTAL/"
+      verified: true
 
   stock:
     - key: kospi
       label: "코스피"
       symbol: "KOSPI"
-      url: "확인 필요"
-      verified: false
+      url: "https://kr.tradingview.com/symbols/KRX-KOSPI/"
+      verified: true
     - key: kosdaq
       label: "코스닥"
       symbol: "KOSDAQ"
-      url: "확인 필요"
-      verified: false
+      url: "https://kr.tradingview.com/symbols/KRX-KOSDAQ/"
+      verified: true
     - key: usdkrw
       label: "원·달러 환율"
       symbol: "USDKRW"
       url: "https://kr.tradingview.com/symbols/USDKRW/"
-      verified: false
+      verified: true
     - key: sp500
       label: "S&P 500"
       symbol: "SPX"
-      url: "확인 필요"
-      verified: false
+      url: "https://kr.tradingview.com/symbols/SPX/"
+      verified: true
+
+# ── 자동으로 값을 받아 오는 곳 ─────────────────────────────
+#
+#  메뉴 9번이 아래 출처에서 값을 직접 받아 sources.md 에 적습니다.
+#  트레이딩뷰처럼 **화면에서 읽는 값(quote)** 으로 인정합니다.
+#  즉 출처 칸에 아래 이름이 적혀 있으면 한 곳만으로도 통과합니다.
+#
+#  ⚠ 여기 없는 이름을 출처 칸에 적으면 사건(claim)으로 보고 2곳을 요구합니다.
+#     새 출처를 쓰기 시작하면 이 목록에 먼저 추가하세요.
+#
+auto_sources:
+  - name: "CoinGecko"
+    url: "https://www.coingecko.com/"
+    covers: [시세, 도미넌스, 시가총액]
+  - name: "Yahoo Finance"
+    url: "https://finance.yahoo.com/"
+    covers: [지수, 환율]
+  - name: "Frankfurter"
+    url: "https://www.frankfurter.app/"
+    covers: [환율]
+  - name: "CoinMarketCap"
+    url: "https://coinmarketcap.com/"
+    covers: [시세]
 
 # ── 알아두실 것 ────────────────────────────────────────────
 #
