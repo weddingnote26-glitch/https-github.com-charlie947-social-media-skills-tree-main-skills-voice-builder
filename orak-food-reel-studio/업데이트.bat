@@ -29,8 +29,37 @@ if not exist ".git" (
   exit /b 1
 )
 
+REM 릴스 스튜디오 작업이 올라가는 갈래(branch). 다른 갈래를 보고 있으면
+REM "이미 최신입니다" 만 나오고 새 작업이 하나도 오지 않는다 — 실제로 겪은 일이다.
+set "WANT=claude/orak-food-reel-studio-2kux9t"
+
+set "BRANCH="
 for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set "BRANCH=%%B"
-echo  [1/3] 최신 버전을 받아옵니다... ^(브랜치: %BRANCH%^)
+if /i "%BRANCH%"=="%WANT%" goto BRANCH_OK
+
+echo  [!] 지금 폴더가 다른 갈래를 보고 있습니다.
+echo        지금 보는 것 : %BRANCH%
+echo        받아야 할 것 : %WANT%
+echo      이대로 두면 새 작업이 하나도 오지 않아서 %WANT% 로 옮깁니다.
+echo.
+git fetch origin %WANT%
+git checkout %WANT%
+if not errorlevel 1 goto BRANCH_MOVED
+
+echo.
+echo  [X] 갈래를 옮기지 못했습니다. 이 폴더에서 고친 파일이 있을 수 있습니다.
+echo      화면 내용을 그대로 복사해 Claude 에게 보여주세요.
+popd
+pause
+exit /b 1
+
+:BRANCH_MOVED
+set "BRANCH=%WANT%"
+echo  [i] %WANT% 로 옮겼습니다.
+echo.
+
+:BRANCH_OK
+echo  [1/3] 최신 버전을 받아옵니다... ^(갈래: %BRANCH%^)
 echo.
 git pull --no-rebase origin %BRANCH%
 if errorlevel 1 (
@@ -42,6 +71,10 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+echo.
+REM 무엇을 받았는지 눈으로 확인할 수 있게 (설정 화면의 [프로그램 정보] 와 같은 값)
+echo  [i] 지금 받은 것:
+git log -1 --oneline
 popd
 
 echo.
