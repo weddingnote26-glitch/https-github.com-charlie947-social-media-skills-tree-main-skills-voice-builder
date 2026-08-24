@@ -1,5 +1,6 @@
 import { db, j } from "./db";
 import { z } from "zod";
+import { logWarn } from "./log";
 
 /** 관리자 화면에서 바꾸는 값 — 하드코딩 금지 항목들 (§34, §16, §27 등) */
 export const AppSettingsSchema = z.object({
@@ -105,9 +106,52 @@ export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 const KEY = "app_settings";
 
+/**
+ * 저장된 설정에서 문제가 된 항목만 덜어낸다.
+ *
+ * 왜 필요한가: 새 판에서 저장한 값(예: imageProvider="cloudflare")을 옛 판이
+ * 읽으면 스키마 검사가 통째로 실패한다. 그러면 설정을 읽는 모든 곳이 죽어서
+ * 제작이 0% 에서 멈춘다 — 실제로 그 화면을 받았다.
+ *
+ * 설정값 하나가 낯설다고 프로그램 전체가 서면 안 된다.
+ * 모르는 항목만 버리고 기본값으로 되돌린 뒤 나머지는 그대로 쓴다.
+ */
+function dropPath(obj: unknown, segments: PropertyKey[]): unknown {
+  if (!segments.length || obj === null || typeof obj !== "object") return obj;
+  const copy: Record<string, unknown> = { ...(obj as Record<string, unknown>) };
+  const [head, ...rest] = segments;
+  const key = String(head);
+  if (!rest.length) delete copy[key];
+  else if (key in copy) copy[key] = dropPath(copy[key], rest);
+  return copy;
+}
+
+export function parseSettings(raw: unknown): AppSettings {
+  let obj = raw;
+  const dropped: string[] = [];
+  // 문제 항목을 하나씩 덜어내며 다시 검사한다 (중첩 항목이 여럿일 수 있어 몇 번 돈다)
+  for (let round = 0; round < 8; round++) {
+    const r = AppSettingsSchema.safeParse(obj);
+    if (r.success) {
+      if (dropped.length) {
+        logWarn("settings", `알 수 없는 설정값을 기본값으로 되돌렸습니다: ${dropped.join(", ")} — 프로그램을 최신으로 업데이트하면 그대로 쓸 수 있습니다`);
+      }
+      return r.data;
+    }
+    const paths = r.error.issues.map((i) => i.path).filter((pth) => pth.length > 0);
+    if (!paths.length) break;
+    for (const pth of paths) {
+      dropped.push(pth.join("."));
+      obj = dropPath(obj, pth as PropertyKey[]);
+    }
+  }
+  logWarn("settings", "설정을 읽지 못해 전부 기본값으로 시작합니다 (저장된 값은 지우지 않았습니다)");
+  return AppSettingsSchema.parse({});
+}
+
 export function getSettings(): AppSettings {
   const row = db().prepare("SELECT value_json FROM settings WHERE key=?").get(KEY) as { value_json: string } | undefined;
-  return AppSettingsSchema.parse(row ? j(row.value_json, {}) : {});
+  return parseSettings(row ? j(row.value_json, {}) : {});
 }
 
 export function saveSettings(patch: Partial<AppSettings>): AppSettings {
