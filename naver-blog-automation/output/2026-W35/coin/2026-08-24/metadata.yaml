@@ -44,7 +44,7 @@ review:
   passed: true
   blocking_issues: 0
   warnings: 2
-  checked_at: 2026-08-24 17:31:16 KST
+  checked_at: 2026-08-24 18:04:32 KST
 approval:
   approved: false
   approved_at: null
