@@ -55,7 +55,10 @@ if errorlevel 1 (
 )
 
 echo.
-echo  [4/6] 프로그램을 빌드합니다. 3~5분 걸립니다...
+echo  [4/6] 지난 결과를 정리하고 프로그램을 빌드합니다. 3~5분 걸립니다...
+if exist dist-app rmdir /s /q dist-app
+if exist dist-bin rmdir /s /q dist-bin
+if exist dist-installer rmdir /s /q dist-installer
 call npm run build
 if errorlevel 1 (
   echo  [X] 빌드에 실패했습니다. 화면의 오류 내용을 확인하세요.

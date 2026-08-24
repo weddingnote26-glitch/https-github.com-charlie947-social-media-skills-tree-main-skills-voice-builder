@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./assets/**", "./sample/**", "./templates/**"],
   },
+  // 지난 빌드 결과를 다시 담으면 standalone 이 자기 자신을 품는다
+  outputFileTracingExcludes: {
+    "/**": ["./dist-app/**", "./dist-bin/**", "./dist-installer/**", "./.next/standalone/**"],
+  },
 };
 
 export default nextConfig;

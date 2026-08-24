@@ -29,6 +29,8 @@ const FORBIDDEN = [
 /** 담지 않을 것 (비밀값 · 사용자 결과물 · 개발용) */
 const SKIP = new Set([
   "data", "output", "logs", "src", "tests", "scripts", "electron", "node_modules/.cache",
+  // 지난 빌드 결과를 다시 담으면 폴더가 자기 안에 자기를 품어 끝없이 커진다
+  "dist-app", "dist-bin", "dist-installer",
   ".env", ".env.local", ".env.production", ".env.example",
   "tsconfig.tsbuildinfo", "vitest.config.ts", "tsconfig.json",
   "package-lock.json", "start.bat", "업데이트.bat",
@@ -47,6 +49,15 @@ function copyDir(from, to, depth = 0) {
 }
 
 console.log("\n  설치본에 넣을 파일을 고릅니다");
+
+// 지난 시도가 남긴 결과물을 먼저 치운다. 남아 있으면 다음 빌드가 그것을 다시 담는다.
+for (const stale of ["dist-app", "dist-bin", "dist-installer"]) {
+  const p = path.join(ROOT, stale);
+  if (fs.existsSync(p)) {
+    fs.rmSync(p, { recursive: true, force: true });
+    console.log(`  지난 결과 정리: ${stale}`);
+  }
+}
 
 if (!fs.existsSync(path.join(SRC, "server.js"))) {
   console.log(r("  ❌ .next/standalone 이 없습니다. 먼저 npm run build 를 실행하세요."));
@@ -110,6 +121,15 @@ if (leaked.length) {
   console.log(r("\n  ❌ 비밀값이 설치본에 들어갔습니다. 중단합니다."));
   for (const l of [...new Set(leaked)]) console.log("     " + l);
   process.exit(1);
+}
+
+// 중첩이 생기면 설치 파일이 몇 배로 부푼다 — 담은 뒤 반드시 확인한다
+for (const bad of ["dist-app", "dist-bin", "dist-installer"]) {
+  if (fs.existsSync(path.join(OUT, bad))) {
+    console.log(r(`\n  ❌ 설치본 안에 ${bad} 이(가) 들어갔습니다. 폴더가 자기 자신을 품게 됩니다.`));
+    console.log("     dist-app / dist-bin / dist-installer 를 지우고 다시 실행하세요.");
+    process.exit(1);
+  }
 }
 
 const count = (d) => {

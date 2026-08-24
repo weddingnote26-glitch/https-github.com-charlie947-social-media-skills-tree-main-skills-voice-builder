@@ -61,6 +61,8 @@
     },
     "files": [
       "electron/**/*",
+      "package.json",
+      "!node_modules/**/*",
       "!**/*.map"
     ],
     "extraResources": [
