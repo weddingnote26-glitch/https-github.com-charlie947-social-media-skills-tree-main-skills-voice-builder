@@ -493,7 +493,28 @@ class InputClosed(RuntimeError):
     """더 이상 입력을 받을 수 없는 상황 (Ctrl+D, 파이프 끝 등)."""
 
 
+def from_gui() -> bool:
+    """화면(GUI)에서 부른 것인지. 이때는 콘솔로 되물을 수 없습니다."""
+    return os.environ.get("NBA_GUI") == "1"
+
+
+def gui_confirmed() -> bool:
+    """
+    화면에서 사람이 이미 '예' 를 눌렀는지.
+
+    화면 쪽에서 안내창을 띄우고 사람이 직접 누른 경우에만 켜집니다.
+    스크립트가 스스로 켤 수 없습니다.
+    """
+    return os.environ.get("NBA_CONFIRMED") == "1"
+
+
 def ask(prompt: str, default: str = "") -> str:
+    if from_gui():
+        # 화면에서 부르면 입력 통로가 막혀 있어 input() 이 그대로 죽습니다.
+        # 되묻지 않고 분명히 멈춥니다.
+        say(f"  {prompt}")
+        say("  → 이 작업은 화면에서 답을 받을 수 없어 멈춥니다.")
+        raise InputClosed
     suffix = f" [{default}]" if default else ""
     try:
         answer = input(f"{prompt}{suffix}: ").strip()
@@ -508,7 +529,38 @@ def ask(prompt: str, default: str = "") -> str:
     return answer or default
 
 
+def pause(prompt: str = "  확인이 끝나면 Enter 를 눌러 주세요 …") -> None:
+    """
+    사람이 화면을 볼 시간을 줍니다.
+
+    화면(GUI)에서 부른 경우에는 Enter 를 받을 수 없으므로 기다리지 않고
+    무엇을 하면 되는지만 알려 줍니다.
+    """
+    if from_gui():
+        say("  브라우저 창은 열어 두었습니다. 확인이 끝나면 직접 닫아 주세요.")
+        return
+    try:
+        input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        print()
+
+
 def confirm(prompt: str, default_yes: bool = False) -> bool:
+    """
+    사람에게 예/아니오를 묻습니다.
+
+    화면에서 부른 경우에는 콘솔로 물을 수 없습니다.
+    그래서 **화면에서 이미 확인을 받은 경우에만** 예로 봅니다.
+    확인을 받지 못했으면 기본값과 상관없이 아니오입니다.
+    (묻지 않고 넘어가서 실수로 글이 올라가는 일을 막습니다)
+    """
+    if from_gui():
+        if gui_confirmed():
+            say(f"  {prompt} → 화면에서 확인하셨습니다.")
+            return True
+        say(f"  {prompt}")
+        say("  → 화면에서 확인을 받지 못해 멈춥니다.")
+        return False
     hint = "Y/n" if default_yes else "y/N"
     answer = ask(f"{prompt} ({hint})").lower()
     if not answer:

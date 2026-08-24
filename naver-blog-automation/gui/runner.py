@@ -85,10 +85,13 @@ class TaskRunner(QThread):
     finished_ok = Signal(int)  # 종료 코드
     failed = Signal(str)       # 사람이 읽을 수 있는 실패 사유
 
-    def __init__(self, script: str, args: list[str] | None = None, parent=None):
+    def __init__(self, script: str, args: list[str] | None = None, parent=None,
+                 extra_env: dict[str, str] | None = None):
         super().__init__(parent)
         self.script = script
         self.args = args or []
+        # 화면에서 사람이 확인을 눌렀을 때만 NBA_CONFIRMED=1 이 담깁니다.
+        self.extra_env = extra_env or {}
         self._proc: subprocess.Popen | None = None
         self._cancelled = False
 
@@ -105,6 +108,7 @@ class TaskRunner(QThread):
         env["PYTHONUNBUFFERED"] = "1"
         # 화면에서 부른 것이므로 스크립트가 사람에게 되묻지 않게 합니다.
         env["NBA_GUI"] = "1"
+        env.update(self.extra_env)
 
         cmd = [python_exe(), str(target), *self.args]
         try:

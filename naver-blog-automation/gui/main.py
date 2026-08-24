@@ -3,6 +3,10 @@
 네이버 블로그 도우미 — 창 하나짜리 윈도우 앱.
 
 콘솔 창이 뜨지 않습니다. 모든 안내는 이 창 안에서 보여 줍니다.
+
+메뉴는 실제 일하는 순서를 따릅니다.
+  주요   오늘 할 일 → 글 관리 → 발행 관리 → 발행 내역
+  보조   네이버 연결 · 설정 · 도움말 (아래쪽에 작게)
 """
 from __future__ import annotations
 
@@ -14,31 +18,42 @@ from pathlib import Path
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QHBoxLayout, QLabel, QMainWindow,
+    QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow,
     QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from . import __version__, theme
-from .runner import PROJECT_ROOT, open_folder
+from .runner import PROJECT_ROOT
 from .screens import (
-    AccountScreen, HelpScreen, HistoryScreen, HomeScreen,
-    ImageScreen, PublishScreen, SettingsScreen, WriteScreen,
+    AccountScreen, HelpScreen, HistoryScreen, PostsScreen,
+    PublishManageScreen, SettingsScreen, TodayScreen,
 )
 from .widgets import error
 
 APP_NAME = "네이버 블로그 도우미"
 LOG_DIR = PROJECT_ROOT / "logs"
 
-MENU = [
-    ("홈", HomeScreen),
-    ("계정 연결", AccountScreen),
-    ("글 작성", WriteScreen),
-    ("이미지 관리", ImageScreen),
-    ("예약·발행", PublishScreen),
+MENU_MAIN = [
+    ("오늘 할 일", TodayScreen),
+    ("글 관리", PostsScreen),
+    ("발행 관리", PublishManageScreen),
     ("발행 내역", HistoryScreen),
+]
+MENU_AUX = [
+    ("네이버 연결", AccountScreen),
     ("설정", SettingsScreen),
     ("도움말", HelpScreen),
 ]
+MENU = MENU_MAIN + MENU_AUX
+
+# 예전 판의 화면 이름을 저장해 두셨어도 알맞은 화면으로 이어 줍니다.
+OLD_NAMES = {
+    "홈": "오늘 할 일",
+    "글 작성": "글 관리",
+    "이미지 관리": "글 관리",
+    "예약·발행": "발행 관리",
+    "계정 연결": "네이버 연결",
+}
 
 
 class MainWindow(QMainWindow):
@@ -63,7 +78,7 @@ class MainWindow(QMainWindow):
         side.setObjectName("SideBar")
         side.setFixedWidth(250)
         sv = QVBoxLayout(side)
-        sv.setContentsMargins(14, 20, 14, 20)
+        sv.setContentsMargins(14, 20, 14, 16)
         sv.setSpacing(6)
 
         brand = QLabel(APP_NAME)
@@ -78,24 +93,55 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.screens: dict[str, object] = {}
 
-        for i, (name, cls) in enumerate(MENU):
+        def add_menu(name: str, cls, idx: int, aux: bool) -> None:
             b = QPushButton(name)
             b.setCheckable(True)
             b.setCursor(Qt.PointingHandCursor)
-            self.group.addButton(b, i)
+            if aux:
+                b.setProperty("aux", "true")
+            self.group.addButton(b, idx)
             sv.addWidget(b)
             scr = cls(self)
             self.screens[name] = scr
             self.stack.addWidget(scr)
 
+        for i, (name, cls) in enumerate(MENU_MAIN):
+            add_menu(name, cls, i, aux=False)
+
         sv.addStretch(1)
-        log_btn = QPushButton("기록 폴더 열기")
-        log_btn.setCursor(Qt.PointingHandCursor)
-        log_btn.clicked.connect(lambda: open_folder(LOG_DIR))
-        sv.addWidget(log_btn)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet(f"color: {theme.LINE};")
+        sv.addWidget(sep)
+
+        for j, (name, cls) in enumerate(MENU_AUX):
+            add_menu(name, cls, len(MENU_MAIN) + j, aux=True)
 
         h.addWidget(side)
-        h.addWidget(self.stack, 1)
+
+        # ── 오른쪽: 위 상태 띠 + 화면 ───────────────────────
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(0, 0, 0, 0)
+        rv.setSpacing(0)
+
+        strip = QWidget()
+        strip.setObjectName("TopStrip")
+        strip.setFixedHeight(46)
+        sh = QHBoxLayout(strip)
+        sh.setContentsMargins(24, 0, 24, 0)
+        sh.setSpacing(10)
+        self.strip_dot = QLabel("●")
+        self.strip_label = QLabel("네이버 연결 확인 중…")
+        self.strip_week = QLabel("")
+        sh.addWidget(self.strip_dot)
+        sh.addWidget(self.strip_label)
+        sh.addStretch(1)
+        sh.addWidget(self.strip_week)
+        rv.addWidget(strip)
+        rv.addWidget(self.stack, 1)
+        h.addWidget(right, 1)
 
         self.group.idClicked.connect(self._switch)
         self.group.button(0).setChecked(True)
@@ -107,8 +153,24 @@ class MainWindow(QMainWindow):
         if geo:
             self.restoreGeometry(geo)
         last = self.qs.value("screen")
-        if isinstance(last, str) and last in self.screens:
-            self.go(last)
+        if isinstance(last, str):
+            last = OLD_NAMES.get(last, last)
+            if last in self.screens:
+                self.go(last)
+
+    # ── 위 상태 띠 ──────────────────────────────────────────
+    def update_strip(self) -> None:
+        from . import state
+        try:
+            h = state.health()
+        except Exception:  # noqa: BLE001 - 띠 하나 때문에 화면이 죽으면 안 됩니다
+            return
+        ok = h.naver_linked
+        self.strip_dot.setStyleSheet(
+            f"color: {theme.OK if ok else theme.WARN}; font-size: {theme.FONT_BASE}px;")
+        self.strip_label.setText(
+            "네이버 연결됨" if ok else "네이버 연결 안 됨 — '네이버 연결'에서 연결하세요")
+        self.strip_week.setText(f"이번 주: {h.week}")
 
     # ── 화면 전환 ───────────────────────────────────────────
     def _switch(self, idx: int) -> None:
@@ -116,8 +178,10 @@ class MainWindow(QMainWindow):
         scr = self.stack.currentWidget()
         if hasattr(scr, "refresh"):
             scr.refresh()
+        self.update_strip()
 
     def go(self, name: str) -> None:
+        name = OLD_NAMES.get(name, name)
         for i, (n, _) in enumerate(MENU):
             if n == name:
                 self.group.button(i).setChecked(True)
@@ -128,6 +192,7 @@ class MainWindow(QMainWindow):
         scr = self.stack.currentWidget()
         if hasattr(scr, "refresh"):
             scr.refresh()
+        self.update_strip()
 
     def closeEvent(self, e) -> None:  # noqa: N802
         self.qs.setValue("geometry", self.saveGeometry())

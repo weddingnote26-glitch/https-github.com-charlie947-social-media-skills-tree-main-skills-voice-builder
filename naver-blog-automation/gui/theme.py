@@ -181,4 +181,78 @@ QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 
 QMessageBox {{ font-size: {FONT_BASE}px; }}
 QMessageBox QPushButton {{ min-width: 130px; }}
+
+/* ── 탭 (발행 관리·글 상세) ────────────────────── */
+QTabWidget::pane {{
+    border: 2px solid {LINE};
+    border-radius: 12px;
+    background: #FFFFFF;
+    top: -2px;
+}}
+QTabBar::tab {{
+    background: {PANEL};
+    color: {INK};
+    font-size: {FONT_BTN}px;
+    padding: 12px 26px;
+    min-height: 30px;
+    border: 2px solid {LINE};
+    border-bottom: none;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    margin-right: 6px;
+}}
+QTabBar::tab:selected {{
+    background: {PRIMARY};
+    color: #FFFFFF;
+    font-weight: bold;
+    border-color: {PRIMARY};
+}}
+
+/* ── 체크 상자 ─────────────────────────────────── */
+QCheckBox {{ font-size: {FONT_BASE}px; spacing: 12px; min-height: 44px; }}
+QCheckBox::indicator {{
+    width: 30px; height: 30px;
+    border: 2px solid {LINE}; border-radius: 8px; background: #FFFFFF;
+}}
+QCheckBox::indicator:checked {{
+    background: {PRIMARY}; border-color: {PRIMARY};
+}}
+
+/* ── 본문 미리보기 ─────────────────────────────── */
+QTextBrowser {{
+    background: #FFFFFF;
+    border: 2px solid {LINE};
+    border-radius: 12px;
+    font-size: {FONT_BASE}px;
+    padding: 10px;
+}}
+
+/* ── 좌우 나눔 손잡이 ──────────────────────────── */
+QSplitter::handle {{ background: {LINE}; width: 6px; border-radius: 3px; }}
+
+/* ── 하단 보조 메뉴 (조금 작게) ────────────────── */
+#SideBar QPushButton[aux="true"] {{
+    font-size: {FONT_BASE - 1}px;
+    min-height: 48px;
+    color: {SUB};
+}}
+#SideBar QPushButton[aux="true"]:checked {{
+    background: {PRIMARY}; color: #FFFFFF; font-weight: bold;
+}}
+
+/* ── 위쪽 상태 띠 ──────────────────────────────── */
+#TopStrip {{
+    background: {PANEL};
+    border-bottom: 2px solid {LINE};
+}}
+#TopStrip QLabel {{ font-size: {FONT_BASE - 1}px; color: {INK}; background: transparent; }}
+
+/* ── 요약 카드 (성공·확인 필요·실패) ───────────── */
+#SumOK, #SumWarn, #SumFail {{
+    border-radius: 12px; padding: 10px 18px;
+    font-size: {FONT_BASE + 1}px; font-weight: bold;
+}}
+#SumOK   {{ background: #E4F1E9; color: {OK}; border: 2px solid {OK}; }}
+#SumWarn {{ background: #F7EEDD; color: {WARN}; border: 2px solid {WARN}; }}
+#SumFail {{ background: #F9E8E6; color: {DANGER}; border: 2px solid {DANGER}; }}
 """

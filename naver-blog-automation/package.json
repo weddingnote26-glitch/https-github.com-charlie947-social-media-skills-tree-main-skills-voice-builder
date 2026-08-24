@@ -16,7 +16,8 @@
     "test:image": ".venv\\Scripts\\python.exe scripts/test_infographic.py",
     "images:ai": ".venv/Scripts/python.exe scripts/openai_images.py",
     "images:ai:dry": ".venv/Scripts/python.exe scripts/openai_images.py --dry-run",
-    "test:images:ai": ".venv/Scripts/python.exe scripts/test_openai_images.py"
+    "test:images:ai": ".venv/Scripts/python.exe scripts/test_openai_images.py",
+    "test:gui": ".venv\\Scripts\\python.exe scripts/test_gui_logic.py"
   },
   "devDependencies": {},
   "engines": {

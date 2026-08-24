@@ -477,7 +477,7 @@ def cmd_fill(args) -> None:
         c.say()
         if not c.confirm("  비공개로 저장할까요?"):
             c.info("저장하지 않았습니다. 브라우저는 열어 둡니다.")
-            input("  확인이 끝나면 Enter 를 눌러 주세요 …")
+            c.pause()
             return
 
         page.click(editor["save_draft_button"])
@@ -574,7 +574,7 @@ def cmd_reserve(args) -> None:
         c.say()
         if not c.confirm("  브라우저 화면을 보고 확인하셨나요? 예약을 저장할까요?"):
             c.info("저장하지 않았습니다.")
-            input("  확인이 끝나면 Enter 를 눌러 주세요 …")
+            c.pause()
             return
 
         page.click(editor["confirm_button"])

@@ -154,6 +154,58 @@ class TaskPanel(QWidget):
         self.cancel_btn.setVisible(False)
 
 
+class SummaryRow(QWidget):
+    """성공 · 확인 필요 · 실패 개수를 색 카드 세 장으로 보여 줍니다."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        h = QHBoxLayout(self)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(12)
+        self.ok = QLabel("성공 0")
+        self.ok.setObjectName("SumOK")
+        self.warn_ = QLabel("확인 필요 0")
+        self.warn_.setObjectName("SumWarn")
+        self.fail = QLabel("실패 0")
+        self.fail.setObjectName("SumFail")
+        for w in (self.ok, self.warn_, self.fail):
+            h.addWidget(w)
+        h.addStretch(1)
+
+    def set(self, ok: int, warn: int, fail: int) -> None:
+        self.ok.setText(f"성공 {ok}")
+        self.warn_.setText(f"확인 필요 {warn}")
+        self.fail.setText(f"실패 {fail}")
+
+
+class Collapsible(QWidget):
+    """'자세히 보기'를 눌러야 펼쳐지는 칸 — 긴 기록을 숨겨 둡니다."""
+
+    def __init__(self, inner: QWidget, label: str = "자세히 보기", parent=None):
+        super().__init__(parent)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(8)
+        self._label = label
+        self.btn = QPushButton(f"{label} ▾")
+        self.btn.setCursor(Qt.PointingHandCursor)
+        self.btn.setMaximumWidth(260)
+        self.inner = inner
+        self.inner.setVisible(False)
+        self.btn.clicked.connect(self._toggle)
+        v.addWidget(self.btn)
+        v.addWidget(self.inner)
+
+    def _toggle(self) -> None:
+        show = not self.inner.isVisible()
+        self.inner.setVisible(show)
+        self.btn.setText(f"{self._label} {'▴' if show else '▾'}")
+
+    def open(self) -> None:
+        if not self.inner.isVisible():
+            self._toggle()
+
+
 # ── 안내창 (검은 화면 대신 이것으로 보여 줍니다) ─────────────
 def _box(parent, icon, title_text: str, text: str, detail: str = "") -> QMessageBox:
     m = QMessageBox(parent)
