@@ -127,7 +127,8 @@ class Screen(QWidget):
 
 def _hrow(widgets: list, stretch_end: bool = True) -> QWidget:
     row = QHBoxLayout()
-    row.setSpacing(14)
+    row.setContentsMargins(0, 0, 0, 0)   # 기본 여백(9px)이 줄마다 높이를 부풀립니다
+    row.setSpacing(12)
     for w in widgets:
         row.addWidget(w)
     if stretch_end:
@@ -310,6 +311,7 @@ class PostsScreen(Screen):
         self.btn_auto_log = button("작업 기록 보기 ▾", small=True)
         self.btn_auto_log.clicked.connect(self._toggle_auto_log)
         row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(10)
         for b in (self.btn_slots, self.btn_gen, self.btn_quote, self.btn_auto_log):
             row.addWidget(b)
@@ -345,6 +347,7 @@ class PostsScreen(Screen):
 
         # 제목 — 라벨과 입력창을 한 줄에
         r1 = QHBoxLayout()
+        r1.setContentsMargins(0, 0, 0, 0)
         r1.setSpacing(10)
         r1.addWidget(field_label("제목", 76))
         self.ed_title = QLineEdit()
@@ -354,27 +357,16 @@ class PostsScreen(Screen):
         h1.setLayout(r1)
         v.addWidget(h1)
 
-        # 본문 라벨 줄 — 오른쪽 끝에 글자 수
-        r2 = QHBoxLayout()
-        r2.setSpacing(10)
-        r2.addWidget(field_label("본문"))
-        r2.addStretch(1)
-        self.lbl_count = QLabel("")
-        self.lbl_count.setStyleSheet(
-            f"color: {theme.SUB}; font-size: {theme.FONT_SUB}px;")
-        r2.addWidget(self.lbl_count)
-        h2 = QWidget()
-        h2.setLayout(r2)
-        v.addWidget(h2)
-
         self.ed_body = QPlainTextEdit()
+        self.ed_body.setPlaceholderText("본문")
         self.ed_body.setObjectName("BodyEdit")   # 로그 창과 달리 본문 글꼴을 씁니다
-        self.ed_body.setMinimumHeight(260)       # 1366x768 에서도 본문 10줄 이상
+        self.ed_body.setMinimumHeight(240)       # 1366x768 에서도 본문 10줄
         self.ed_body.textChanged.connect(self._mark_dirty)
         v.addWidget(self.ed_body, 1)             # 남는 세로 공간을 본문이 다 씁니다
 
         # 해시태그 — 라벨과 입력창을 한 줄에
         r3 = QHBoxLayout()
+        r3.setContentsMargins(0, 0, 0, 0)
         r3.setSpacing(10)
         r3.addWidget(field_label("해시태그", 76))
         self.ed_tags = QLineEdit()
@@ -385,12 +377,15 @@ class PostsScreen(Screen):
         h3.setLayout(r3)
         v.addWidget(h3)
 
-        # 저장 줄 — 본문 바로 아래 고정
+        # 저장 줄 — 본문 바로 아래 고정, 글자 수도 여기에
+        self.lbl_count = QLabel("")
+        self.lbl_count.setStyleSheet(
+            f"color: {theme.SUB}; font-size: {theme.FONT_SUB}px;")
         self.lbl_saved = QLabel("")
         self.lbl_saved.setStyleSheet(f"color: {theme.SUB};")
         self.btn_save = button("저장하기", "Primary")
         self.btn_save.clicked.connect(self._save_edit)
-        v.addWidget(_hrow([self.btn_save, self.lbl_saved]))
+        v.addWidget(_hrow([self.btn_save, self.lbl_count, self.lbl_saved]))
         self.ed_body.textChanged.connect(self._update_count)
         self.tabs.addTab(w, "원고")
 
@@ -791,6 +786,7 @@ class ReserveDialog(QDialog):
         v.addWidget(QLabel(f"예약 날짜: {post.date} ({post.weekday})"))
 
         row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(QLabel("예약 시각:"))
         self.time_edit = QTimeEdit()
         self.time_edit.setDisplayFormat("HH:mm")
