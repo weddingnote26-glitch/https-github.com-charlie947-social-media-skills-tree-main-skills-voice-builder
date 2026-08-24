@@ -4,7 +4,9 @@ import { encrypt } from "@/lib/crypto";
 import { serviceReady } from "@/lib/env";
 import { setSecret, secretStatus, getAppMode, type SecretName } from "@/lib/secrets";
 import { clearStaleImageModel } from "@/lib/providers/image-model";
+import { cleanPastedSecret } from "@/lib/secrets-input";
 import { checkVoiceId, checkTtsModel, detectSwappedVoiceFields } from "@/lib/providers/voice-id";
+import { igAuthStatus } from "@/lib/providers/instagram";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ export async function GET() {
       ELEVENLABS_API_KEY: secretStatus("ELEVENLABS_API_KEY"),
       IMAGE_API_KEY: secretStatus("IMAGE_API_KEY"),
     },
+    // Instagram 토큰도 마찬가지 — 저장 여부와 앞뒤 몇 글자만 (계정 ID 는 비밀이 아니다)
+    instagram: igAuthStatus(),
   }));
 }
 
@@ -26,11 +30,13 @@ export async function PUT(req: Request) {
   return handle(async () => {
     const body = await req.json() as Record<string, unknown>;
     // Instagram 토큰은 암호화 저장 (§31)
-    if (typeof body.igAccessToken === "string" && body.igAccessToken.trim()) {
-      kvSet("ig_token_encrypted", encrypt(body.igAccessToken.trim()));
+    if (typeof body.igAccessToken === "string") {
+      // 빈 값으로 저장하면 지우기 (.env 값이 있으면 그쪽으로 되돌아간다)
+      const v = cleanPastedSecret(body.igAccessToken);
+      kvSet("ig_token_encrypted", v ? encrypt(v) : "");
       delete body.igAccessToken;
     }
-    if (typeof body.igUserId === "string" && body.igUserId.trim()) {
+    if (typeof body.igUserId === "string") {
       kvSet("ig_user_id", body.igUserId.trim());
       delete body.igUserId;
     }

@@ -69,3 +69,55 @@ describe("402 요금제 제한", () => {
     expect(describeKeyFailure("openai", 402, "")).toContain("요금제");
   });
 });
+
+describe("Instagram(Meta) — 400 하나로 뭉뚱그리지 않는다", () => {
+  // 실제 Meta 응답 모양: {"error":{"message":…,"type":…,"code":…,"error_subcode":…}}
+  const meta = (code: number, message: string, sub?: number) =>
+    JSON.stringify({ error: { message, type: "OAuthException", code, ...(sub ? { error_subcode: sub } : {}) } });
+
+  it("만료된 토큰은 '연장하기'로 60일 토큰을 만들라고 알려준다", () => {
+    const m = describeKeyFailure("instagram", 400, meta(190, "Error validating access token: Session has expired", 463));
+    expect(m).toContain("만료");
+    expect(m).toContain("60일");
+    // 권한이나 계정 ID 이야기로 헷갈리게 하지 않는다
+    expect(m).not.toContain("instagram_content_publish");
+  });
+
+  it("권한 누락은 토큰을 새로 만들라고만 하지 않고 필요한 권한을 짚어 준다", () => {
+    const m = describeKeyFailure("instagram", 403, meta(200, "(#200) Requires instagram_content_publish permission"));
+    expect(m).toContain("권한이 부족");
+    expect(m).toContain("instagram_content_publish");
+    expect(m).toContain("pages_show_list");
+  });
+
+  it("없는 ID 는 페이스북 페이지 ID 와 헷갈린 경우를 먼저 짚는다", () => {
+    const raw = meta(100, "Unsupported get request. Object with ID '1234' does not exist, cannot be loaded due to missing permissions, or does not support this operation.", 33);
+    const m = describeKeyFailure("instagram", 400, raw);
+    expect(m).toContain("페이스북 페이지 ID");
+    expect(m).toContain("instagram_business_account");
+    // Meta 는 "없는 ID" 와 "권한 부족" 을 같은 문구로 돌려준다 — 둘 다 알려줘야 한다
+    expect(m).toContain("instagram_basic");
+  });
+
+  it("토큰이 아예 안 읽히면 잘려 붙여넣은 경우를 짚는다", () => {
+    const m = describeKeyFailure("instagram", 400, meta(190, "Invalid OAuth access token - Cannot parse access token"));
+    expect(m).toContain("잘리지 않고");
+    expect(m).not.toContain("만료");
+  });
+
+  it("요청 한도와 서버 오류는 설정을 고치라고 하지 않는다", () => {
+    expect(describeKeyFailure("instagram", 400, meta(4, "Application request limit reached"))).toContain("한도");
+    expect(describeKeyFailure("instagram", 503, "")).toContain("Meta 서버");
+  });
+
+  it("사유가 없어도 '응답 400' 만 남기지 않는다", () => {
+    const m = describeKeyFailure("instagram", 400, "");
+    expect(m).toContain("Instagram User ID");
+  });
+
+  it("fetchJson 이 붙이는 '400 {json}' 앞머리도 읽어낸다", () => {
+    // ApiError 메시지는 `400 {"error":…}` 모양이라 그냥 JSON.parse 하면 영어 원문이 그대로 남는다
+    const m = describeKeyFailure("instagram", 400, `400 ${meta(190, "Error validating access token", 463)}`);
+    expect(m).toContain("만료");
+  });
+});

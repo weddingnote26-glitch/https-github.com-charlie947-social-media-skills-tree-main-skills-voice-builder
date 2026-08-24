@@ -29,6 +29,7 @@ const PATTERNS: RegExp[] = [
   /\bsk-[A-Za-z0-9_-]{16,}/g,          // OpenAI / Anthropic
   /\bAIza[A-Za-z0-9_-]{20,}/g,         // Google
   /\bEAA[A-Za-z0-9]{20,}/g,            // Meta 액세스 토큰
+  /\bIGAA[A-Za-z0-9_-]{20,}/g,         // Instagram 로그인 토큰
   /\bxi-[A-Za-z0-9_-]{16,}/g,          // ElevenLabs 계열
   /\b[a-fA-F0-9]{32,}\b/g,             // ElevenLabs API 키(16진수)
 ];

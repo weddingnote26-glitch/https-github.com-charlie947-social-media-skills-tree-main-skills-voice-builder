@@ -1,10 +1,11 @@
 import { db, j } from "./db";
 import { newId } from "./id";
 import { getSettings } from "./settings";
-import { getPublisher } from "./providers/instagram";
+import { getPublisher, friendlyInstagramError } from "./providers/instagram";
 import { getEnv } from "./env";
 import { updateReel, getReel, reelFactcheck } from "./reels";
 import { logError, logInfo, logWarn } from "./log";
+import { redact } from "./redact";
 
 /**
  * §34 게시 스케줄(요일·시간은 관리자 설정, 하드코딩 금지) +
@@ -161,12 +162,15 @@ async function advancePublishJob(job: {
 }
 
 function onJobError(job: { id: string; reel_id: string; schedule_id: string | null; attempts: number; phase: string }, e: unknown): void {
-  const msg = e instanceof Error ? e.message : String(e);
+  // 원문은 재시도 판단에만 쓰고, 남기는 글은 사람이 읽을 문장으로 바꾼 뒤 비밀값을 지운다.
+  // (Meta 오류에는 요청 주소가 섞여 나올 수 있고, last_error 는 DB와 화면에 그대로 남는다)
+  const raw = e instanceof Error ? e.message : String(e);
+  const msg = redact(friendlyInstagramError(e));
   const attempts = job.attempts + 1;
   // §43 Instagram 실패 → 영상은 삭제하지 않고 재발행 가능 상태 유지
   if (attempts >= 5 || job.phase === "대기") {
     // 생성 단계 오류는 즉시 실패 처리(설정 문제일 가능성) — 단 429/일시 오류는 재시도
-    const transient = /429|timeout|ECONN|fetch failed|5\d\d/.test(msg);
+    const transient = /429|timeout|ECONN|fetch failed|5\d\d/.test(raw);
     if (!transient || attempts >= 5) {
       jobUpdate(job.id, { phase: "실패", last_error: msg.slice(0, 500), attempts });
       if (job.schedule_id) db().prepare("UPDATE schedules SET status='실패' WHERE id=?").run(job.schedule_id);

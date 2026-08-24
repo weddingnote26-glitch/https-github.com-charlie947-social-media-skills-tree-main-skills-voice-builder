@@ -2,7 +2,8 @@ import { getEnv } from "../env";
 import { isSampleMode } from "../secrets";
 import { kvGet } from "../settings";
 import { decrypt } from "../crypto";
-import { fetchJson, withRetry } from "./http";
+import { ApiError, fetchJson, withRetry } from "./http";
+import { describeKeyFailure } from "./api-failure";
 import type { ContainerStatus, PublishingProvider } from "./types";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -17,6 +18,51 @@ export function resolveIgAuth(): { token: string; userId: string } {
   }
   const userId = kvGet("ig_user_id") ?? env.INSTAGRAM_USER_ID;
   return { token, userId: typeof userId === "string" ? userId : env.INSTAGRAM_USER_ID };
+}
+
+/**
+ * 화면 표시용 — 토큰 전체는 절대 돌려주지 않고 "저장돼 있는지"와 앞뒤 몇 글자만.
+ *
+ * 저장한 토큰은 보안상 입력칸에 다시 채워 넣지 않는다. 그러다 보니 칸이 비어 있는데
+ * 연결 테스트는 저장된 값으로 돌아가서, 빈 칸을 보며 400 을 받는 상황이 생겼다.
+ */
+export function igAuthStatus(): {
+  tokenSet: boolean; tokenSource: "설정" | ".env" | "없음"; tokenHint: string;
+  userIdSet: boolean; userIdSource: "설정" | ".env" | "없음"; userId: string;
+} {
+  const env = getEnv();
+  const storedToken = kvGet("ig_token_encrypted");
+  let token = "";
+  if (storedToken) {
+    try { token = decrypt(storedToken); } catch { token = ""; }
+  }
+  const tokenSource = token ? "설정" : env.INSTAGRAM_ACCESS_TOKEN ? ".env" : "없음";
+  if (!token) token = env.INSTAGRAM_ACCESS_TOKEN;
+
+  const storedId = kvGet("ig_user_id");
+  const userId = storedId || env.INSTAGRAM_USER_ID;
+  const userIdSource = storedId ? "설정" : env.INSTAGRAM_USER_ID ? ".env" : "없음";
+
+  return {
+    tokenSet: !!token,
+    tokenSource,
+    // 토큰은 길다 — 같은 값인지 알아볼 수 있을 만큼만
+    tokenHint: token ? `${token.slice(0, 6)}…${token.slice(-4)} (${token.length}자)` : "",
+    userIdSet: !!userId,
+    userIdSource,
+    userId, // 계정 ID 는 비밀이 아니다 — 그대로 보여줘야 확인이 된다
+  };
+}
+
+/**
+ * 발행 실패를 사용자가 다음에 할 일이 보이는 문장으로.
+ * Meta 가 돌려주는 영어 JSON 을 그대로 남기면 무엇을 고쳐야 할지 알 수 없다.
+ */
+export function friendlyInstagramError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  const status = e instanceof ApiError ? e.status : Number(msg.match(/^\s*(\d{3})\b/)?.[1] ?? 0);
+  if (status) return describeKeyFailure("instagram", status, msg);
+  return msg.slice(0, 300);
 }
 
 /** §31~32 Meta 공식 Instagram API (Professional 계정) */

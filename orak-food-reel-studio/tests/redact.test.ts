@@ -104,3 +104,13 @@ describe("checkTtsModel", () => {
     expect(checkTtsModel("").ok).toBe(true);
   });
 });
+
+
+describe("Instagram 토큰도 화면에 남기지 않는다", () => {
+  it("Meta / Instagram 로그인 토큰을 가린다", () => {
+    const eaa = "EAAG" + "x".repeat(40);
+    const igaa = "IGAA" + "y".repeat(40);
+    expect(redact(`요청 실패: access_token=${eaa}`)).not.toContain(eaa);
+    expect(redact(`요청 실패: access_token=${igaa}`)).not.toContain(igaa);
+  });
+});

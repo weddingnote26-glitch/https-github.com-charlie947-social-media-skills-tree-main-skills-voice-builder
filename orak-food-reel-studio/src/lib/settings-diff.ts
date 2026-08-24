@@ -57,8 +57,21 @@ export function describeSettingsChange(
         : `${SECRET_LABEL[raw]}를 지웠습니다. (.env 값이 있으면 그 값을 씁니다)`);
       continue;
     }
-    if (raw === "igAccessToken") { out.push("Instagram Access Token 이 암호화되어 저장되었습니다."); continue; }
-    if (raw === "igUserId") { out.push("Instagram User ID 가 저장되었습니다."); continue; }
+    // 빈 값으로 저장하면 지우기다 — "저장되었습니다" 라고 하면 반대로 알아듣는다
+    if (raw === "igAccessToken") {
+      const v = patch[raw];
+      out.push(typeof v === "string" && v.trim()
+        ? "Instagram Access Token 이 암호화되어 저장되었습니다."
+        : "Instagram Access Token 을 지웠습니다.");
+      continue;
+    }
+    if (raw === "igUserId") {
+      const v = patch[raw];
+      out.push(typeof v === "string" && v.trim()
+        ? "Instagram User ID 가 저장되었습니다."
+        : "Instagram User ID 를 지웠습니다.");
+      continue;
+    }
 
     const key = raw as keyof AppSettings;
     const b = before[key];

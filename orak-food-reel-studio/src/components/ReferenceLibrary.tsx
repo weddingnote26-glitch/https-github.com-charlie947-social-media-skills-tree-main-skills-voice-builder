@@ -245,11 +245,11 @@ export default function ReferenceLibrary() {
                 </div>
                 <div className="text-xs font-bold mt-1 text-gray-700 truncate" title={img.file}>{img.file}</div>
                 <div className="text-xs text-gray-600 mb-1">{img.sizeKb}KB{img.builtin && " · 기본"}</div>
-                <div className="flex gap-1">
-                  <button className="btn-ghost flex-1" onClick={() => toggleSelected(img.rel)} disabled={busy}>
+                <div className="flex flex-wrap gap-1">
+                  <button className="btn-ghost flex-1 min-w-0 px-3" onClick={() => toggleSelected(img.rel)} disabled={busy}>
                     {isRef ? "기준 해제" : "기준으로"}
                   </button>
-                  <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => removeImages([img.rel])} disabled={busy}>
+                  <button className="btn-ghost px-3 text-red-600 hover:bg-red-50" onClick={() => removeImages([img.rel])} disabled={busy}>
                     삭제
                   </button>
                 </div>
