@@ -281,6 +281,48 @@ export default function SettingsPage() {
             기존 이미지 재사용 (같은 장면은 다시 만들지 않아 사용량을 아낍니다)
           </label>
         </div>
+
+        {/* 어디에 돈을 쓰고 어디서 아낄지. 어떤 선택에서도 오락이 품질은 낮추지 않는다 */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="label text-sm mb-2">이미지 비용 설정</div>
+          <div className="field-grid mb-2">
+            {([
+              ["cost_optimized", "비용 절약형 — 권장", "배경·음식은 아끼고 오락이는 최고 품질 그대로"],
+              ["balanced", "균형형", "음식을 조금 더 곱게, 배경은 아낍니다"],
+              ["best", "최고 품질형", "전부 최고 품질 — 무료 사용량을 가장 많이 씁니다"],
+            ] as const).map(([v, label, desc]) => (
+              <button key={v} onClick={() => save({ imagePolicy: { ...s.imagePolicy, costPolicy: v } })}
+                className={`rounded-xl border-2 p-4 text-left ${s.imagePolicy.costPolicy === v ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
+                <div className="font-extrabold">{label}</div>
+                <div className="text-sm text-gray-600">{desc}</div>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="label text-sm m-0">릴스 1편당 이미지 호출 상한</label>
+            <select className="input w-full sm:w-40 min-w-0" value={s.imagePolicy.budgetCalls}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, budgetCalls: parseInt(e.target.value) } })}>
+              {[10, 15, 20, 30, 50, 0].map((n) => <option key={n} value={n}>{n === 0 ? "제한 없음" : `${n}회`}</option>)}
+            </select>
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.budgetStop}
+                onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, budgetStop: e.target.checked } })} />
+              상한에 닿으면 자동으로 멈춤 (만든 것은 그대로 남습니다)
+            </label>
+          </div>
+        </div>
+        <div className="mt-3">
+          <label className="label text-sm" htmlFor="oraki-asset-root">오락이 에셋 폴더 (선택)</label>
+          <input id="oraki-asset-root" className="input" placeholder="예: C:\\Users\\USER\\Desktop\\오락_당근_콘텐츠\\character\\oraki\\v1"
+            value={s.characterLock.assetRoot}
+            onChange={(e) => setS({ ...s, characterLock: { ...s.characterLock, assetRoot: e.target.value } })}
+            onBlur={() => save({ characterLock: s.characterLock })} />
+          <p className="text-xs text-gray-600 mt-1">
+            master / turnaround / actions 폴더가 있는 오락이 공식 에셋 폴더를 가리키면 그 기준으로 캐릭터를 만듭니다.
+            <b> 원본은 읽기만 하고 절대 고치지 않습니다.</b> 비워 두면 프로그램에 담긴 기본 에셋을 씁니다.
+            폴더가 없는 PC에서는 자동으로 기본 에셋으로 동작합니다.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 

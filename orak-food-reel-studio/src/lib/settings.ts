@@ -43,8 +43,22 @@ export const AppSettingsSchema = z.object({
   // 이미지 정책 (§43·§45)
   imagePolicy: z.object({
     fallback: z.boolean().default(true),  // 실패 시 다른 공급자 자동 사용
-    reuseCache: z.boolean().default(true) // 같은 장면이면 기존 이미지 재사용
-  }).default({ fallback: true, reuseCache: true }),
+    reuseCache: z.boolean().default(true),// 같은 장면이면 기존 이미지 재사용
+    /**
+     * 비용 정책. 어느 값이든 오락이 캐릭터 품질은 낮추지 않는다 —
+     * 배경·음식에서만 아낀다.
+     */
+    costPolicy: z.enum(["cost_optimized", "balanced", "best"]).default("cost_optimized"),
+    /** 릴스 1편에 쓸 이미지 API 호출 상한. 넘으면 멈추고 지금까지 결과는 지킨다 */
+    budgetCalls: z.number().int().min(0).max(200).default(20),
+    /** 상한에 닿으면 자동으로 멈출지 (끄면 경고만 남기고 계속) */
+    budgetStop: z.boolean().default(true),
+    /** 캐릭터 장면 하나에 허용할 신규 생성 횟수 */
+    maxCharacterGen: z.number().int().min(1).max(4).default(2),
+  }).default({
+    fallback: true, reuseCache: true, costPolicy: "cost_optimized",
+    budgetCalls: 20, budgetStop: true, maxCharacterGen: 2,
+  }),
 
   // 자막 스타일 (§18~19)
   subtitle: z.object({
@@ -58,7 +72,12 @@ export const AppSettingsSchema = z.object({
     enabled: z.boolean().default(true),
     seed: z.number().int().default(20260823),
     referenceImages: z.array(z.string()).default([]), // /assets/character/ 내 파일명
-  }).default({ enabled: true, seed: 20260823, referenceImages: [] }),
+    /**
+     * 오락이 공식 에셋 폴더 (master / turnaround / actions).
+     * 비우면 프로그램에 담긴 기본 에셋을 쓴다. 원본은 읽기만 한다.
+     */
+    assetRoot: z.string().default(""),
+  }).default({ enabled: true, seed: 20260823, referenceImages: [], assetRoot: "" }),
 
   // BGM
   bgm: z.object({

@@ -8,7 +8,8 @@ import { researchRestaurant, type ResearchInput } from "./research";
 import { generateScript } from "./script";
 import { runFactCheck } from "./factcheck";
 import { scoreQuality, checkDuplicate } from "./quality";
-import { generateSceneImages } from "./images";
+import { generateSceneImages, lastImageUsage } from "./images";
+import { sceneKindOf } from "../providers/image-quality";
 import { generateVoice } from "./tts";
 import { writeSubtitles } from "./subtitles";
 import { renderReel } from "./render";
@@ -167,11 +168,16 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     imageNotice = placeholders.length
       ? `${placeholders.length}장이 임시 이미지입니다 (${placeholders[0].reason ?? "생성 실패"}). 해당 장면은 나중에 [🖼 이미지만 다시]로 만들 수 있습니다.`
       : "";
+    // 사용량을 사람 말로 — 새로 만든 것/재사용/호출 수를 보여줘야 아끼는 게 눈에 보인다
+    const u = lastImageUsage.value;
+    const usageLine = u
+      ? `신규 ${u.created} · 재사용 ${u.reused} · 호출 ${u.apiCalls}회${u.retries ? ` · 재시도 ${u.retries}` : ""}${u.budgetHit ? ` · ⚠ 상한 ${u.budget}회 도달` : ""}`
+      : `${images.length}장 (캐시 ${images.filter((i) => i.cached).length})`;
     mark("images", {
       status: "완료", progress: 100, indeterminate: false,
       message: placeholders.length
-        ? `${images.length}장 중 ⚠ 임시 ${placeholders.length}장 — ${placeholders[0].reason ?? "생성 실패"}`
-        : `${images.length}장 (캐시 ${images.filter((i) => i.cached).length})`,
+        ? `${usageLine} · ⚠ 임시 ${placeholders.length}장 — ${placeholders[0].reason ?? "생성 실패"}`
+        : usageLine,
     });
 
     // 5) 음성 (§16) — 실제 음성 길이에 맞춰 장면 시간 재조정
@@ -339,7 +345,14 @@ function writeOutputFiles(outDir: string, script: ReelScript, info: RestaurantIn
  * (크레딧 소진 등) 장면마다 한 번씩 누르게 하면 아홉 번을 눌러야 한다.
  * 대본·음성은 건드리지 않으므로 잘 나온 나레이션을 버리지 않는다.
  */
-export async function regenerateScene(reelId: string, sceneNo: number | null, what: "image" | "voice" | "subtitle"): Promise<void> {
+export type RegenScope = "character" | "food" | "background" | "all";
+
+export async function regenerateScene(
+  reelId: string,
+  sceneNo: number | null,
+  what: "image" | "voice" | "subtitle",
+  scope: RegenScope = "all",
+): Promise<{ scenes: number[] }> {
   const reel = getReel(reelId);
   if (!reel || !reel.script || !reel.output_dir) throw new Error("릴스를 찾을 수 없습니다");
   const script = reel.script;
@@ -350,8 +363,17 @@ export async function regenerateScene(reelId: string, sceneNo: number | null, wh
   }
   const outDir = reel.output_dir;
 
+  let touched: number[] = [];
   if (what === "image") {
-    const targets = sceneNo === null ? script.scenes.map((s) => s.scene) : [sceneNo];
+    // 무엇을 다시 만들지 고른다 — 캐릭터만 / 음식만 / 배경만 / 선택 장면 / 전체.
+    // 전체는 무료 사용량을 가장 많이 먹으므로 화면 쪽에서 기본값으로 두지 않는다.
+    const targets = sceneNo !== null
+      ? [sceneNo]
+      : script.scenes
+          .filter((s) => scope === "all" || sceneKindOf(s) === scope)
+          .map((s) => s.scene);
+    touched = targets;
+    if (!targets.length) return { scenes: [] };
     for (const s of script.scenes) {
       if (targets.includes(s.scene)) s.image_hash = null; // 캐시 무효화
     }
@@ -378,6 +400,7 @@ export async function regenerateScene(reelId: string, sceneNo: number | null, wh
   }
   saveScenes(reelId, script.scenes);
   updateReel(reelId, { script_json: JSON.stringify(script), status: "검수" });
+  return { scenes: touched };
 }
 
 export function restaurantInfoOf(restaurantId: string): RestaurantInfo {

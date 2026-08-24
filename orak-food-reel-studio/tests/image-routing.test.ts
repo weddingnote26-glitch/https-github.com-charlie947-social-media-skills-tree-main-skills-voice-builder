@@ -26,7 +26,7 @@ let outDir: string;
 beforeEach(() => {
   realFetch = globalThis.fetch;
   outDir = fs.mkdtempSync(path.join(os.tmpdir(), "orak-route-"));
-  saveSettings({ imageProvider: "cloudflare", imagePolicy: { fallback: true, reuseCache: true } });
+  saveSettings({ imageProvider: "cloudflare", imagePolicy: { fallback: true, reuseCache: true, costPolicy: "cost_optimized", budgetCalls: 20, budgetStop: true, maxCharacterGen: 2 } });
 });
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -58,7 +58,9 @@ describe("장면별 모델 라우팅 (§27)", () => {
     await generateSceneImages("reel_t2", [scene(1, "none")], outDir);
     const meta = JSON.parse(fs.readFileSync(path.join(outDir, "scene-01.json"), "utf8"));
     expect(meta.provider).toBe("cloudflare");
-    expect(meta.scene_type).toBe("food");
+    expect(meta.scene_type).toBe("background"); // 음식 낱말이 없는 프롬프트 → 배경(가장 싼 등급)
+    expect(meta.quality_tier).toBe("eco");
+    expect(meta.steps).toBeGreaterThan(0);
     expect(meta.prompt).toBe("scene 1 prompt");
     expect(meta.created_at).toBeTruthy();
   });
@@ -84,7 +86,7 @@ describe("장면별 모델 라우팅 (§27)", () => {
   });
 
   it("대체 끄면(fallback=false) 다른 공급자를 부르지 않는다", async () => {
-    saveSettings({ imagePolicy: { fallback: false, reuseCache: true } });
+    saveSettings({ imagePolicy: { fallback: false, reuseCache: true, costPolicy: "cost_optimized", budgetCalls: 20, budgetStop: true, maxCharacterGen: 2 } });
     globalThis.fetch = vi.fn(async () => { throw new Error("500 down"); }) as unknown as typeof fetch;
     const results = await generateSceneImages("reel_t4", [scene(1, "none")], outDir);
     expect(results[0].placeholder).toBe(true); // 임시 이미지로 채워지긴 한다
@@ -100,7 +102,7 @@ describe("장면별 모델 라우팅 (§27)", () => {
     await generateSceneImages("reel_t5", withCache, outDir);
     expect(calls).toBe(1); // 재사용 켬 → 두 번째는 안 부른다
 
-    saveSettings({ imagePolicy: { fallback: true, reuseCache: false } });
+    saveSettings({ imagePolicy: { fallback: true, reuseCache: false, costPolicy: "cost_optimized", budgetCalls: 20, budgetStop: true, maxCharacterGen: 2 } });
     await generateSceneImages("reel_t5", withCache, outDir);
     expect(calls).toBe(2); // 재사용 끔 → 다시 만든다
   });

@@ -126,6 +126,7 @@ export class CloudflareImage implements ImageProvider {
 
   async generate(req: {
     prompt: string; seed?: number; referenceImagePaths?: string[]; characterScene?: boolean;
+    tier?: { steps: number; width: number; height: number };
   }): Promise<Buffer> {
     const auth = resolveCloudflareAuth();
     if (!auth.accountId || !auth.token) {
@@ -145,7 +146,16 @@ export class CloudflareImage implements ImageProvider {
 
     const body: Record<string, unknown> = { prompt };
     if (cap.negativePrompt && req.characterScene) body.negative_prompt = ORAKI_NEGATIVE_PROMPT;
-    if (cap.size) { body.width = 768; body.height = 1344; } // 9:16 에 가까운 허용 크기
+    // 등급별 설정 — 배경·음식은 작게·적은 단계로 만들어 무료 사용량을 아낀다.
+    // 최종 1080×1920 은 합성 단계에서 다시 잡히므로 원본이 작아도 영상은 정상이다.
+    const tier = req.tier;
+    if (tier) {
+      body.steps = tier.steps;
+      body.num_steps = tier.steps; // 모델마다 이름이 다르다 — 안 받는 쪽은 400 처리에서 빠진다
+      if (cap.size) { body.width = tier.width; body.height = tier.height; }
+    } else if (cap.size) {
+      body.width = 768; body.height = 1344; // 9:16 에 가까운 허용 크기
+    }
     if (ref && cap.referenceImage) { body.image_b64 = ref; body.strength = 0.55; }
     if (typeof req.seed === "number") body.seed = req.seed;
 

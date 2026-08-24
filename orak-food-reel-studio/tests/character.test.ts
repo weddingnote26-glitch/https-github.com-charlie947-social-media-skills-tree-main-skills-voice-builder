@@ -23,9 +23,9 @@ describe("§14 Master Reference", () => {
   });
 
   it("Character Lock을 끄면 참조를 넘기지 않는다", () => {
-    saveSettings({ characterLock: { enabled: false, seed: 1, referenceImages: [] } });
+    saveSettings({ characterLock: { enabled: false, seed: 1, referenceImages: [], assetRoot: "" } });
     expect(resolvedReferencePaths()).toEqual([]);
-    saveSettings({ characterLock: { enabled: true, seed: 20260823, referenceImages: [] } });
+    saveSettings({ characterLock: { enabled: true, seed: 20260823, referenceImages: [], assetRoot: "" } });
     expect(resolvedReferencePaths().length).toBeGreaterThan(0);
   });
 });

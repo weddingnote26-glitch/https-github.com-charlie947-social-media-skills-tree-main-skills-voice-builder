@@ -252,11 +252,14 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
         <div className="space-y-4">
           <Card title="🎬 장면 편집" right={
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-secondary" disabled={!!busy}
-                title="대본과 음성은 그대로 두고 그림만 전부 다시 만듭니다"
-                onClick={() => run("imgall", () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ what: "image" }) }), "이미지를 전부 다시 만들었습니다. 저장하면 영상에 반영됩니다.")}>
-                {busy === "imgall" ? "전체 생성 중…" : "🖼 이미지 전체 다시"}
-              </button>
+              <span className="text-sm font-bold text-gray-700">🖼 이미지 다시:</span>
+              {([["character", "오락이만"], ["food", "음식만"], ["background", "배경만"], ["all", "전체"]] as const).map(([scope, label]) => (
+                <button key={scope} className="btn-secondary" disabled={!!busy}
+                  title={scope === "all" ? "무료 사용량을 가장 많이 씁니다 — 필요한 것만 다시 만드는 편이 좋습니다" : `${label} 장면의 그림만 다시 만듭니다 (대본·음성은 그대로)`}
+                  onClick={() => run(`img-${scope}`, () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ what: "image", scope }) }), `${label} 이미지를 다시 만들었습니다. 저장하면 영상에 반영됩니다.`)}>
+                  {busy === `img-${scope}` ? "생성 중…" : label}
+                </button>
+              ))}
               <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
                 {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
               </button>
