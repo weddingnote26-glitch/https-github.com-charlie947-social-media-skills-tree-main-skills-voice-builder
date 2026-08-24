@@ -189,6 +189,16 @@ def generate_image(prompt: str, style: dict | None = None) -> tuple[bytes, dict]
             last = mask_secrets(f"HTTP {r.status_code} {detail}".strip())
 
             if r.status_code == 429:
+                # 429 는 보통 '잠깐 너무 많이 불렀다' 라서 기다렸다 다시 겁니다.
+                # 그런데 잔액 부족도 429 로 옵니다. 그건 기다려도 그대로라
+                # 다시 걸지 않고 바로 알려 드립니다.
+                if any(w in detail for w in ("no credits", "insufficient_quota",
+                                             "exceeded your current quota",
+                                             "billing")):
+                    last = ("결제 잔액이 없습니다. OpenAI 계정에 크레딧을 넣어야 합니다.\n"
+                            "  https://platform.openai.com/settings/organization/billing\n"
+                            f"  (원래 메시지: HTTP 429 {detail.strip()})")
+                    break
                 wait = int(r.headers.get("Retry-After") or 20)
                 if attempt < int(api["max_retries"]):
                     time.sleep(min(wait, 60))
