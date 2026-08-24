@@ -103,8 +103,12 @@ for (const f of manifest.fonts) {
   }
 }
 
-// 6) 빌드 여부
-if (fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) ok("프로그램 빌드 확인");
+// 6) 빌드 여부 + 언제 만든 것인지
+if (fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) {
+  let when = "";
+  try { when = ` (${fs.statSync(path.join(ROOT, ".next", "BUILD_ID")).mtime.toLocaleString("ko-KR")})`; } catch { /* 없어도 그만 */ }
+  ok(`프로그램 빌드 확인${when}`);
+}
 else warn("첫 실행이라 빌드가 필요합니다 — start.bat이 자동으로 진행합니다 (몇 분 걸릴 수 있어요).");
 
 // 7) 클라우드 동기화 폴더 — 빌드가 EPERM 으로 멈추는 가장 흔한 원인

@@ -79,7 +79,7 @@ export async function POST(req: Request) {
             // Instagram 로그인(IGAA…)은 토큰만으로 계정 ID 를 알아낼 수 있다 → 찾아서 알려 준다
             if (kind === "instagram") {
               const r = await fetch(`${base}/me?fields=user_id,username&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
-              if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "instagram" })) };
+              if (!r.ok) return { ok: false, detail: `${redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "instagram" }))} [graph.instagram.com]` };
               const me = await r.json() as { user_id?: string | number; id?: string | number; username?: string };
               const real = String(me.user_id ?? me.id ?? "");
               const who = me.username ? `@${me.username}` : real;
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
               return { ok: false, detail: `Instagram User ID 는 숫자만 들어갑니다. 지금 저장된 값은 "${userId.slice(0, 24)}" 입니다 — 사용자 이름(@orak_food)이 아니라 숫자로 된 계정 ID 를 넣어 주세요.` };
             }
             const r = await fetch(`${base}/${userId}?fields=username&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
-            if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "facebook" })) };
+            if (!r.ok) return { ok: false, detail: `${redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "facebook" }))} [graph.facebook.com]` };
             const data = await r.json() as { username?: string };
             return { ok: true, detail: `연결 성공 — @${data.username ?? userId} (페이스북 로그인)` };
           }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, api, useApi, ErrorBox } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, isDesktopApp } from "@/components/ui";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
 import { useToast } from "@/components/Toast";
@@ -371,6 +371,21 @@ export default function SettingsPage() {
           </button>
         </div>
         <button className="btn-primary" onClick={() => save({ approvalMode: s.approvalMode })}>저장</button>
+      </Card>
+
+      {/* 업데이트했는데 옛 화면이 보이던 일이 반복됐다 — 지금 도는 것이
+          언제 만든 것인지 눈으로 확인할 수 있게 적어 둔다 */}
+      <Card title="ℹ️ 프로그램 정보">
+        <div className="text-sm text-gray-700">
+          <b>빌드</b> <code className="bg-gray-100 px-1.5 py-0.5 rounded">{process.env.ORAK_BUILD ?? "알 수 없음"}</code>
+          {" · "}
+          <b>실행 방식</b> {isDesktopApp() ? "설치한 프로그램 (바탕화면 아이콘)" : "폴더 실행 (start.bat)"}
+        </div>
+        <p className="text-xs text-gray-600 mt-2">
+          업데이트했는데 화면이 그대로면 이 날짜를 확인해 주세요.
+          {" "}<b>업데이트.bat</b> 은 폴더 실행만 바꿉니다 — 바탕화면 아이콘까지 바꾸려면
+          {" "}<b>설치파일만들기.bat</b> 으로 다시 만들어 설치해야 합니다.
+        </p>
       </Card>
 
       <Card title="📁 저장 폴더">
