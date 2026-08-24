@@ -55,6 +55,7 @@ if errorlevel 1 (
 
 echo.
 echo  * 오락푸드 프로그램이 켜져 있으면 지금 닫아 주세요 ^(파일이 잠깁니다^)
+call node scripts\cloud-warn.mjs
 echo.
 echo  [3/3] 프로그램을 새로 만듭니다. 3~5분 걸립니다...
 call npm run fresh

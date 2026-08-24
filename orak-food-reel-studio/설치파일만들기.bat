@@ -55,6 +55,7 @@ if errorlevel 1 (
 )
 
 echo.
+call node scripts\cloud-warn.mjs
 echo  [4/6] 지난 결과를 정리하고 프로그램을 빌드합니다. 3~5분 걸립니다...
 if exist dist-app rmdir /s /q dist-app
 if exist dist-bin rmdir /s /q dist-bin

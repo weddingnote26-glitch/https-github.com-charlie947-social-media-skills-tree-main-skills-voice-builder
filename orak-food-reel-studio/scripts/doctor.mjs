@@ -5,6 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+import os from "node:os";
+import { execSync } from "node:child_process";
+import { checkCloudSync } from "./cloud-check.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require_ = createRequire(import.meta.url);
@@ -103,6 +106,23 @@ for (const f of manifest.fonts) {
 // 6) 빌드 여부
 if (fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) ok("프로그램 빌드 확인");
 else warn("첫 실행이라 빌드가 필요합니다 — start.bat이 자동으로 진행합니다 (몇 분 걸릴 수 있어요).");
+
+// 7) 클라우드 동기화 폴더 — 빌드가 EPERM 으로 멈추는 가장 흔한 원인
+{
+  let tasks = "";
+  if (os.platform() === "win32") {
+    try { tasks = execSync("tasklist /fo csv /nh", { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] }); }
+    catch { /* 막혀 있으면 경로만으로 판단 */ }
+  }
+  const cloud = checkCloudSync({ dir: ROOT, home: os.homedir(), platform: os.platform(), taskListOutput: tasks });
+  if (cloud.level === "sure") {
+    warn(`${cloud.service} 동기화 폴더 안에 있습니다 — 빌드가 실패하면 동기화를 잠시 멈추거나 C:\\orak 같은 자리로 옮기세요.`);
+  } else if (cloud.level === "maybe") {
+    warn(`${cloud.service}가 켜져 있고 프로그램이 개인 폴더 안에 있습니다 — 빌드가 EPERM 으로 멈추면 동기화를 잠시 멈춰 보세요.`);
+  } else {
+    ok("클라우드 동기화 폴더 아님");
+  }
+}
 
 console.log(problems === 0 ? "\n모든 점검 통과! 🎉\n" : `\n${problems}개 항목을 해결해야 합니다.\n`);
 process.exit(problems === 0 ? 0 : 1);
