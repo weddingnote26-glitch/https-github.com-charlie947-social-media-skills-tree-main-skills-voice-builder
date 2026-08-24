@@ -372,6 +372,27 @@ class ImageScreen(Screen):
         c.add(hw)
         self.box.addWidget(c)
 
+        # 표·요약 그림은 챗GPT 없이 이 프로그램이 바로 그립니다.
+        g = Card("정리 그림 만들기")
+        g.add(lead("고른 글의 핵심을 1200 x 1500 세로 그림 한 장으로 만듭니다.\n"
+                   "문구는 원고 앞머리의 infographic 칸에 적은 대로 들어갑니다."))
+        row2 = QHBoxLayout()
+        row2.setSpacing(14)
+        self.btn_info = button("정리 그림 만들기", "Primary",
+                               "고른 글로 인포그래픽 한 장을 만듭니다")
+        self.btn_info.clicked.connect(self._infographic)
+        self.btn_info_dir = button("만든 그림 폴더 열기")
+        self.btn_info_dir.clicked.connect(self._open_info_dir)
+        for b in (self.btn_info, self.btn_info_dir):
+            row2.addWidget(b)
+        row2.addStretch(1)
+        hw2 = QWidget()
+        hw2.setLayout(row2)
+        g.add(hw2)
+        self.panel = TaskPanel()
+        g.add(self.panel)
+        self.box.addWidget(g)
+
     def _selected(self):
         r = self.table.currentRow()
         if r < 0:
@@ -393,6 +414,34 @@ class ImageScreen(Screen):
             return
         import os
         os.startfile(str(target))  # noqa: S606
+
+    def _info_dir(self):
+        # 저장 폴더 규칙은 scripts/infographic.py 한 곳에만 둡니다.
+        # 묶인 exe 에서는 그 모듈을 못 읽을 수 있어 같은 경로를 되돌려 줍니다.
+        try:
+            import scripts.infographic as _ig
+            return _ig.default_out_dir()
+        except Exception:
+            import os
+            return Path(os.path.expandvars(r"%USERPROFILE%\Desktop\블로그 이미지"))
+
+    def _infographic(self) -> None:
+        p = self._selected()
+        if not p:
+            return
+        self.run_task(self.panel, "infographic.py", ["--post", str(p.folder)],
+                      "그림을 그리는 중입니다…",
+                      "그림을 만들었습니다. '만든 그림 폴더 열기' 를 눌러 확인하세요.",
+                      [self.btn_info, self.btn_info_dir])
+
+    def _open_info_dir(self) -> None:
+        try:
+            d = self._info_dir()
+        except Exception:
+            warn(self, "저장 폴더를 찾지 못했습니다.")
+            return
+        d.mkdir(parents=True, exist_ok=True)
+        open_folder(d)
 
     def _guide(self) -> None:
         g = PROJECT_ROOT / "이미지_챗GPT_만드는법.md"

@@ -205,6 +205,7 @@ def docs() -> list[tuple[str, Path]]:
         ("평소 쓰는 법", "회사PC_실행방법.md"),
         ("문제가 생겼을 때", "회사PC_문제해결.md"),
         ("이미지 만드는 법 (챗GPT)", "이미지_챗GPT_만드는법.md"),
+        ("정리 그림 만드는 법", "인포그래픽_만드는법.md"),
         ("전체 설명서", "README.md"),
     ]
     return [(t, PROJECT_ROOT / f) for t, f in names if (PROJECT_ROOT / f).exists()]
