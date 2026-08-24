@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
 
         strip = QWidget()
         strip.setObjectName("TopStrip")
-        strip.setFixedHeight(46)
+        strip.setFixedHeight(42)
         sh = QHBoxLayout(strip)
         sh.setContentsMargins(24, 0, 24, 0)
         sh.setSpacing(10)
