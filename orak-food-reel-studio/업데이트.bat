@@ -54,10 +54,21 @@ if errorlevel 1 (
 )
 
 echo.
+echo  * 오락푸드 프로그램이 켜져 있으면 지금 닫아 주세요 ^(파일이 잠깁니다^)
+echo.
 echo  [3/3] 프로그램을 새로 만듭니다. 3~5분 걸립니다...
 call npm run fresh
 if errorlevel 1 (
-  echo  [X] 빌드에 실패했습니다. 화면의 오류 내용을 확인하세요.
+  echo  [X] 빌드에 실패했습니다.
+  echo.
+  echo      화면에 "EPERM" 또는 "Permission denied" 가 보이면
+  echo      다른 프로그램이 파일을 붙잡고 있는 것입니다. 아래를 닫고 다시 실행하세요.
+  echo        1^) 오락푸드 AI릴스 프로그램 ^(작업 표시줄도 확인^)
+  echo        2^) 검은 명령창
+  echo        3^) 이 폴더를 열어 둔 탐색기 창
+  echo        4^) OneDrive · 구글드라이브 동기화 ^(잠시 멈춤^)
+  echo.
+  echo      그래도 안 되면 화면 내용을 그대로 복사해 Claude 에게 보여주세요.
   pause
   exit /b 1
 )

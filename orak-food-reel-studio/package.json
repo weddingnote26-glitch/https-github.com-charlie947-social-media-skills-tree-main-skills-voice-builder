@@ -14,7 +14,7 @@
     "doctor": "node scripts/doctor.mjs",
     "smoke": "tsx scripts/smoke.ts",
     "character": "node scripts/make-character.mjs",
-    "fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
+    "fresh": "node scripts/clean-next.mjs && next build",
     "ffmpeg": "node scripts/fix-ffmpeg.mjs",
     "desktop:prepare": "npm run build && node scripts/prepare-desktop.mjs",
     "desktop:dev": "electron electron/main.js",
