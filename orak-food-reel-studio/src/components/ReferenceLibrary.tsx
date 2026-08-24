@@ -19,6 +19,7 @@ export default function ReferenceLibrary() {
   const { data, reload } = useApi<Library>("/api/character/library");
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
 
   const [folder, setFolder] = useState("");           // 지금 보고 있는 폴더
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -139,18 +140,39 @@ export default function ReferenceLibrary() {
     await call({ method: "POST", body: JSON.stringify({ action: "select", images: [...next] }) }, "기준 이미지를 변경했습니다.");
   });
 
-  const upload = (file: File) => {
+  const readAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => void guard(async () => {
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error(`${file.name} 을(를) 읽지 못했습니다`));
+    reader.readAsDataURL(file);
+  });
+
+  const OK_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+  /** 여러 장을 한 번에 올린다 — 끌어다 놓기와 파일 고르기 모두 여기로 온다 */
+  const upload = (files: File[]) => void guard(async () => {
+    const images = files.filter((f) => OK_TYPES.includes(f.type));
+    const skipped = files.length - images.length;
+    if (!images.length) {
+      throw new Error("PNG · JPG · WEBP 이미지 파일만 올릴 수 있습니다.");
+    }
+    let done = 0;
+    for (const file of images) {
+      const dataBase64 = await readAsDataUrl(file);
       await api("/api/character", {
         method: "POST",
-        body: JSON.stringify({ file: file.name, folder, dataBase64: String(reader.result) }),
+        body: JSON.stringify({ file: file.name, folder, dataBase64 }),
       });
-      reload();
-      toast.success(`이미지 "${file.name}" 을(를) ${folderLabel(folder)}에 추가했습니다.`);
-    });
-    reader.readAsDataURL(file);
-  };
+      done++;
+    }
+    reload();
+    const tail = skipped ? ` (이미지가 아닌 파일 ${skipped}개는 건너뛰었습니다)` : "";
+    toast.success(
+      done === 1
+        ? `이미지 1장을 ${folderLabel(folder)}에 넣었습니다.${tail}`
+        : `이미지 ${done}장을 ${folderLabel(folder)}에 넣었습니다.${tail}`,
+    );
+  });
 
   return (
     <div className="space-y-4">
@@ -259,17 +281,35 @@ export default function ReferenceLibrary() {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <button className="btn-secondary" onClick={() => fileInput.current?.click()} disabled={busy}>
-          이미지 업로드 → {folderLabel(folder)}
-        </button>
-        <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" hidden
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
-        <p className="text-xs text-gray-600">
-          “기준”으로 표시한 이미지가 이미지 생성 시 함께 전달됩니다 (앞의 3개까지).
-          하나도 고르지 않으면 기본 Master Reference 를 씁니다.
+      {/* 예전에는 회색 단추 하나가 목록 맨 아래 묻혀 있어 첨부할 수 있는 줄 모르셨다.
+          끌어다 놓을 수 있는 넓은 자리로 바꾸고, 여러 장을 한 번에 받는다. */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault(); setDragging(false);
+          const files = Array.from(e.dataTransfer.files ?? []);
+          if (files.length) upload(files);
+        }}
+        className={`rounded-xl border-2 border-dashed p-5 text-center transition ${
+          dragging ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-300 bg-gray-50"
+        }`}
+      >
+        <p className="text-base font-bold text-gray-800 mb-1">
+          {dragging ? "여기에 놓으세요" : "오락이 이미지를 여기로 끌어다 놓으세요"}
         </p>
+        <p className="text-xs text-gray-600 mb-3">PNG · JPG · WEBP · 여러 장 한꺼번에 가능</p>
+        <button className="btn-primary" onClick={() => fileInput.current?.click()} disabled={busy}>
+          {busy ? "올리는 중…" : `📎 파일 고르기 → ${folderLabel(folder)}`}
+        </button>
+        <input ref={fileInput} type="file" multiple accept="image/png,image/jpeg,image/webp" hidden
+          onChange={(e) => { const f = Array.from(e.target.files ?? []); if (f.length) upload(f); e.target.value = ""; }} />
       </div>
+
+      <p className="text-xs text-gray-600">
+        “기준”으로 표시한 이미지가 이미지 생성 시 함께 전달됩니다 (앞의 3개까지).
+        하나도 고르지 않으면 기본 Master Reference 를 씁니다.
+      </p>
 
       <ConfirmDialog
         open={!!confirm}

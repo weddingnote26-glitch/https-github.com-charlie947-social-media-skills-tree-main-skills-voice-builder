@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Card, api, useApi, ErrorBox, isDesktopApp } from "@/components/ui";
+import { DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL } from "@/lib/providers/cloudflare-models";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
 import { useToast } from "@/components/Toast";
@@ -244,14 +245,18 @@ export default function SettingsPage() {
               <div><label className="label text-sm">Cloudflare Account ID</label>
                 <input className="input" placeholder="32자리 영문·숫자" value={s.cloudflare.accountId}
                   onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, accountId: e.target.value.trim() } })} /></div>
+              {/* 기본 모델 이름은 도움말 줄에 적는다. 자리표시자에 넣으면 칸 폭에 잘려
+                  "비우면 이 값" 이라는 그 값이 무엇인지 읽을 수 없었다. */}
               <div><label className="label text-sm">기본 이미지 모델 (음식·매장·배경)</label>
-                <input className="input" placeholder="@cf/black-forest-labs/flux-1-schnell (비우면 이 값)"
+                <input className="input" placeholder="비우면 기본값을 씁니다"
                   value={s.cloudflare.imageModel}
-                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, imageModel: e.target.value.trim() } })} /></div>
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, imageModel: e.target.value.trim() } })} />
+                <p className="text-xs text-gray-600 mt-1.5 break-all">기본값: {DEFAULT_IMAGE_MODEL}</p></div>
               <div><label className="label text-sm">캐릭터 이미지 모델 (오락이 장면)</label>
-                <input className="input" placeholder="@cf/bytedance/stable-diffusion-xl-lightning (비우면 이 값)"
+                <input className="input" placeholder="비우면 기본값을 씁니다"
                   value={s.cloudflare.characterModel}
-                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, characterModel: e.target.value.trim() } })} /></div>
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, characterModel: e.target.value.trim() } })} />
+                <p className="text-xs text-gray-600 mt-1.5 break-all">기본값: {DEFAULT_CHARACTER_MODEL}</p></div>
             </div>
             <p className="text-xs text-gray-600 mb-3">
               오락이 장면은 <b>기준 이미지를 받을 수 있는 모델</b>이어야 얼굴이 유지됩니다 (FLUX 는 기준 이미지를 못 받습니다).

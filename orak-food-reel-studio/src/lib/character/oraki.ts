@@ -42,13 +42,18 @@ const DEFAULT_REFERENCES = ["character_sheet.png", "front.png", "face_detective.
 export function resolvedReferencePaths(): string[] {
   const lock = getSettings().characterLock;
   if (!lock.enabled) return [];
-  const chosen = lock.referenceImages.length ? lock.referenceImages : DEFAULT_REFERENCES;
-  return chosen
-    // 하위 폴더에 넣은 이미지도 쓸 수 있게 상대 경로를 그대로 푼다.
-    // resolveRef 는 assets/character 밖으로 나가는 값을 거부한다.
+  // 하위 폴더에 넣은 이미지도 쓸 수 있게 상대 경로를 그대로 푼다.
+  // resolveRef 는 assets/character 밖으로 나가는 값을 거부한다.
+  const resolve = (names: string[]) => names
     .map((f) => resolveRef(f))
     .filter((p): p is string => !!p && fs.existsSync(p))
     .slice(0, 3);
+
+  const picked = resolve(lock.referenceImages);
+  if (picked.length) return picked;
+  // 고른 이미지가 전부 사라졌더라도(밖에서 지웠거나 폴더를 옮겼거나) 기본 Master Reference 로
+  // 되돌아간다. 기준 없이 그리면 오락이 얼굴이 장면마다 달라진다 (§14).
+  return resolve(DEFAULT_REFERENCES);
 }
 
 /** §7 대표 말투 — 매번 그대로 반복하지 말고 변형해서 사용 */

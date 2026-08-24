@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Card, api, useApi, ErrorBox, StatusBadge } from "@/components/ui";
+import RestaurantForm, { emptyForm, type FormValue } from "@/components/RestaurantForm";
 
 interface Restaurant {
   id: string; name: string; area: string; address: string | null; menus_json: string;
@@ -14,6 +15,17 @@ export default function RestaurantsPage() {
   const [tab, setTab] = useState<"db" | "tips">("db");
   const [tip, setTip] = useState({ restaurant_name: "", location: "", reason: "", submitted_by: "" });
   const [err, setErr] = useState<string | null>(null);
+  // 수기 입력 폼에 채워 넣을 업체. null 이면 폼을 닫아 둔다.
+  const [editing, setEditing] = useState<FormValue | null>(null);
+
+  /** 표에서 고른 업체를 폼에 불러온다 */
+  const openEdit = async (id: string) => {
+    setErr(null);
+    try {
+      const r = await api<{ form: FormValue }>(`/api/restaurants?id=${encodeURIComponent(id)}`);
+      setEditing(r.form);
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+  };
 
   const addTip = async () => {
     try {
@@ -38,28 +50,47 @@ export default function RestaurantsPage() {
       <ErrorBox msg={err} />
 
       {tab === "db" && (
-        <Card>
-          <table className="w-full text-sm">
-            <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2">매장명</th><th>지역</th><th>대표 메뉴</th><th>정보 상태</th></tr></thead>
-            <tbody>
-              {(data?.restaurants ?? []).map((r) => {
-                const menus = JSON.parse(r.menus_json || "[]") as Array<{ name: string; price: string; verified: boolean }>;
-                const st = JSON.parse(r.field_status_json || "{}") as Record<string, string>;
-                const verified = Object.values(st).filter((v) => v === "확인").length;
-                return (
-                  <tr key={r.id} className="border-b border-gray-100">
-                    <td className="py-2.5 font-bold">{r.name}</td>
-                    <td>{r.area}</td>
-                    <td className="text-gray-600">{menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ") || "-"}</td>
-                    <td><span className={`badge ${verified >= 5 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>확인 {verified}/{Object.keys(st).length || 8}</span></td>
-                  </tr>
-                );
-              })}
-              {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={4} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작해보세요.</td></tr>}
-            </tbody>
-          </table>
-          <button className="btn-ghost mt-3" onClick={reload}>새로고침</button>
-        </Card>
+        <>
+          <Card right={
+            <button className="btn-primary" onClick={() => setEditing(emptyForm())}>➕ 업체 직접 등록</button>
+          }>
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2">매장명</th><th>지역</th><th>대표 메뉴</th><th>정보 상태</th><th className="text-right">수정</th></tr></thead>
+              <tbody>
+                {(data?.restaurants ?? []).map((r) => {
+                  const menus = JSON.parse(r.menus_json || "[]") as Array<{ name: string; price: string; verified: boolean }>;
+                  const st = JSON.parse(r.field_status_json || "{}") as Record<string, string>;
+                  // 사람이 직접 적어 넣은 값도 확인된 정보로 센다
+                  const verified = Object.values(st).filter((v) => v === "확인" || v === "사용자 입력").length;
+                  return (
+                    <tr key={r.id} className="border-b border-gray-100">
+                      <td className="py-2.5 font-bold">{r.name}</td>
+                      <td>{r.area}</td>
+                      <td className="text-gray-600">{menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ") || "-"}</td>
+                      <td><span className={`badge ${verified >= 5 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>확인 {verified}/{Object.keys(st).length || 8}</span></td>
+                      <td className="text-right">
+                        <button className="btn-ghost" onClick={() => openEdit(r.id)}>✏️ 정보 수정</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={5} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작하거나, 오른쪽 위 [업체 직접 등록] 으로 직접 적어 넣으세요.</td></tr>}
+              </tbody>
+            </table>
+            <button className="btn-ghost mt-3" onClick={reload}>새로고침</button>
+          </Card>
+
+          {editing && (
+            <div className="space-y-2">
+              <RestaurantForm
+                value={editing}
+                title={editing.id ? `✏️ ${editing.name} — 업체 정보 수정` : "➕ 업체 직접 등록"}
+                onSaved={(r) => { setEditing(r.form); reload(); }}
+              />
+              <button className="btn-ghost" onClick={() => setEditing(null)}>입력 창 닫기</button>
+            </div>
+          )}
+        </>
       )}
 
       {tab === "tips" && (

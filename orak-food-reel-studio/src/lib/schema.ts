@@ -58,7 +58,7 @@ export type Verdict = z.infer<typeof VerdictSchema>;
 export const FactCheckItemSchema = z.object({
   field: z.string(),                        // 매장명/주소/메뉴/가격/영업시간/휴무/주차/예약
   value: z.string(),
-  status: z.enum(["확인", "미확인"]),
+  status: z.enum(["확인", "미확인", "사용자 입력"]),
   source: z.string().default(""),
 });
 export type FactCheckItem = z.infer<typeof FactCheckItemSchema>;
@@ -124,7 +124,8 @@ export const RestaurantInfoSchema = z.object({
   pros: z.array(z.string()).default([]),
   cons: z.array(z.string()).default([]),
   recommended_for: z.string().default(""),
-  field_status: z.record(z.string(), z.enum(["확인", "미확인"])).default({}),
+  /** 항목별 확인 상태. "사용자 입력"은 사장님/운영자가 직접 적어 넣은 값이다. */
+  field_status: z.record(z.string(), z.enum(["확인", "미확인", "사용자 입력"])).default({}),
 });
 export type RestaurantInfo = z.infer<typeof RestaurantInfoSchema>;
 

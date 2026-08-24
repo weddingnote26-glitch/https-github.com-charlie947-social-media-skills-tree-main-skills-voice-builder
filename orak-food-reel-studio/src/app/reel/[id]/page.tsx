@@ -2,6 +2,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
+import RestaurantForm, { FieldStatusBadge, type FormValue } from "@/components/RestaurantForm";
 import type { Scene, ReelScript, FactCheckItem, Verdict } from "@/lib/schema";
 
 interface ReelDetail {
@@ -12,6 +13,7 @@ interface ReelDetail {
     duration_sec: number | null; planned_date: string | null; output_dir: string | null;
     script: ReelScript | null; scenes: Scene[]; verdict_json: string;
   };
+  restaurant: FormValue | null;
   schedules: Array<{ id: string; publish_at: string; status: string }>;
   posts: Array<{ ig_media_id: string; permalink: string | null; published_at: string }>;
   publishingJobs: Array<{ id: string; phase: string; attempts: number; last_error: string | null; updated_at?: string | null }>;
@@ -254,12 +256,20 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 <div key={f.field} className="flex justify-between gap-2">
                   <span className="text-gray-600 font-semibold shrink-0">{f.field}</span>
                   <span className="truncate text-right">{f.value}</span>
-                  <span className={`badge shrink-0 ${f.status === "확인" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
-                    {f.status === "확인" ? "확인" : "⚠ 확인 필요"}
-                  </span>
+                  <FieldStatusBadge status={f.status} />
                 </div>
               ))}
             </div>
+            {facts.some((f) => f.status === "미확인") && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-600 mb-2">
+                  ⚠ 확인 필요 항목은 직접 적어 넣으면 확인된 정보로 바뀝니다.
+                </p>
+                <button className="btn-secondary w-full" onClick={() => {
+                  document.getElementById("업체정보")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}>✏️ 업체 정보 직접 입력하기</button>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -343,6 +353,13 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             <textarea className="input" rows={2} value={hashtags ?? ""} onChange={(e) => setHashtags(e.target.value)} />
           </Card>
         </div>
+      </div>
+
+      {/* §6 자동 수집이 막힌 정보를 사람이 적어 넣는 곳 — 칸이 12개라 폭을 다 쓴다 */}
+      <div id="업체정보" className="scroll-mt-4">
+        {/* 장면(scenes)은 건드리지 않는다 — null 로 되돌리면 화면 전체가 "불러오는 중…" 으로
+            돌아가면서 방금 저장했다는 안내와 스크롤 위치가 사라진다 */}
+        <RestaurantForm value={data.restaurant} onSaved={() => reload()} />
       </div>
     </div>
   );

@@ -22,6 +22,16 @@ describe("§14 Master Reference", () => {
     expect(paths.some((p) => p.endsWith("character_sheet.png"))).toBe(true);
   });
 
+  it("고른 이미지가 사라져도 기본 Master Reference 로 되돌아간다", () => {
+    // 실제로 겪은 일: 보관함 밖에서 파일을 지우면 설정에는 이름만 남는다.
+    // 그때 참조를 하나도 넘기지 않으면 오락이 얼굴이 장면마다 달라진다.
+    saveSettings({ characterLock: { enabled: true, seed: 1, referenceImages: ["없는파일_오락이.png"], assetRoot: "" } });
+    const paths = resolvedReferencePaths();
+    expect(paths.length).toBeGreaterThan(0);
+    expect(paths.every((p) => fs.existsSync(p))).toBe(true);
+    saveSettings({ characterLock: { enabled: true, seed: 20260823, referenceImages: [], assetRoot: "" } });
+  });
+
   it("Character Lock을 끄면 참조를 넘기지 않는다", () => {
     saveSettings({ characterLock: { enabled: false, seed: 1, referenceImages: [], assetRoot: "" } });
     expect(resolvedReferencePaths()).toEqual([]);

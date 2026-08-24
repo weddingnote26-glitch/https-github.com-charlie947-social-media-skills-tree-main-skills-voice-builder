@@ -2,6 +2,7 @@ import { handle, ok, fail } from "@/lib/api";
 import { getReel, updateReel, saveScenes } from "@/lib/reels";
 import { SceneSchema } from "@/lib/schema";
 import { db } from "@/lib/db";
+import { restaurantForm } from "@/lib/restaurants";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const schedules = db().prepare("SELECT * FROM schedules WHERE reel_id=? ORDER BY publish_at DESC").all(id);
     const posts = db().prepare("SELECT * FROM instagram_posts WHERE reel_id=?").all(id);
     const jobs = db().prepare("SELECT id, phase, attempts, last_error, updated_at FROM publishing_jobs WHERE reel_id=? ORDER BY created_at DESC LIMIT 5").all(id);
-    return ok({ reel, schedules, posts, publishingJobs: jobs });
+    // 업체 정보 수기 입력 폼에 그대로 넣을 값 (연결된 맛집이 없으면 null)
+    const restaurant = restaurantForm(reel.restaurant_id);
+    return ok({ reel, restaurant, schedules, posts, publishingJobs: jobs });
   });
 }
 
