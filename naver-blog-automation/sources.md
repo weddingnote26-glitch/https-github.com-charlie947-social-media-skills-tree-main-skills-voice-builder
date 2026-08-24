@@ -11,13 +11,13 @@
 
 | 항목 | 값 | 출처 1 | 출처 2 | 교차확인 | 확인일시 |
 | --- | ---: | --- | --- | :---: | --- |
-| 비트코인 | $76,885.00 | [CoinGecko](https://www.coingecko.com/en/coins/bitcoin) | – | ✓ | 2026-08-24 11:03 KST |
-| 이더리움 | $2,425.59 | [CoinGecko](https://www.coingecko.com/en/coins/ethereum) | – | ✓ | 2026-08-24 11:03 KST |
-| 비트코인 도미넌스 | 59.25% | [CoinGecko](https://www.coingecko.com/en/global-charts) | – | ✓ | 2026-08-24 10:57 KST |
-| 가상자산 시가총액 합계 | $2.60조 | [CoinGecko](https://www.coingecko.com/en/global-charts) | – | ✓ | 2026-08-24 10:57 KST |
-| 코스피 | 6,800.23 | [Yahoo Finance](https://finance.yahoo.com/quote/%5EKS11/) | – | ✓ | 2026-08-24 10:45 KST |
-| 코스닥 | 814.44 | [Yahoo Finance](https://finance.yahoo.com/quote/%5EKQ11/) | – | ✓ | 2026-08-24 10:45 KST |
-| 원·달러 환율 | 1,380.18원 | [Yahoo Finance](https://finance.yahoo.com/quote/KRW=X/) | [Frankfurter (유럽중앙은행 고시)](https://www.frankfurter.app/) | ✓ | 2026-08-24 11:05 KST |
+| 비트코인 | $77,392.00 | [CoinGecko](https://www.coingecko.com/en/coins/bitcoin) | – | ✓ | 2026-08-24 11:15 KST |
+| 이더리움 | $2,445.10 | [CoinGecko](https://www.coingecko.com/en/coins/ethereum) | – | ✓ | 2026-08-24 11:16 KST |
+| 비트코인 도미넌스 | 59.27% | [CoinGecko](https://www.coingecko.com/en/global-charts) | – | ✓ | 2026-08-24 11:07 KST |
+| 가상자산 시가총액 합계 | $2.61조 | [CoinGecko](https://www.coingecko.com/en/global-charts) | – | ✓ | 2026-08-24 11:07 KST |
+| 코스피 | 6,761.06 | [Yahoo Finance](https://finance.yahoo.com/quote/%5EKS11/) | – | ✓ | 2026-08-24 10:57 KST |
+| 코스닥 | 812.04 | [Yahoo Finance](https://finance.yahoo.com/quote/%5EKQ11/) | – | ✓ | 2026-08-24 10:57 KST |
+| 원·달러 환율 | 1,377.08원 | [Yahoo Finance](https://finance.yahoo.com/quote/KRW=X/) | [Frankfurter (유럽중앙은행 고시)](https://www.frankfurter.app/) | ✓ | 2026-08-24 11:17 KST |
 | S&P 500 | 7,674.37 (마지막 거래 값) | [Yahoo Finance](https://finance.yahoo.com/quote/%5EGSPC/) | – | ✓ | 2026-08-22 05:41 KST |
 
 > 가격·지수·환율은 조회 시점에 따라 변동될 수 있습니다.  

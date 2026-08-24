@@ -7,7 +7,7 @@ publish_date: '2026-08-28'
 publish_time: 08:30
 weekday: 금
 slot: 위험관리
-status: reviewed
+status: approved
 template: guide
 title_candidates:
 - '[코린이 매매팁] "거래소가 문을 닫으면 제 코인은요?" 미리 알아두는 세 가지 🏦'

@@ -416,17 +416,44 @@ def check_spelling_and_length(r: Report, post: PostFile, settings: dict) -> None
               f"가장 긴 문장 {longest}자 (기준 {max_sent}자)")
 
 
-def check_images(r: Report, post: PostFile, pdir: Path) -> None:
+def images_required(ch_key: str, meta: dict) -> bool:
+    """
+    이 게시물이 이미지를 꼭 넣어야 하는 틀인가.
+
+    채널에 틀이 여러 개면(코인의 시황/매매팁) 게시물의 카테고리로 어느 틀인지 찾습니다.
+    코인 모닝 시황처럼 실제로 이미지를 쓰지 않는 틀은 false 입니다.
+    설정에 값이 없으면 예전처럼 이미지를 요구합니다.
+    """
+    ch = c.get_channel(ch_key) or {}
+    category = ((meta.get("publish") or {}).get("category") or "").strip()
+
+    for tpl in (ch.get("templates") or {}).values():
+        if not isinstance(tpl, dict):
+            continue
+        if category and str(tpl.get("category", "")).strip() == category:
+            return bool(tpl.get("images_required", True))
+
+    return bool(ch.get("images_required", True))
+
+
+def check_images(r: Report, post: PostFile, pdir: Path, ch_key: str, meta: dict) -> None:
     """11. 이미지 누락"""
     declared = post.get("images") or []
     refs = post.image_refs()
     img_dir = pdir / "images"
     existing = {p.name for p in img_dir.glob("*") if p.is_file()} if img_dir.exists() else set()
 
+    need_images = images_required(ch_key, meta)
+
+    # 이미지를 쓰지 않는 틀(코인 모닝 시황)은 없는 것이 정상입니다.
+    if not need_images and not declared and not refs:
+        r.add(11, "이미지 누락", PASS, "이 틀은 이미지를 쓰지 않습니다")
+        return
+
     problems = []
-    if not declared:
+    if not declared and need_images:
         problems.append("앞머리 images 목록이 비어 있습니다")
-    if not refs:
+    if not refs and need_images:
         problems.append("본문에 [이미지:파일명] 표시가 없습니다")
 
     for d in declared:
@@ -555,7 +582,7 @@ def review_post(pdir: Path, settings: dict, banned: dict, guard: dict,
     check_profit_guarantee(r, post, ch_key, banned)
     check_fear_and_solicit(r, post, ch_key, banned)
     check_spelling_and_length(r, post, settings)
-    check_images(r, post, pdir)
+    check_images(r, post, pdir, ch_key, meta)
     check_hashtags(r, post, ch, settings)
     check_schedule_and_channel(r, post, meta, pdir, ch)
     check_disclaimer(r, post, ch_key, banned)

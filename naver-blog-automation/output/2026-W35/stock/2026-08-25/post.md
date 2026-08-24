@@ -7,7 +7,7 @@ publish_date: '2026-08-25'
 publish_time: 07:30
 weekday: 화
 slot: 기초용어
-status: reviewed
+status: approved
 title_candidates:
 - '[주식완전기초]- 회사가 돈을 잘 버는지 보는 자, ROE 3분 만에 이해하기'
 - '[주식완전기초]- 주식 초보라면 이것부터, ROE 뜻과 보는 법 쉽게 알려드립니다'

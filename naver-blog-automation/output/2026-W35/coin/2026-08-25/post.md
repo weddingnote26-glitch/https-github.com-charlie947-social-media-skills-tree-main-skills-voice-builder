@@ -7,7 +7,7 @@ publish_date: '2026-08-25'
 publish_time: 08:30
 weekday: 화
 slot: 기초개념
-status: reviewed
+status: approved
 template: guide
 title_candidates:
 - '[코린이 매매팁] "이 코인 믿어도 되나요?" 백서에서 딱 세 곳만 보는 법 📄'

@@ -35,7 +35,7 @@ hashtags:
 - 투자기초
 - 코인보관
 - 위험관리
-status: reviewed
+status: approved
 history:
 - status: fact_checked
   at: 2026-08-22 22:25:02 KST
@@ -45,6 +45,10 @@ history:
   at: 2026-08-22 22:25:51 KST
   by: review.py
   note: 자동 검수 통과 (확인 1건)
+- status: approved
+  at: 2026-08-24 12:07:01 KST
+  by: 회사
+  note: 사람이 확인 후 승인
 sources:
   data_asof: null
   verified: true
@@ -53,11 +57,11 @@ review:
   passed: true
   blocking_issues: 0
   warnings: 2
-  checked_at: 2026-08-24 11:06:08 KST
+  checked_at: 2026-08-24 12:28:44 KST
 approval:
-  approved: false
-  approved_at: null
-  approved_by: null
+  approved: true
+  approved_at: 2026-08-24 12:07:01 KST
+  approved_by: 회사
   notes: ''
 scheduled:
   registered: false
