@@ -21,6 +21,7 @@ export async function GET() {
       ANTHROPIC_API_KEY: secretStatus("ANTHROPIC_API_KEY"),
       ELEVENLABS_API_KEY: secretStatus("ELEVENLABS_API_KEY"),
       IMAGE_API_KEY: secretStatus("IMAGE_API_KEY"),
+      CLOUDFLARE_API_TOKEN: secretStatus("CLOUDFLARE_API_TOKEN"),
     },
     // Instagram 토큰도 마찬가지 — 저장 여부와 앞뒤 몇 글자만 (계정 ID 는 비밀이 아니다)
     instagram: igAuthStatus(),
@@ -42,7 +43,7 @@ export async function PUT(req: Request) {
       delete body.igUserId;
     }
     // API 키는 암호화해 저장하고 설정 본문에서 제거
-    for (const name of ["ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "IMAGE_API_KEY"] as SecretName[]) {
+    for (const name of ["ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "IMAGE_API_KEY", "CLOUDFLARE_API_TOKEN"] as SecretName[]) {
       if (typeof body[name] === "string") {
         setSecret(name, body[name] as string);
         delete body[name];
@@ -74,7 +75,7 @@ export async function PUT(req: Request) {
     }
     // 공급자를 바꿨는데 예전 공급자의 모델 이름이 남으면 원인 모를 400이 난다 → 비운다
     if (typeof body.imageProvider === "string") {
-      const provider = body.imageProvider as "gemini" | "openai" | "sample";
+      const provider = body.imageProvider as "gemini" | "openai" | "cloudflare" | "sample";
       const model = typeof body.imageModel === "string" ? body.imageModel : getSettings().imageModel;
       body.imageModel = clearStaleImageModel(provider, model);
     }

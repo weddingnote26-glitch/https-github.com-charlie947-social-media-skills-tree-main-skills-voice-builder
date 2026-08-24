@@ -7,7 +7,7 @@ import { useToast } from "@/components/Toast";
 import { describeSettingsChange } from "@/lib/settings-diff";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
-type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY";
+type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY" | "CLOUDFLARE_API_TOKEN";
 interface SecretStatus { set: boolean; source: string; hint: string }
 interface IgStatus {
   tokenSet: boolean; tokenSource: string; tokenHint: string;
@@ -211,13 +211,17 @@ export default function SettingsPage() {
                 setS({ ...s, imageProvider });
                 void save({ imageProvider, imageModel: s.imageModel });
               }}>
-              <option value="sample">Sample (API 불필요)</option>
-              <option value="gemini">Gemini / Imagen</option>
-              <option value="openai">OpenAI 이미지</option>
+              <option value="gemini">Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="cloudflare">Cloudflare FLUX</option>
+              <option value="sample">Sample</option>
             </select></div>
           <div><label className="label text-sm">모델 (비우면 기본값)</label>
-            <input className="input" disabled={s.imageProvider === "sample"}
-              placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)" : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)" : "Sample 모드는 모델이 없습니다"}
+            <input className="input" disabled={s.imageProvider === "sample" || s.imageProvider === "cloudflare"}
+              placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)"
+                : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)"
+                : s.imageProvider === "cloudflare" ? "Cloudflare 모델은 아래 칸에서 넣습니다"
+                : "Sample 모드는 모델이 없습니다"}
               value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} /></div>
         </div>
         <p className="text-xs text-gray-600 mb-3">모델은 잘 모르면 비워 두세요. 공급자를 바꾸면 예전 모델 이름은 자동으로 지워집니다.</p>
@@ -229,10 +233,54 @@ export default function SettingsPage() {
             오락이가 나오는 릴스를 만들 거라면 조직 인증을 마치고 gpt-image-1을 쓰는 편이 좋습니다.
           </p>
         )}
-        <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
+        {s.imageProvider === "cloudflare" && (
+          <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs text-gray-600 mb-3">
+              <b>무료 사용량</b>으로 이미지를 만듭니다. dash.cloudflare.com 에 가입한 뒤,
+              첫 화면 오른쪽의 <b>Account ID</b>(32자리)와 [내 프로필 → API Tokens]에서
+              <b> Workers AI 권한</b>으로 만든 토큰을 넣으세요.
+            </p>
+            <div className="field-grid mb-3">
+              <div><label className="label text-sm">Cloudflare Account ID</label>
+                <input className="input" placeholder="32자리 영문·숫자" value={s.cloudflare.accountId}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, accountId: e.target.value.trim() } })} /></div>
+              <div><label className="label text-sm">기본 이미지 모델 (음식·매장·배경)</label>
+                <input className="input" placeholder="@cf/black-forest-labs/flux-1-schnell (비우면 이 값)"
+                  value={s.cloudflare.imageModel}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, imageModel: e.target.value.trim() } })} /></div>
+              <div><label className="label text-sm">캐릭터 이미지 모델 (오락이 장면)</label>
+                <input className="input" placeholder="@cf/bytedance/stable-diffusion-xl-lightning (비우면 이 값)"
+                  value={s.cloudflare.characterModel}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, characterModel: e.target.value.trim() } })} /></div>
+            </div>
+            <p className="text-xs text-gray-600 mb-3">
+              오락이 장면은 <b>기준 이미지를 받을 수 있는 모델</b>이어야 얼굴이 유지됩니다 (FLUX 는 기준 이미지를 못 받습니다).
+              계정에서 쓸 수 있는 모델은 [연결 테스트]가 알려 줍니다.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <button className="btn-primary" onClick={() => save({ cloudflare: s.cloudflare })}>저장</button>
+            </div>
+            <KeyField name="CLOUDFLARE_API_TOKEN" label="Cloudflare API Token"
+              help="dash.cloudflare.com → 내 프로필 → API Tokens → [Create Token] → Workers AI 권한. 저장하면 암호화됩니다." />
+          </div>
+        )}
+        {s.imageProvider !== "cloudflare" && <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
           help={s.imageProvider === "openai"
             ? "platform.openai.com → API keys 에서 만든 sk- 로 시작하는 값. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."
-            : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />
+            : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />}
+        {/* §43 실패 대응 · §45 사용량 절약 — 끄고 켤 수 있어야 한다 */}
+        <div className="space-y-2 mb-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+            <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.fallback}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, fallback: e.target.checked } })} />
+            이미지 생성 실패 시 다른 공급자 자동 사용 (Cloudflare → Gemini → OpenAI → Sample)
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+            <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.reuseCache}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, reuseCache: e.target.checked } })} />
+            기존 이미지 재사용 (같은 장면은 다시 만들지 않아 사용량을 아낍니다)
+          </label>
+        </div>
         <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 

@@ -30,8 +30,21 @@ export const AppSettingsSchema = z.object({
   }).default({ voiceId: "", model: "eleven_multilingual_v2", speed: 1.06, stability: 0.5, similarity: 0.75 }),
 
   // 이미지 공급자
-  imageProvider: z.enum(["gemini", "openai", "sample"]).default("sample"),
+  imageProvider: z.enum(["gemini", "openai", "cloudflare", "sample"]).default("sample"),
   imageModel: z.string().default(""),
+
+  // Cloudflare Workers AI (토큰은 여기 두지 않는다 — 암호화 저장소로 간다)
+  cloudflare: z.object({
+    accountId: z.string().default(""),
+    imageModel: z.string().default(""),      // 비우면 flux-1-schnell
+    characterModel: z.string().default(""),  // 비우면 참조 이미지를 받는 SDXL-lightning
+  }).default({ accountId: "", imageModel: "", characterModel: "" }),
+
+  // 이미지 정책 (§43·§45)
+  imagePolicy: z.object({
+    fallback: z.boolean().default(true),  // 실패 시 다른 공급자 자동 사용
+    reuseCache: z.boolean().default(true) // 같은 장면이면 기존 이미지 재사용
+  }).default({ fallback: true, reuseCache: true }),
 
   // 자막 스타일 (§18~19)
   subtitle: z.object({

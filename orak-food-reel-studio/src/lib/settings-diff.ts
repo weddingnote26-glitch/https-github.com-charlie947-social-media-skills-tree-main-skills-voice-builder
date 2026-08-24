@@ -19,6 +19,7 @@ const LABEL: Partial<Record<keyof AppSettings, string>> = {
 const PROVIDER_KO: Record<string, string> = {
   gemini: "Gemini / Imagen",
   openai: "OpenAI 이미지",
+  cloudflare: "Cloudflare FLUX (무료 사용량)",
   sample: "Sample (API 불필요)",
 };
 
@@ -39,6 +40,7 @@ function show(key: keyof AppSettings, value: unknown): string {
 const SECRET_LABEL: Record<string, string> = {
   ANTHROPIC_API_KEY: "Claude API 키",
   ELEVENLABS_API_KEY: "ElevenLabs API 키",
+  CLOUDFLARE_API_TOKEN: "Cloudflare API Token",
   IMAGE_API_KEY: "이미지 API 키",
 };
 

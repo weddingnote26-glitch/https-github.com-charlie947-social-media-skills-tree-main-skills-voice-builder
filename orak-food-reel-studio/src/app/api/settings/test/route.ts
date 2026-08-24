@@ -4,6 +4,8 @@ import { getSettings } from "@/lib/settings";
 import { resolveIgAuth } from "@/lib/providers/instagram";
 import { resolveSecret } from "@/lib/secrets";
 import { imageKeyMismatch } from "@/lib/providers/image-model";
+import { resolveCloudflareAuth, cloudflareModels, listCloudflareImageModels } from "@/lib/providers/cloudflare-image";
+import { friendlyCloudflareError } from "@/lib/providers/cloudflare-errors";
 import { describeKeyFailure } from "@/lib/providers/api-failure";
 import { redactError, redact } from "@/lib/redact";
 
@@ -48,7 +50,24 @@ export async function POST(req: Request) {
             return { ok: true, detail: `연결 성공 · 보이스 ${data.voices?.length ?? 0}개${note}` };
           }
           case "image": {
-            if ((getSettings().imageProvider || env.IMAGE_PROVIDER) === "sample") return { ok: true, detail: "Sample Mode — 외부 API를 쓰지 않습니다" };
+            const chosen = getSettings().imageProvider || env.IMAGE_PROVIDER;
+            if (chosen === "sample") return { ok: true, detail: "Sample Mode — 외부 API를 쓰지 않습니다" };
+            if (chosen === "cloudflare") {
+              const auth = resolveCloudflareAuth();
+              if (!auth.accountId) return { ok: false, detail: "Cloudflare Account ID 가 없습니다. dash.cloudflare.com 오른쪽에 보이는 32자리 값을 넣어 주세요." };
+              if (!auth.token) return { ok: false, detail: "Cloudflare API Token 이 없습니다. dash.cloudflare.com → 프로필 → API Tokens 에서 Workers AI 권한으로 만들어 넣어 주세요." };
+              try {
+                const models = await listCloudflareImageModels(auth);
+                const picked = cloudflareModels();
+                const missing = [picked.image, picked.character].filter((m) => models.length > 0 && !models.includes(m));
+                const tail = missing.length
+                  ? ` · ⚠ 설정된 모델 중 계정에서 못 쓰는 것: ${missing.join(", ")}`
+                  : ` (기본 ${picked.image.split("/").pop()} · 캐릭터 ${picked.character.split("/").pop()})`;
+                return { ok: true, detail: `Cloudflare Workers AI 연결 성공 — 이미지 모델 ${models.length}개 사용 가능${tail}` };
+              } catch (e) {
+                return { ok: false, detail: `Cloudflare 연결 실패 — ${redact(friendlyCloudflareError(e))}` };
+              }
+            }
             const imageKey = resolveSecret("IMAGE_API_KEY");
             if (!imageKey) return { ok: false, detail: "이미지 API 키가 없습니다. 위 칸에 넣고 저장하세요." };
             const imageProvider = getSettings().imageProvider || env.IMAGE_PROVIDER;

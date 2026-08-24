@@ -11,7 +11,11 @@ export interface LLMProvider {
 export interface ImageProvider {
   readonly name: string;
   /** 9:16 이미지 생성 → JPEG/PNG Buffer */
-  generate(req: { prompt: string; seed?: number; referenceImagePaths?: string[]; sceneKey?: string }): Promise<Buffer>;
+  generate(req: {
+    prompt: string; seed?: number; referenceImagePaths?: string[]; sceneKey?: string;
+    /** 오락이가 나오는 장면 — 공급자가 캐릭터용 모델·참조 사용을 결정할 근거 */
+    characterScene?: boolean;
+  }): Promise<Buffer>;
 }
 
 export interface TTSProvider {
