@@ -36,17 +36,64 @@ const SKIP = new Set([
   "package-lock.json", "start.bat", "업데이트.bat",
 ]);
 
+/**
+ * 심볼릭 링크를 "그 자리로 이어 주는 작은 모듈"로 바꾼다.
+ *
+ * Turbopack 은 .next/node_modules/ 아래에 이런 링크를 만든다.
+ *   node-sqlite3-wasm-c23ad69eff3ea050  ->  node_modules/node-sqlite3-wasm
+ * 이 링크가 없으면 서버가 뜨자마자 이렇게 죽는다.
+ *   Cannot find module 'node-sqlite3-wasm-c23ad69eff3ea050'
+ *
+ * 링크를 그대로 만들 수는 없다 — Windows 는 심볼릭 링크에 권한을 요구한다.
+ * 가리키는 내용을 통째로 복사하면 확실하지만 ffmpeg 만 77MB 라 두 배로 부푼다.
+ * 그래서 진짜 꾸러미를 다시 부르는 한 줄짜리 모듈을 놓는다.
+ * Node 가 node_modules 를 위로 훑어 올라가며 찾으므로 그대로 동작한다.
+ */
+function writeForwarder(linkPath, destPath) {
+  let target;
+  try { target = fs.realpathSync(linkPath); } catch { return false; }
+  const marker = `${path.sep}node_modules${path.sep}`;
+  const at = target.lastIndexOf(marker);
+  if (at < 0) return false;
+  const pkg = target.slice(at + marker.length).split(path.sep).join("/");
+  if (!pkg) return false;
+
+  fs.mkdirSync(destPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(destPath, "package.json"),
+    JSON.stringify({ name: path.basename(destPath), version: "0.0.0", main: "index.js" }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(destPath, "index.js"),
+    `// ${pkg} 로 이어 준다 (Turbopack 이 만든 별칭 대신)\nmodule.exports = require(${JSON.stringify(pkg)});\n`,
+  );
+  return true;
+}
+
 function copyDir(from, to, depth = 0) {
   fs.mkdirSync(to, { recursive: true });
   for (const e of fs.readdirSync(from, { withFileTypes: true })) {
     if (depth === 0 && SKIP.has(e.name)) continue;
     const s = path.join(from, e.name);
     const d = path.join(to, e.name);
+    if (e.isSymbolicLink()) {
+      if (!writeForwarder(s, d)) {
+        // 꾸러미 별칭이 아니면 내용을 그대로 복사한다
+        try {
+          const real = fs.realpathSync(s);
+          if (fs.statSync(real).isDirectory()) copyDir(real, d, depth + 1);
+          else fs.copyFileSync(real, d);
+        } catch { /* 끊어진 링크는 건너뛴다 */ }
+      }
+      forwarded.push(path.relative(SRC, s));
+      continue;
+    }
     if (e.isDirectory()) copyDir(s, d, depth + 1);
-    else if (e.isSymbolicLink()) { /* 링크는 건너뛴다 */ }
     else fs.copyFileSync(s, d);
   }
 }
+
+const forwarded = [];
 
 console.log("\n  설치본에 넣을 파일을 고릅니다");
 
@@ -123,6 +170,21 @@ if (leaked.length) {
   process.exit(1);
 }
 
+/* 꾸러미 별칭이 하나라도 빠지면 설치본이 켜지자마자 Internal Server Error 로 죽는다.
+   실제로 그렇게 됐던 적이 있으므로, 원본에 있던 별칭이 모두 옮겨졌는지 확인한다. */
+{
+  const aliasDir = path.join(SRC, ".next", "node_modules");
+  if (fs.existsSync(aliasDir)) {
+    const missing = fs.readdirSync(aliasDir)
+      .filter((n) => !fs.existsSync(path.join(OUT, ".next", "node_modules", n)));
+    if (missing.length) {
+      console.log(r("\n  ❌ 꾸러미 별칭이 빠졌습니다. 이대로면 설치본이 실행되자마자 죽습니다."));
+      for (const m of missing) console.log("     " + m);
+      process.exit(1);
+    }
+  }
+}
+
 // 중첩이 생기면 설치 파일이 몇 배로 부푼다 — 담은 뒤 반드시 확인한다
 for (const bad of ["dist-app", "dist-bin", "dist-installer"]) {
   if (fs.existsSync(path.join(OUT, bad))) {
@@ -138,6 +200,7 @@ const count = (d) => {
   return n;
 };
 console.log(g(`  ✅ 준비 완료 — 파일 ${count(OUT)}개`));
+if (forwarded.length) console.log(`     꾸러미 별칭 ${forwarded.length}개 연결: ${forwarded.map((f) => path.basename(f)).join(", ")}`);
 console.log(`     앱      : ${OUT}`);
 console.log(`     FFmpeg  : ${BIN} (${bundled}/2)`);
 if (bundled < 2) console.log("     ⚠ FFmpeg 를 못 담았습니다. npm run ffmpeg 를 먼저 실행하세요.");
