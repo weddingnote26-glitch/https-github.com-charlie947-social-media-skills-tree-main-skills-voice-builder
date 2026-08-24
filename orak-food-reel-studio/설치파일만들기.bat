@@ -22,7 +22,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo  [1/5] 필요한 프로그램을 설치합니다...
+echo  [1/6] 필요한 프로그램을 설치합니다...
 call npm install --no-audit --no-fund
 if errorlevel 1 (
   echo  [X] 설치에 실패했습니다. 인터넷 연결과 회사 방화벽을 확인해 주세요.
@@ -31,7 +31,19 @@ if errorlevel 1 (
 )
 
 echo.
-echo  [2/5] FFmpeg를 확인합니다...
+echo  [2/6] 설치 파일 제작 도구를 준비합니다. 100MB 넘게 받으므로 5~10분 걸립니다...
+call npm run desktop:tools
+if errorlevel 1 (
+  echo.
+  echo  [X] 제작 도구를 받지 못했습니다.
+  echo      회사 방화벽이 github.com 을 막고 있을 수 있습니다.
+  echo      * 이 단계가 실패해도 프로그램 자체는 start.bat 으로 계속 쓸 수 있습니다.
+  pause
+  exit /b 1
+)
+
+echo.
+echo  [3/6] FFmpeg를 확인합니다...
 call node scripts\fix-ffmpeg.mjs
 if errorlevel 1 (
   echo.
@@ -43,7 +55,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo  [3/5] 프로그램을 빌드합니다. 3~5분 걸립니다...
+echo  [4/6] 프로그램을 빌드합니다. 3~5분 걸립니다...
 call npm run build
 if errorlevel 1 (
   echo  [X] 빌드에 실패했습니다. 화면의 오류 내용을 확인하세요.
@@ -52,7 +64,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo  [4/5] 설치본에 넣을 파일을 고릅니다 ^(비밀값 검사 포함^)...
+echo  [5/6] 설치본에 넣을 파일을 고릅니다 ^(비밀값 검사 포함^)...
 call node scripts\prepare-desktop.mjs
 if errorlevel 1 (
   echo  [X] 준비에 실패했습니다. 위 내용을 확인하세요.
@@ -61,7 +73,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo  [5/5] 설치 파일을 만듭니다. 5~15분 걸립니다...
+echo  [6/6] 설치 파일을 만듭니다. 5~15분 걸립니다...
 call npx electron-builder --win --x64
 if errorlevel 1 (
   echo  [X] 설치 파일 만들기에 실패했습니다. 화면의 오류 내용을 확인하세요.
