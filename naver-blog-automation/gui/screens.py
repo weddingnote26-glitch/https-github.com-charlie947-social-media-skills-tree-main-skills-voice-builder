@@ -295,11 +295,10 @@ class PostsScreen(Screen):
         self.box.addWidget(split, 1)
 
         # ── 아래: 주간 자동 생성 (보조 기능, 작게) ──────────
-        auto = Card("주간 자동 생성 (보조 기능)")
+        # 제목과 설명을 한 줄로 — 편집 영역의 세로 공간을 아낍니다.
+        auto = Card("주간 자동 생성 (보조)  ·  다음 주 12편을 미리 만듭니다 — 네이버 예약 아님")
         auto.box.setContentsMargins(16, 10, 16, 10)
         auto.box.setSpacing(6)
-        auto.add(lead("다음 주 12편의 자리·원고를 미리 만듭니다. "
-                      "네이버 예약과는 관계없습니다. (예약은 '발행 관리')"))
         self.btn_slots = button("다음 주 자리 만들기", small=True)
         self.btn_slots.clicked.connect(self._make_slots)
         self.btn_gen = button("다음 주 원고 만들기", small=True)
