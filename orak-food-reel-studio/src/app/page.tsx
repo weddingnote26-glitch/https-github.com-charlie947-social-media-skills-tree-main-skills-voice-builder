@@ -30,8 +30,11 @@ export default function Home() {
         </Link>
       )}
       {health?.mode === "sample" && (
-        <div className="card p-3 px-4 text-sm text-amber-800 bg-amber-50 border-amber-200">
-          🧪 지금은 <b>Sample Mode</b>입니다 — API 키 없이 전체 제작 흐름을 시험할 수 있어요. 실제 운영은 설정에서 API를 연결한 뒤 .env의 APP_MODE=live 로 바꾸세요.
+        /* 설치형 앱에는 .env 파일이 없다 — 실행 모드는 설정 화면에서 바꾼다 */
+        <div className="card p-3 px-4 text-sm text-amber-900 bg-amber-50 border-amber-200">
+          🧪 지금은 <b>연습 모드</b>입니다 — API 키 없이 전체 제작 흐름을 시험할 수 있어요.
+          실제로 만들려면 <Link href="/settings" className="font-bold underline text-[#B84A1B]">설정</Link>에서
+          API 키를 넣고 맨 위 <b>⚡ 실행 모드</b>를 <b>실제 모드</b>로 바꾸세요.
         </div>
       )}
 

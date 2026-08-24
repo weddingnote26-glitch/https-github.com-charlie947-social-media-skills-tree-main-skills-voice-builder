@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { Card, ProgressBar, StatusBadge, StepRow, api, useApi, ErrorBox } from "@/components/ui";
+import { Card, ProgressBar, StatusBadge, StepRow, api, useApi, ErrorBox, isDesktopApp } from "@/components/ui";
 import ConfirmDialog, { type ConfirmOptions } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { jobProgress, overallProgress, type ProgressStep } from "@/lib/pipeline/progress";
@@ -61,7 +61,7 @@ export default function Producing() {
       await pendingAction();
     } catch (e) {
       // 실패했을 때는 성공 알림을 띄우지 않는다
-      toast.fromError(e, "잠시 후 다시 시도하거나, 검은 창(start.bat)이 켜져 있는지 확인해 주세요.");
+      toast.fromError(e, isDesktopApp() ? "잠시 후 다시 시도해 주세요. 계속 안 되면 프로그램을 껐다 켜 주세요." : "잠시 후 다시 시도하거나, 검은 창(start.bat)이 켜져 있는지 확인해 주세요.");
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);

@@ -57,8 +57,8 @@ export default function Wizard() {
         {cur === 1 && (
           <div className="space-y-3">
             <Ok ok={true} yes={`Node.js ${health?.node ?? ""} 확인 완료`} no="" />
-            <Ok ok={health?.fonts.korean} yes="한글 폰트 준비 완료" no="한글 폰트가 없습니다 — start.bat 실행 시 자동으로 내려받습니다" />
-            <p className="text-sm text-gray-600">이 프로그램은 컴퓨터 안에서만 동작하며, 완성 영상과 데이터는 프로그램 폴더에 저장됩니다.</p>
+            <Ok ok={health?.fonts.korean} yes="한글 폰트 준비 완료" no="한글 폰트가 없습니다 — 프로그램을 다시 켜면 자동으로 내려받습니다" />
+            <p className="text-sm text-gray-600">완성 영상과 데이터는 이 컴퓨터 안에만 저장됩니다. 대본·이미지·음성을 만들 때만 AI 서비스와 통신합니다.</p>
           </div>
         )}
         {cur === 2 && (
@@ -66,7 +66,7 @@ export default function Wizard() {
             <Ok ok={health?.ffmpeg.found} yes={`FFmpeg 사용 가능 — ${health?.ffmpeg.version ?? ""}`} no="FFmpeg를 찾지 못했습니다" />
             {!health?.ffmpeg.found && (
               <div className="text-sm text-gray-600 space-y-1">
-                <p>① 보통은 <b>npm install</b>만 다시 실행하면 자동 설치됩니다(ffmpeg-static 포함).</p>
+                <p>① 프로그램을 껐다 켜면 자동으로 내려받습니다.</p>
                 <p>② 직접 설치: <a className="text-[#B84A1B] font-bold" href="https://www.gyan.dev/ffmpeg/builds/" target="_blank">gyan.dev/ffmpeg/builds</a>에서 essentials zip을 받아 풀고 bin 폴더를 PATH에 추가 → 새 터미널에서 <code className="bg-gray-100 px-1 rounded">ffmpeg -version</code> 확인</p>
                 <button className="btn-secondary mt-2" onClick={reload}>다시 확인</button>
               </div>
@@ -75,13 +75,13 @@ export default function Wizard() {
         )}
         {cur === 3 && (
           <div className="space-y-3">
-            <Ok ok={health?.services.llm} yes="Claude API 연결됨" no="아직 연결 전 — .env에 ANTHROPIC_API_KEY를 넣으세요 (Sample Mode로도 계속 진행 가능)" />
+            <Ok ok={health?.services.llm} yes="Claude API 연결됨" no="아직 연결 전 — 설정 화면의 [Claude API 키] 칸에 넣고 저장하세요 (연습 모드로도 계속 진행 가능)" />
             <Link href="/settings" className="btn-secondary">⚙️ 설정에서 연결 테스트</Link>
           </div>
         )}
         {cur === 4 && (
           <div className="space-y-3">
-            <Ok ok={health?.services.tts} yes="ElevenLabs 연결됨" no="아직 연결 전 — .env에 ELEVENLABS_API_KEY / VOICE_ID를 넣으세요 (Sample Mode 가능)" />
+            <Ok ok={health?.services.tts} yes="ElevenLabs 연결됨" no="아직 연결 전 — 설정 화면의 [ElevenLabs API 키] 칸에 넣고 목소리를 고르세요 (연습 모드 가능)" />
             <p className="text-sm text-gray-600">추천 음성: 30~40대 톤, 신뢰감 있고 밝게, 약간 빠르게. 설정에서 Speed/Stability를 조절할 수 있습니다.</p>
             <Link href="/settings" className="btn-secondary">⚙️ 설정에서 연결 테스트</Link>
           </div>
@@ -109,7 +109,7 @@ export default function Wizard() {
         {cur === 8 && (
           <div className="space-y-3">
             <p className="font-bold">이제 테스트 릴스를 하나 만들어보세요!</p>
-            <p className="text-sm text-gray-600">API 키가 없어도 Sample Mode로 대본→이미지→음성→자막→영상까지 전체 흐름이 실제로 동작합니다.</p>
+            <p className="text-sm text-gray-600">API 키가 없어도 <b>연습 모드</b>로 대본→이미지→음성→자막→영상까지 전체 흐름이 실제로 동작합니다.</p>
           </div>
         )}
       </Card>

@@ -84,6 +84,12 @@ export function Stars({ n }: { n: number }) {
 
 /* ---------- API helpers ---------- */
 
+/** 설치형 앱인지 (Electron 껍데기가 preload 로 알려 준다) */
+export function isDesktopApp(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(window as unknown as { orak?: { isDesktopApp?: boolean } }).orak?.isDesktopApp;
+}
+
 export async function api<T = unknown>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -93,8 +99,11 @@ export async function api<T = unknown>(url: string, init?: RequestInit): Promise
     });
   } catch {
     // 브라우저의 "Failed to fetch" 는 원인이 안 보인다. 실제로는 대부분 서버가 꺼진 경우.
+    // 설치형 앱에는 검은 창이 없으므로 안내를 달리한다.
     throw new Error(
-      "프로그램 서버에 연결하지 못했습니다. 검은 창(start.bat)이 켜져 있는지 확인하고, 꺼져 있으면 다시 실행해 주세요.",
+      isDesktopApp()
+        ? "프로그램 내부 서버에 연결하지 못했습니다. 프로그램을 완전히 닫았다가 다시 켜 주세요."
+        : "프로그램 서버에 연결하지 못했습니다. 검은 창(start.bat)이 켜져 있는지 확인하고, 꺼져 있으면 다시 실행해 주세요.",
     );
   }
   let body: { ok?: boolean; error?: string; data?: unknown };
