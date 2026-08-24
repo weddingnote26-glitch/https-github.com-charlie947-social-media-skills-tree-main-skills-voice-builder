@@ -124,9 +124,12 @@ export default function SettingsPage() {
   };
 
   const TestBtn = ({ service }: { service: string }) => (
-    <div className="flex items-center gap-3">
+    // 결과 문구가 길 때(ffmpeg 버전 등) 버튼을 밀어내지 않고 줄을 넘기게 한다
+    <div className="flex flex-wrap items-center gap-3 min-w-0">
       <button className="btn-secondary" onClick={() => test(service)}>🔌 연결 테스트</button>
-      {testResult[service] && <span className="text-sm font-semibold">{testResult[service]}</span>}
+      {testResult[service] && (
+        <span className="text-sm font-semibold min-w-0 break-words">{testResult[service]}</span>
+      )}
     </div>
   );
 
@@ -139,7 +142,7 @@ export default function SettingsPage() {
       <ErrorBox msg={err} />
 
       <Card title="⚡ 실행 모드">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <button onClick={() => save({ appMode: "live" })}
             className={`rounded-xl border-2 p-4 text-left ${data.mode === "live" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
             <div className="font-extrabold">🚀 실제 모드</div>
@@ -170,7 +173,7 @@ export default function SettingsPage() {
           <VoicePicker value={s.tts.voiceId} refreshToken={voiceRefresh}
             onChange={(voiceId) => setS({ ...s, tts: { ...s.tts, voiceId } })} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <div><label className="label text-sm">Model</label>
             <input className="input" value={s.tts.model} onChange={(e) => setS({ ...s, tts: { ...s.tts, model: e.target.value } })} /></div>
           <div><label className="label text-sm">Speed ({s.tts.speed})</label>
@@ -180,11 +183,11 @@ export default function SettingsPage() {
           <div><label className="label text-sm">Similarity ({s.tts.similarity})</label>
             <input type="range" min="0" max="1" step="0.05" className="w-full accent-[#E86A3A]" value={s.tts.similarity} onChange={(e) => setS({ ...s, tts: { ...s.tts, similarity: parseFloat(e.target.value) } })} /></div>
         </div>
-        <div className="flex gap-3"><button className="btn-primary" onClick={() => save({ tts: s.tts })}>저장</button><TestBtn service="tts" /></div>
+        <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ tts: s.tts })}>저장</button><TestBtn service="tts" /></div>
       </Card>
 
       <Card title="🖼 이미지 생성">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <div><label className="label text-sm">공급자</label>
             <select className="input" value={s.imageProvider}
               onChange={(e) => {
@@ -216,7 +219,7 @@ export default function SettingsPage() {
           help={s.imageProvider === "openai"
             ? "platform.openai.com → API keys 에서 만든 sk- 로 시작하는 값. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."
             : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />
-        <div className="flex gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
+        <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 
       <Card title="📸 Instagram — Meta 공식 API">
@@ -225,15 +228,15 @@ export default function SettingsPage() {
           <li>Facebook 페이지와 연결 후 <a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
           <li>권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code> 포함 Access Token 발급</li>
           <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다)</li>
-          <li>.env의 <code className="bg-gray-100 px-1 rounded">PUBLIC_MEDIA_BASE_URL</code>에 영상 공개 주소 설정 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
+          <li>완성 영상을 인터넷에서 내려받을 수 있는 <b>공개 주소</b>가 필요합니다 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <div><label className="label text-sm">Access Token</label>
             <input type="password" className="input" placeholder="붙여넣기 (저장 시 암호화)" value={igToken} onChange={(e) => setIgToken(e.target.value)} /></div>
           <div><label className="label text-sm">Instagram User ID</label>
             <input className="input" placeholder="1784..." value={igUser} onChange={(e) => setIgUser(e.target.value)} /></div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button className="btn-primary" disabled={!igToken && !igUser}
             onClick={() => { save({ ...(igToken ? { igAccessToken: igToken } : {}), ...(igUser ? { igUserId: igUser } : {}) } as never); setIgToken(""); setIgUser(""); }}>
             암호화 저장
@@ -243,7 +246,7 @@ export default function SettingsPage() {
       </Card>
 
       <Card title="🎬 영상 · 자막">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <div><label className="label text-sm">기본 릴스 길이</label>
             <select className="input" value={s.reelDurationSec} onChange={(e) => setS({ ...s, reelDurationSec: parseInt(e.target.value) })}>
               {s.durationChoices.map((d) => <option key={d} value={d}>{d}초{d === 25 ? " (맛집 기본 22~27초)" : ""}</option>)}
@@ -255,7 +258,7 @@ export default function SettingsPage() {
           <div><label className="label text-sm">강조 색</label>
             <input type="color" className="h-12 w-24 rounded-xl border-2 border-gray-300 cursor-pointer" value={s.subtitle.highlightColor} onChange={(e) => setS({ ...s, subtitle: { ...s.subtitle, highlightColor: e.target.value } })} /></div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button className="btn-primary" onClick={() => save({ reelDurationSec: s.reelDurationSec, subtitle: s.subtitle })}>저장</button>
           <TestBtn service="ffmpeg" />
         </div>
@@ -263,7 +266,7 @@ export default function SettingsPage() {
 
       <Card title="🎵 BGM">
         <p className="text-sm text-gray-600 mb-3">직접 등록한 음원 또는 상업적 사용이 허용된 음원만 사용하세요. 파일을 <b>assets/bgm/</b> 폴더에 넣고 파일명을 입력하면 나레이션에 맞춰 자동으로 소리가 줄어듭니다(더킹).</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <div><label className="label text-sm">BGM 파일명 (비우면 BGM 없음)</label>
             <input className="input" placeholder="my-bgm.mp3" value={s.bgm.file} onChange={(e) => setS({ ...s, bgm: { ...s.bgm, file: e.target.value } })} /></div>
           <div><label className="label text-sm">BGM 볼륨 ({s.bgm.volumeDb}dB)</label>
@@ -283,7 +286,7 @@ export default function SettingsPage() {
         </div>
         <div className="flex items-center gap-3 mb-3">
           <label className="label text-sm m-0">발행 시간</label>
-          <input type="time" className="input w-full sm:w-36 min-w-0" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
+          <input type="time" className="input w-full sm:w-48 min-w-0" value={s.publishTime} onChange={(e) => setS({ ...s, publishTime: e.target.value })} />
           <label className="label text-sm m-0 ml-4">주간 오락이 비율</label>
           <select className="input w-full sm:w-40 min-w-0" value={s.orakiPerWeek} onChange={(e) => setS({ ...s, orakiPerWeek: parseInt(e.target.value) })}>
             {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>주 {n}개 오락이</option>)}
@@ -293,7 +296,7 @@ export default function SettingsPage() {
       </Card>
 
       <Card title="✅ 승인 모드 (§SAFE/AUTO)">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 [&>div]:min-w-0">
           <button onClick={() => setS({ ...s, approvalMode: "SAFE" })}
             className={`rounded-xl border-2 p-4 text-left ${s.approvalMode === "SAFE" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200"}`}>
             <div className="font-extrabold">SAFE MODE (기본)</div>

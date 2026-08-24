@@ -82,7 +82,10 @@ body {
   .btn-secondary,
   .btn-ghost,
   .btn-danger {
+    /* whitespace-nowrap + shrink-0: 글꼴이 넓은 환경(윈도우 맑은 고딕)에서
+       "저장" 이 "저 장" 으로 쪼개지거나 눌려 찌그러지지 않게 한다 */
     @apply inline-flex items-center justify-center gap-2 rounded-xl font-bold transition
+      whitespace-nowrap shrink-0
       disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none
       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A];
   }
