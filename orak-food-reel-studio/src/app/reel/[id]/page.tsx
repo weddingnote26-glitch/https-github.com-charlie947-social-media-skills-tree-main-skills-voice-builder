@@ -211,9 +211,16 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
         {/* 편집 (§46) */}
         <div className="space-y-4">
           <Card title="🎬 장면 편집" right={
-            <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
-              {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button className="btn-secondary" disabled={!!busy}
+                title="대본과 음성은 그대로 두고 그림만 전부 다시 만듭니다"
+                onClick={() => run("imgall", () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ what: "image" }) }), "이미지를 전부 다시 만들었습니다. 저장하면 영상에 반영됩니다.")}>
+                {busy === "imgall" ? "전체 생성 중…" : "🖼 이미지 전체 다시"}
+              </button>
+              <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
+                {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
+              </button>
+            </div>
           }>
             <div className="space-y-3">
               {scenes.map((s, i) => (

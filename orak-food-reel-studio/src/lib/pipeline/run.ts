@@ -333,7 +333,13 @@ function writeOutputFiles(outDir: string, script: ReelScript, info: RestaurantIn
 }
 
 /** §45 SCENE 단위 재생성 — 이미지/음성/대본 일부만 다시 */
-export async function regenerateScene(reelId: string, sceneNo: number, what: "image" | "voice" | "subtitle"): Promise<void> {
+/**
+ * 장면 하나를 다시 만든다.
+ * sceneNo 가 null 이면 이미지 전체를 다시 만든다 — 이미지가 통째로 실패했을 때
+ * (크레딧 소진 등) 장면마다 한 번씩 누르게 하면 아홉 번을 눌러야 한다.
+ * 대본·음성은 건드리지 않으므로 잘 나온 나레이션을 버리지 않는다.
+ */
+export async function regenerateScene(reelId: string, sceneNo: number | null, what: "image" | "voice" | "subtitle"): Promise<void> {
   const reel = getReel(reelId);
   if (!reel || !reel.script || !reel.output_dir) throw new Error("릴스를 찾을 수 없습니다");
   const script = reel.script;
@@ -345,9 +351,11 @@ export async function regenerateScene(reelId: string, sceneNo: number, what: "im
   const outDir = reel.output_dir;
 
   if (what === "image") {
-    const target = script.scenes.find((s) => s.scene === sceneNo);
-    if (target) { target.image_hash = null; } // 캐시 무효화
-    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), undefined, [sceneNo]);
+    const targets = sceneNo === null ? script.scenes.map((s) => s.scene) : [sceneNo];
+    for (const s of script.scenes) {
+      if (targets.includes(s.scene)) s.image_hash = null; // 캐시 무효화
+    }
+    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), undefined, targets);
     for (const img of images) {
       const sc = script.scenes.find((s) => s.scene === img.scene);
       if (sc) { sc.image_path = img.path; sc.image_hash = img.hash; }
