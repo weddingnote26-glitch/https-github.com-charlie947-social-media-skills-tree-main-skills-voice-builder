@@ -23,7 +23,8 @@ const GRAPH_INSTAGRAM = "https://graph.instagram.com/v21.0";
 export type IgLoginKind = "instagram" | "facebook";
 
 export function igLoginKind(token: string): IgLoginKind {
-  return token.trim().startsWith("IGAA") ? "instagram" : "facebook";
+  const t = token.trim();
+  return t.startsWith("IGAA") || t.startsWith("IGQ") ? "instagram" : "facebook";
 }
 
 export function graphBase(token: string): string {

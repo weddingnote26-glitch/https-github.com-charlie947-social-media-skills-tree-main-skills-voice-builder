@@ -124,8 +124,8 @@ async function advancePublishJob(job: {
 
   if (job.phase === "대기") {
     // 공개 HTTPS URL 확보 (§32)
-    if (publisher.name !== "sample" && !env.PUBLIC_MEDIA_BASE_URL) {
-      throw new Error("PUBLIC_MEDIA_BASE_URL이 설정되지 않았습니다. 설정 → Instagram에서 공개 미디어 주소를 입력하세요.");
+    if (publisher.name !== "sample" && !resolvePublicMediaBase()) {
+      throw new Error("완성 영상의 공개 주소가 없습니다. 설정 → Instagram → [영상 공개 주소] 칸에 넣어 주세요. Instagram 서버가 그 주소로 영상을 내려받습니다.");
     }
     const videoUrl = publicUrlFor(reel.video_path!);
     const coverUrl = reel.thumb_path ? publicUrlFor(reel.thumb_path) : undefined;
@@ -190,12 +190,17 @@ export function retryPublish(reelId: string): { jobId: string } {
   return publishNow(reelId);
 }
 
+/** 설정 화면 값 우선, 없으면 .env — 다른 설정들과 같은 규칙 */
+export function resolvePublicMediaBase(): string {
+  const fromSettings = getSettings().publicMediaBaseUrl.trim();
+  return (fromSettings || getEnv().PUBLIC_MEDIA_BASE_URL || "").replace(/\/$/, "");
+}
+
 export function publicUrlFor(absPath: string): string {
-  const env = getEnv();
   const norm = absPath.replace(/\\/g, "/");
   const idx = norm.lastIndexOf("/output/");
   const rel = idx >= 0 ? norm.slice(idx) : `/output/${norm.split("/").slice(-2).join("/")}`;
-  const base = (env.PUBLIC_MEDIA_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const base = resolvePublicMediaBase() || "http://localhost:3000";
   return base + rel;
 }
 

@@ -251,7 +251,7 @@ export default function SettingsPage() {
             </ul>
           </li>
           <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다). ID 를 모르면 토큰만 저장하고 <b>[연결 테스트]</b>를 누르세요 — 찾아서 알려 드립니다</li>
-          <li>완성 영상을 인터넷에서 내려받을 수 있는 <b>공개 주소</b>가 필요합니다 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
+          <li>아래 <b>[영상 공개 주소]</b> 칸에 인터넷에서 열리는 주소를 넣습니다 — Instagram 서버가 그 주소로 완성 영상을 내려받습니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
         <div className="field-grid mb-3">
           <div>
@@ -287,6 +287,23 @@ export default function SettingsPage() {
               onClick={() => save({ igAccessToken: "", igUserId: "" } as never)}>지우기</button>
           )}
           <TestBtn service="instagram" />
+        </div>
+
+        {/* Instagram 서버가 이 주소로 영상을 받으러 온다 — 없으면 발행 단계에서 멈춘다.
+            예전에는 "설정 → Instagram에서 입력하세요" 라고만 하고 넣을 칸이 없었다. */}
+        <div className="mt-5 pt-5 border-t border-gray-200">
+          <label className="label text-sm" htmlFor="ig-public-url">영상 공개 주소 (발행할 때 필요)</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <input id="ig-public-url" className="input flex-1 min-w-0" placeholder="https://reels.내주소.com"
+              value={s.publicMediaBaseUrl}
+              onChange={(e) => setS({ ...s, publicMediaBaseUrl: e.target.value })} />
+            <button className="btn-primary" onClick={() => save({ publicMediaBaseUrl: s.publicMediaBaseUrl })}>저장</button>
+          </div>
+          <p className="text-xs text-gray-600 mt-1">
+            Instagram 서버가 <b>이 주소로 완성 영상을 내려받습니다.</b> 인터넷에서 열리는 주소여야 하며,
+            내 PC 주소(<code className="bg-gray-100 px-1 rounded">localhost</code>)로는 발행되지 않습니다.
+            영상 제작·미리보기만 할 때는 비워 두어도 됩니다.
+          </p>
         </div>
       </Card>
 

@@ -13,6 +13,7 @@ const LABEL: Partial<Record<keyof AppSettings, string>> = {
   approvalMode: "승인 모드",
   orakiPerWeek: "주간 오락이 편수",
   appMode: "실행 모드",
+  publicMediaBaseUrl: "영상 공개 주소",
 };
 
 const PROVIDER_KO: Record<string, string> = {

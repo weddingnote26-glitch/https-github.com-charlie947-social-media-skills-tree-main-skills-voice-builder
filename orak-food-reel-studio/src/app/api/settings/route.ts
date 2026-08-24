@@ -7,6 +7,7 @@ import { clearStaleImageModel } from "@/lib/providers/image-model";
 import { cleanPastedSecret } from "@/lib/secrets-input";
 import { checkVoiceId, checkTtsModel, detectSwappedVoiceFields } from "@/lib/providers/voice-id";
 import { igAuthStatus } from "@/lib/providers/instagram";
+import { checkPublicMediaUrl } from "@/lib/media-url";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,12 @@ export async function PUT(req: Request) {
       }
       const modelCheck = checkTtsModel(model);
       if (!modelCheck.ok) return fail(modelCheck.reason ?? "Model 값이 올바르지 않습니다.");
+    }
+    // 내 PC 안에서만 열리는 주소를 넣으면 발행 단계에서 조용히 실패한다 → 저장 때 막는다
+    if (typeof body.publicMediaBaseUrl === "string") {
+      const check = checkPublicMediaUrl(body.publicMediaBaseUrl);
+      if (!check.ok) return fail(check.reason ?? "영상 공개 주소를 확인해 주세요.");
+      body.publicMediaBaseUrl = body.publicMediaBaseUrl.trim().replace(/\/$/, "");
     }
     // 공급자를 바꿨는데 예전 공급자의 모델 이름이 남으면 원인 모를 400이 난다 → 비운다
     if (typeof body.imageProvider === "string") {

@@ -56,6 +56,11 @@ export const AppSettingsSchema = z.object({
   // 저장 폴더(표시용 — 실제 경로는 프로젝트 내부 고정)
   outputNote: z.string().default(""),
 
+  // 완성 영상을 인터넷에서 내려받을 수 있는 공개 주소 (§32).
+  // Instagram 서버가 직접 영상을 받아 가므로 내 PC 주소(localhost)로는 발행되지 않는다.
+  // 비우면 .env 의 PUBLIC_MEDIA_BASE_URL 을 쓴다.
+  publicMediaBaseUrl: z.string().default(""),
+
   // 실행 모드 — auto 면 .env 의 APP_MODE 를 따른다
   appMode: z.enum(["auto", "sample", "live"]).default("auto"),
 
