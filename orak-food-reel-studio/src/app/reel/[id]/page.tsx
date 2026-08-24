@@ -14,7 +14,7 @@ interface ReelDetail {
   };
   schedules: Array<{ id: string; publish_at: string; status: string }>;
   posts: Array<{ ig_media_id: string; permalink: string | null; published_at: string }>;
-  publishingJobs: Array<{ id: string; phase: string; attempts: number; last_error: string | null }>;
+  publishingJobs: Array<{ id: string; phase: string; attempts: number; last_error: string | null; updated_at?: string | null }>;
 }
 
 export default function ReelPage({ params }: { params: Promise<{ id: string }> }) {
@@ -147,6 +147,11 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             {data.publishingJobs.filter((jb) => jb.phase === "실패").slice(0, 1).map((jb) => (
               <div key={jb.id} className="mt-3">
                 <ErrorBox msg={`발행 실패: ${jb.last_error ?? "알 수 없는 오류"}`} />
+                {jb.updated_at && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    {jb.updated_at.slice(0, 16).replace("T", " ")} 에 난 오류입니다 — 지금 상태가 아닐 수 있습니다.
+                  </p>
+                )}
                 <button className="btn-danger mt-2 w-full" disabled={!!busy}
                   onClick={() => run("retry", () => api(`/api/reels/${id}/retry`, { method: "POST", body: "{}" }), "재발행을 시작했습니다.")}>
                   ♻️ 재발행 시도
