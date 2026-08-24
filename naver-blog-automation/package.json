@@ -10,7 +10,13 @@
     "prepare": ".venv\\Scripts\\python.exe scripts/prepare_publish.py",
     "browser:install": "playwright install chromium",
     "update:sources": ".venv\\Scripts\\python.exe scripts/update_sources.py",
-    "test:sources": ".venv\\Scripts\\python.exe scripts/test_update_sources.py"
+    "test:sources": ".venv\\Scripts\\python.exe scripts/test_update_sources.py",
+    "image": ".venv\\Scripts\\python.exe scripts/infographic.py",
+    "image:demo": ".venv\\Scripts\\python.exe scripts/infographic.py --demo",
+    "test:image": ".venv\\Scripts\\python.exe scripts/test_infographic.py",
+    "images:ai": ".venv/Scripts/python.exe scripts/openai_images.py",
+    "images:ai:dry": ".venv/Scripts/python.exe scripts/openai_images.py --dry-run",
+    "test:images:ai": ".venv/Scripts/python.exe scripts/test_openai_images.py"
   },
   "devDependencies": {},
   "engines": {

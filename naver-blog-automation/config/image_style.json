@@ -1,0 +1,91 @@
+{
+  "_설명": "인포그래픽 디자인 규칙. 코드에 값을 박지 않고 이 파일에서 고칩니다.",
+
+  "canvas": {
+    "width": 1200,
+    "height": 1500,
+    "aspect": "4:5",
+    "format": "JPEG",
+    "quality": 95,
+    "optimize": true,
+    "color_mode": "RGB"
+  },
+
+  "colors": {
+    "navy": "#0B2A55",
+    "deep_blue": "#123F7A",
+    "green": "#168A52",
+    "red": "#C02D28",
+    "yellow": "#F7BE2D",
+    "white": "#FFFFFF",
+    "_용도": {
+      "navy": "배경·제목 띠",
+      "deep_blue": "카드 배경·보조 면",
+      "green": "좋은 쪽·오르는 쪽",
+      "red": "나쁜 쪽·내리는 쪽",
+      "yellow": "강조선·핵심 숫자",
+      "white": "글자"
+    }
+  },
+
+  "types": {
+    "compare": "비교형",
+    "three": "3단 요약형",
+    "flow": "흐름형",
+    "metaphor": "비유형",
+    "chart": "차트 교육형"
+  },
+
+  "text_rules": {
+    "title_min_chars": 12,
+    "title_max_chars": 24,
+    "title_max_lines": 2,
+    "point_min_count": 2,
+    "point_max_count": 4,
+    "point_min_chars": 10,
+    "point_max_chars": 25,
+    "number_scale_vs_body": 1.5,
+    "one_image_one_message": true
+  },
+
+  "audience": {
+    "이름": "5070 세대",
+    "규칙": [
+      "글자를 크게 하고 줄 간격을 넉넉히 둡니다",
+      "전문 용어 대신 쉬운 말을 씁니다",
+      "한 화면에 한 가지 메시지만 담습니다",
+      "본문을 그대로 옮겨 적지 않습니다"
+    ]
+  },
+
+  "forbidden": [
+    "실제 종목 이름",
+    "실제 수익률처럼 보이는 숫자",
+    "매수·매도를 권하는 문구",
+    "특정 거래소·증권사 상표",
+    "사람 얼굴 사진",
+    "본문 문단을 그대로 옮긴 긴 문장"
+  ],
+
+  "api": {
+    "endpoint": "https://api.openai.com/v1/images/generations",
+    "model_env": "OPENAI_IMAGE_MODEL",
+    "model_default": "gpt-image-1",
+    "request_size": "1024x1536",
+    "_request_size_설명": "OpenAI 는 4:5(1200x1500)를 직접 지원하지 않습니다. 가장 가까운 세로 규격으로 받아 1200x1500 으로 잘라 맞춥니다.",
+    "quality": "high",
+    "timeout_seconds": 180,
+    "max_retries": 2
+  },
+
+  "output": {
+    "desktop_dir": "C:/Users/admin/Desktop/Chat Gpt 이미지",
+    "_desktop_dir_설명": "이 경로의 사용자 폴더가 없으면 %USERPROFILE%/Desktop/Chat Gpt 이미지 로 대신 저장합니다.",
+    "raw_dir": "storage/generated/raw",
+    "final_dir": "storage/generated/final",
+    "prompt_dir": "storage/prompts",
+    "manifest_dir": "storage/manifests",
+    "filename": "{date}_{topic}.jpg",
+    "duplicate_suffix": "_{n:02d}"
+  }
+}

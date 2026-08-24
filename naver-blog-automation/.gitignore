@@ -80,3 +80,10 @@ desktop.ini
 build/
 dist/
 *.spec.bak
+
+# 생성한 이미지·프롬프트·메타데이터 (용량이 큽니다. 폴더만 유지합니다)
+storage/generated/raw/*
+storage/generated/final/*
+storage/prompts/*
+storage/manifests/*
+!storage/**/.gitkeep
