@@ -61,7 +61,8 @@ export default function Home() {
               {/* 빈 날은 흐린 동그라미 대신 읽을 수 있는 글자로 알린다 */}
               {d.reels.length === 0 && <div className="text-xs text-gray-600">아직 없음</div>}
               {d.reels.map((r) => (
-                <Link key={r.id} href={`/reel/${r.id}`} className="block text-xs font-semibold truncate hover:text-[#B84A1B]">
+                <Link key={r.id} href={`/reel/${r.id}`} title={r.title || "제목 없음"}
+                  className="block text-xs font-semibold truncate hover:text-[#B84A1B]">
                   <StatusBadge status={r.status} /> <span className="ml-1">{r.title || "제목 없음"}</span>
                 </Link>
               ))}

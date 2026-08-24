@@ -102,7 +102,11 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
         </div>
       )}
 
-      <div className="grid grid-cols-[420px_1fr] gap-6">
+      {/* 왼쪽을 420px 로 못 박아 두니 화면이 좁을 때 오른쪽 장면 편집 칸이
+          350px 까지 눌려 글자·알약이 죄다 쪼개졌다.
+          · 넓을 때만 두 칸으로 나누고
+          · minmax(0,…) 로 두 칸 모두 줄어들 수 있게 한다 (1fr 만 쓰면 안 줄어든다) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-6">
         {/* 미리보기 */}
         <div className="space-y-4">
           <Card title="🎞 미리보기">
@@ -209,14 +213,18 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-3">
               {scenes.map((s, i) => (
                 <div key={s.scene + "-" + i} className="rounded-xl border border-gray-200 p-3">
-                  <div className="flex items-center gap-2 mb-2">
+                  {/* 좁아지면 눌러 찌그러뜨리지 말고 줄을 넘긴다.
+                      장면 이동·삭제 단추는 항상 오른쪽 끝에 같은 크기로 붙어 있어야 한다. */}
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="badge bg-gray-800 text-white">SCENE {i + 1}</span>
-                    <span className="text-xs text-gray-600">{s.start}s ~ {s.end}s</span>
-                    {s.character_action && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">🥟 {s.character_action}</span>}
-                    <div className="ml-auto flex gap-1">
-                      <button className="btn-ghost" onClick={() => move(i, -1)} title="위로">↑</button>
-                      <button className="btn-ghost" onClick={() => move(i, 1)} title="아래로">↓</button>
-                      <button className="btn-ghost text-red-500" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제">🗑</button>
+                    <span className="text-xs text-gray-600 tabular-nums whitespace-nowrap shrink-0">{s.start}s ~ {s.end}s</span>
+                    {s.character_action && (
+                      <span className="badge badge-wrap max-w-full bg-[#FDEDE5] text-[#B84A1B]">🥟 {s.character_action}</span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1 shrink-0">
+                      <button className="btn-icon" onClick={() => move(i, -1)} title="위로" aria-label={`SCENE ${i + 1} 위로 옮기기`}>↑</button>
+                      <button className="btn-icon" onClick={() => move(i, 1)} title="아래로" aria-label={`SCENE ${i + 1} 아래로 옮기기`}>↓</button>
+                      <button className="btn-icon text-red-600 hover:bg-red-50" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제" aria-label={`SCENE ${i + 1} 삭제`}>🗑</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-[96px_1fr] gap-3">
