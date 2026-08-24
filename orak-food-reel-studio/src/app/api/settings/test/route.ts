@@ -64,26 +64,44 @@ export async function POST(req: Request) {
             return r.ok ? { ok: true, detail: "OpenAI 연결 성공" } : { ok: false, detail: redact(describeKeyFailure("openai", r.status, await r.text().catch(() => ""))) };
           }
           case "instagram": {
-            const { token, userId } = resolveIgAuth();
+            const { token, userId, base, kind } = resolveIgAuth();
             // 저장한 값은 보안상 입력칸에 다시 채워 넣지 않는다 →
             // "칸이 비었는데 왜 400 이 나오지" 를 없애려면 무엇이 없는지 먼저 말해 줘야 한다
             if (!token && !userId) {
               return { ok: false, detail: "Access Token 과 Instagram User ID 를 아직 저장하지 않았습니다. 위 두 칸에 넣고 [암호화 저장]을 누른 뒤 다시 눌러 주세요." };
             }
             if (!token) return { ok: false, detail: "Access Token 이 없습니다. 위 칸에 붙여넣고 [암호화 저장]을 누르세요." };
+            // 토큰이 잘려 붙여넣어진 경우 — Meta 토큰은 보통 100자가 넘는다
+            if (token.length < 30) {
+              return { ok: false, detail: `저장된 토큰이 너무 짧습니다 (${token.length}자). 액세스 토큰은 보통 100자가 넘습니다 — 복사할 때 일부만 붙여넣지 않았는지 확인해 주세요.` };
+            }
+
+            // Instagram 로그인(IGAA…)은 토큰만으로 계정 ID 를 알아낼 수 있다 → 찾아서 알려 준다
+            if (kind === "instagram") {
+              const r = await fetch(`${base}/me?fields=user_id,username&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
+              if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "instagram" })) };
+              const me = await r.json() as { user_id?: string | number; id?: string | number; username?: string };
+              const real = String(me.user_id ?? me.id ?? "");
+              const who = me.username ? `@${me.username}` : real;
+              if (!userId) {
+                return { ok: false, detail: `토큰은 정상입니다 (${who}). 이제 Instagram User ID 칸에 ${real} 을 넣고 [암호화 저장]을 누르세요.` };
+              }
+              if (real && userId !== real) {
+                return { ok: false, detail: `토큰은 정상입니다 (${who}). 다만 저장된 Instagram User ID(${userId}) 가 이 토큰의 계정 ID(${real}) 와 다릅니다 — ${real} 로 바꿔 주세요.` };
+              }
+              return { ok: true, detail: `연결 성공 — ${who} (Instagram 로그인)` };
+            }
+
+            // 페이스북 로그인(EAA…)은 계정 ID 가 반드시 있어야 물어볼 수 있다
             if (!userId) return { ok: false, detail: "Instagram User ID 가 없습니다. 위 칸에 넣고 [암호화 저장]을 누르세요." };
             // 아이디(@orak_food)를 넣는 실수 — 보내 봐야 100 오류만 돌아온다
             if (!/^\d+$/.test(userId)) {
               return { ok: false, detail: `Instagram User ID 는 숫자만 들어갑니다. 지금 저장된 값은 "${userId.slice(0, 24)}" 입니다 — 사용자 이름(@orak_food)이 아니라 숫자로 된 계정 ID 를 넣어 주세요.` };
             }
-            // 토큰이 잘려 붙여넣어진 경우 — Meta 토큰은 보통 100자가 넘는다
-            if (token.length < 30) {
-              return { ok: false, detail: `저장된 토큰이 너무 짧습니다 (${token.length}자). 액세스 토큰은 보통 100자가 넘습니다 — 복사할 때 일부만 붙여넣지 않았는지 확인해 주세요.` };
-            }
-            const r = await fetch(`https://graph.facebook.com/v21.0/${userId}?fields=username&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
-            if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""))) };
+            const r = await fetch(`${base}/${userId}?fields=username&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
+            if (!r.ok) return { ok: false, detail: redact(describeKeyFailure("instagram", r.status, await r.text().catch(() => ""), { igLogin: "facebook" })) };
             const data = await r.json() as { username?: string };
-            return { ok: true, detail: `연결 성공 — @${data.username ?? userId}` };
+            return { ok: true, detail: `연결 성공 — @${data.username ?? userId} (페이스북 로그인)` };
           }
           case "ffmpeg": {
             const { ffmpegVersion } = await import("@/lib/ffmpeg");

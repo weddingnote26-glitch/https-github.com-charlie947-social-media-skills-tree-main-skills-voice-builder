@@ -12,6 +12,7 @@ interface SecretStatus { set: boolean; source: string; hint: string }
 interface IgStatus {
   tokenSet: boolean; tokenSource: string; tokenHint: string;
   userIdSet: boolean; userIdSource: string; userId: string;
+  loginKind: "instagram" | "facebook" | null;
 }
 interface SettingsResponse {
   settings: AppSettings;
@@ -238,9 +239,18 @@ export default function SettingsPage() {
       <Card title="📸 Instagram — Meta 공식 API">
         <ol className="text-sm text-gray-600 space-y-1 mb-4 list-decimal pl-5">
           <li>Instagram을 <b>Professional(비즈니스/크리에이터) 계정</b>으로 전환</li>
-          <li>Facebook 페이지와 연결 후 <a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
-          <li>권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code> 포함 Access Token 발급</li>
-          <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다)</li>
+          <li><a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
+          {/* 로그인 방식이 두 가지고 권한 이름이 서로 다르다 — 없는 권한을 찾아 헤매지 않도록 둘 다 적는다 */}
+          <li>
+            Access Token 발급 — 두 가지 방법 중 하나입니다
+            <ul className="list-disc pl-5 mt-1 space-y-0.5">
+              <li><b>Instagram 로그인</b> (페이스북 페이지 없이, 토큰이 <code className="bg-gray-100 px-1 rounded">IGAA…</code>)
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_business_content_publish</code></li>
+              <li><b>페이스북 로그인</b> (페이지에 연결, 토큰이 <code className="bg-gray-100 px-1 rounded">EAA…</code>)
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code></li>
+            </ul>
+          </li>
+          <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다). ID 를 모르면 토큰만 저장하고 <b>[연결 테스트]</b>를 누르세요 — 찾아서 알려 드립니다</li>
           <li>완성 영상을 인터넷에서 내려받을 수 있는 <b>공개 주소</b>가 필요합니다 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
         <div className="field-grid mb-3">
@@ -248,7 +258,10 @@ export default function SettingsPage() {
             <label className="label text-sm">Access Token</label>
             {/* 저장한 토큰은 다시 보여주지 않는다 — 칸이 비어 있어도 저장된 값으로 테스트한다 */}
             {ig?.tokenSet
-              ? <div className="text-xs text-emerald-700 font-semibold mb-1.5">✅ 저장됨 ({ig.tokenSource}) · {ig.tokenHint}</div>
+              ? <div className="text-xs text-emerald-700 font-semibold mb-1.5">
+                  ✅ 저장됨 ({ig.tokenSource}) · {ig.tokenHint}
+                  {ig.loginKind && ` · ${ig.loginKind === "instagram" ? "Instagram 로그인" : "페이스북 로그인"}`}
+                </div>
               : <div className="text-xs text-gray-500 font-semibold mb-1.5">아직 저장된 토큰이 없습니다</div>}
             <input type="password" className="input"
               placeholder={ig?.tokenSet ? "바꾸려면 새 토큰을 붙여넣으세요" : "붙여넣기 (저장 시 암호화)"}
