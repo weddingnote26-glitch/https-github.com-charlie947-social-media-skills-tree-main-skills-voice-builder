@@ -39,6 +39,9 @@ class Screen(QWidget):
 
     heading = ""
     subheading = ""
+    # False 면 화면 전체 스크롤을 없애고 내용이 창 높이를 그대로 씁니다.
+    # (본문 편집처럼 세로 공간이 중요한 화면용 — 겹스크롤도 사라집니다)
+    scrolling = True
 
     def __init__(self, app_window, parent=None):
         super().__init__(parent)
@@ -48,16 +51,20 @@ class Screen(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
-        outer.addWidget(scroll)
-
-        inner = QWidget()
-        scroll.setWidget(inner)
-        self.box = QVBoxLayout(inner)
-        self.box.setContentsMargins(34, 24, 34, 24)
-        self.box.setSpacing(18)
+        if self.scrolling:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QScrollArea.NoFrame)
+            outer.addWidget(scroll)
+            inner = QWidget()
+            scroll.setWidget(inner)
+            self.box = QVBoxLayout(inner)
+        else:
+            inner = QWidget()
+            outer.addWidget(inner)
+            self.box = QVBoxLayout(inner)
+        self.box.setContentsMargins(28, 20, 28, 20)
+        self.box.setSpacing(16)
 
         if self.heading:
             self.box.addWidget(title(self.heading))
@@ -65,7 +72,8 @@ class Screen(QWidget):
             self.box.addWidget(lead(self.subheading))
 
         self.build()
-        self.box.addStretch(1)
+        if self.scrolling:
+            self.box.addStretch(1)
 
     def build(self) -> None:
         """화면마다 여기에 내용을 채웁니다."""
@@ -238,9 +246,12 @@ def _join_hashtags(tags: str, body_with_marker: str) -> str:
 
 class PostsScreen(Screen):
     heading = "글 관리"
-    subheading = "글을 고르면 오른쪽에서 원고·이미지·검수를 한 번에 봅니다."
+    # 부제는 생략합니다 — 본문 편집창의 세로 공간이 더 중요합니다.
+    scrolling = False        # 본문 편집창이 창 높이를 그대로 쓰게 합니다
 
     def build(self) -> None:
+        self.box.setContentsMargins(24, 14, 24, 14)
+        self.box.setSpacing(10)
         split = QSplitter(Qt.Horizontal)
         split.setChildrenCollapsible(False)
 
@@ -256,45 +267,57 @@ class PostsScreen(Screen):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setWordWrap(False)      # 칸이 좁아도 글자를 세로로 쌓지 않습니다
-        self.table.setMinimumWidth(380)
+        self.table.setMinimumWidth(300)
         hh = self.table.horizontalHeader()
         hh.setSectionResizeMode(2, QHeaderView.Stretch)
         for i in (0, 1, 3, 4):
             hh.setSectionResizeMode(i, QHeaderView.ResizeToContents)
         self.table.itemSelectionChanged.connect(self._on_select)
         lv.addWidget(self.table, 1)
-        self.btn_open = button("이 글의 폴더 열기")
+        self.btn_open = button("이 글의 폴더 열기", small=True)
         self.btn_open.clicked.connect(self._open_selected)
         lv.addWidget(self.btn_open)
         split.addWidget(left)
 
         # ── 오른쪽: 상세 탭 ─────────────────────────────────
         self.tabs = QTabWidget()
-        self.tabs.setMinimumWidth(430)
+        self.tabs.setMinimumWidth(380)
         self._build_tab_edit()
         self._build_tab_images()
         self._build_tab_preview()
         self._build_tab_review()
         self.tabs.currentChanged.connect(lambda _i: self._load_detail())
         split.addWidget(self.tabs)
-        split.setStretchFactor(0, 2)
-        split.setStretchFactor(1, 3)
-        split.setMinimumHeight(560)
+        # 좌 3 : 우 7 — 편집 영역의 실사용 폭을 우선합니다.
+        split.setStretchFactor(0, 3)
+        split.setStretchFactor(1, 7)
         self.box.addWidget(split, 1)
 
-        # ── 아래: 주간 자동 생성 (보조 기능) ────────────────
+        # ── 아래: 주간 자동 생성 (보조 기능, 작게) ──────────
         auto = Card("주간 자동 생성 (보조 기능)")
-        auto.add(lead("다음 주 월~토 12편의 폴더·지시서·원고를 미리 만들어 두는 기능입니다.\n"
-                      "네이버 예약과는 관계가 없습니다. 예약은 '발행 관리'에서 합니다."))
-        self.btn_slots = button("다음 주 자리 만들기")
+        auto.box.setContentsMargins(16, 10, 16, 10)
+        auto.box.setSpacing(6)
+        auto.add(lead("다음 주 12편의 자리·원고를 미리 만듭니다. "
+                      "네이버 예약과는 관계없습니다. (예약은 '발행 관리')"))
+        self.btn_slots = button("다음 주 자리 만들기", small=True)
         self.btn_slots.clicked.connect(self._make_slots)
-        self.btn_gen = button("다음 주 원고 만들기")
+        self.btn_gen = button("다음 주 원고 만들기", small=True)
         self.btn_gen.clicked.connect(self._generate)
-        self.btn_quote = button("오늘 시세 받기")
+        self.btn_quote = button("오늘 시세 받기", small=True)
         self.btn_quote.clicked.connect(self._quotes)
-        auto.add(_hrow([self.btn_slots, self.btn_gen, self.btn_quote]))
         self.auto_panel = TaskPanel()
-        auto.add(Collapsible(self.auto_panel, "작업 기록 보기"))
+        self.auto_panel.setVisible(False)
+        self.btn_auto_log = button("작업 기록 보기 ▾", small=True)
+        self.btn_auto_log.clicked.connect(self._toggle_auto_log)
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        for b in (self.btn_slots, self.btn_gen, self.btn_quote, self.btn_auto_log):
+            row.addWidget(b)
+        row.addStretch(1)
+        holder = QWidget()
+        holder.setLayout(row)
+        auto.add(holder)
+        auto.add(self.auto_panel)
         self.box.addWidget(auto)
 
         self._rows: list[state.PostState] = []
@@ -309,18 +332,24 @@ class PostsScreen(Screen):
         v.setContentsMargins(16, 16, 16, 16)
         v.setSpacing(10)
 
-        v.addWidget(QLabel("제목"))
+        def field_label(text: str) -> QLabel:
+            lb = QLabel(text)
+            lb.setObjectName("FieldLabel")
+            return lb
+
+        v.addWidget(field_label("제목"))
         self.ed_title = QLineEdit()
         self.ed_title.textEdited.connect(self._mark_dirty)
         v.addWidget(self.ed_title)
 
-        v.addWidget(QLabel("본문"))
+        v.addWidget(field_label("본문"))
         self.ed_body = QPlainTextEdit()
-        self.ed_body.setMinimumHeight(220)
+        self.ed_body.setObjectName("BodyEdit")   # 로그 창과 달리 본문 글꼴을 씁니다
+        self.ed_body.setMinimumHeight(300)       # 1366x768 에서도 본문 11줄 이상
         self.ed_body.textChanged.connect(self._mark_dirty)
-        v.addWidget(self.ed_body, 1)
+        v.addWidget(self.ed_body, 1)             # 남는 세로 공간을 본문이 다 씁니다
 
-        v.addWidget(QLabel("해시태그 (띄어쓰기로 구분)"))
+        v.addWidget(field_label("해시태그 (띄어쓰기로 구분)"))
         self.ed_tags = QLineEdit()
         self.ed_tags.textEdited.connect(self._mark_dirty)
         v.addWidget(self.ed_tags)
@@ -352,19 +381,19 @@ class PostsScreen(Screen):
             ih.setSectionResizeMode(i, QHeaderView.ResizeToContents)
         v.addWidget(self.img_table, 1)
 
-        self.btn_up = button("위로")
+        self.btn_up = button("위로", small=True)
         self.btn_up.clicked.connect(lambda: self._move_image(-1))
-        self.btn_down = button("아래로")
+        self.btn_down = button("아래로", small=True)
         self.btn_down.clicked.connect(lambda: self._move_image(1))
-        self.btn_swap = button("그림 바꾸기…")
+        self.btn_swap = button("그림 바꾸기…", small=True)
         self.btn_swap.clicked.connect(self._replace_image)
-        self.btn_imgdir = button("그림 폴더 열기")
+        self.btn_imgdir = button("그림 폴더 열기", small=True)
         self.btn_imgdir.clicked.connect(self._open_images)
         v.addWidget(_hrow([self.btn_up, self.btn_down, self.btn_swap, self.btn_imgdir]))
 
-        self.btn_info = button("정리 그림 만들기")
+        self.btn_info = button("정리 그림 만들기", small=True)
         self.btn_info.clicked.connect(self._infographic)
-        self.btn_guide = button("이미지 만드는 법 보기")
+        self.btn_guide = button("이미지 만드는 법 보기", small=True)
         self.btn_guide.clicked.connect(self._guide)
         v.addWidget(_hrow([self.btn_info, self.btn_guide]))
         self.img_panel = TaskPanel()
@@ -391,9 +420,9 @@ class PostsScreen(Screen):
         v.addWidget(self.rev_line)
         self.btn_rev_one = button("이 글 검수하기", "Primary")
         self.btn_rev_one.clicked.connect(self._review_one)
-        self.btn_rev_all = button("전체 검수하기")
+        self.btn_rev_all = button("전체 검수하기", small=True)
         self.btn_rev_all.clicked.connect(self._review_all)
-        self.btn_approve = button("이 글 승인하기")
+        self.btn_approve = button("이 글 승인하기", small=True)
         self.btn_approve.clicked.connect(self._approve)
         v.addWidget(_hrow([self.btn_rev_one, self.btn_rev_all, self.btn_approve]))
         self.rev_panel = TaskPanel()
@@ -672,10 +701,16 @@ class PostsScreen(Screen):
                       [self.btn_approve], extra_env={"NBA_CONFIRMED": "1"})
 
     # ── 보조 기능 ───────────────────────────────────────────
+    def _toggle_auto_log(self, force_show: bool | None = None) -> None:
+        show = (not self.auto_panel.isVisible()) if force_show is None else force_show
+        self.auto_panel.setVisible(show)
+        self.btn_auto_log.setText(f"작업 기록 {'감추기 ▴' if show else '보기 ▾'}")
+
     def _make_slots(self) -> None:
         if not ask(self, "다음 주 월~토 12편의 폴더와 지시서를 만듭니다.\n\n"
                          "네이버에는 아무것도 등록되지 않습니다."):
             return
+        self._toggle_auto_log(True)
         self.run_task(self.auto_panel, "schedule_week.py", None,
                       "다음 주 자리를 만드는 중입니다…", "다음 주 자리를 만들었습니다.",
                       [self.btn_slots, self.btn_gen])
@@ -685,11 +720,13 @@ class PostsScreen(Screen):
                          "이미 만들어 둔 글이 있으면 덮어쓰지 않고 건너뜁니다.\n"
                          "몇 분 걸릴 수 있습니다."):
             return
+        self._toggle_auto_log(True)
         self.run_task(self.auto_panel, "generate_week.py", None,
                       "원고를 만드는 중입니다…", "원고를 만들었습니다.",
                       [self.btn_slots, self.btn_gen])
 
     def _quotes(self) -> None:
+        self._toggle_auto_log(True)
         self.run_task(self.auto_panel, "update_sources.py", None,
                       "시세를 받는 중입니다…", "시세를 받아 왔습니다.",
                       [self.btn_quote])
@@ -848,9 +885,9 @@ class PublishManageScreen(Screen):
         self.btn_stack.addWidget(_hrow([self.btn_verify, self.btn_pverify, self.btn_chk_fail]))
 
         # 3 — 실패
-        self.btn_fail_why = button("원인 보기")
+        self.btn_fail_why = button("원인 보기", small=True)
         self.btn_fail_why.clicked.connect(self._show_fail)
-        self.btn_fail_dir = button("폴더 열기")
+        self.btn_fail_dir = button("폴더 열기", small=True)
         self.btn_fail_dir.clicked.connect(self._open_dir)
         self.btn_stack.addWidget(_hrow([self.btn_fail_why, self.btn_fail_dir]))
 
@@ -1085,9 +1122,9 @@ class HistoryScreen(Screen):
         self.week = QComboBox()
         self.week.setMinimumWidth(240)
         self.week.currentTextChanged.connect(lambda _t: self._fill())
-        self.btn_url = button("글 주소 열기")
+        self.btn_url = button("글 주소 열기", small=True)
         self.btn_url.clicked.connect(self._open_url)
-        self.btn_folder = button("결과 폴더 열기")
+        self.btn_folder = button("결과 폴더 열기", small=True)
         self.btn_folder.clicked.connect(lambda: open_folder(PROJECT_ROOT / "output"))
         c.add(_hrow([self.week, self.btn_url, self.btn_folder]))
         self.box.addWidget(c)
@@ -1113,7 +1150,7 @@ class HistoryScreen(Screen):
 
         prog = Card("작업 진행 상태 (내부 기록)")
         prog.add(lead("네이버를 조회하는 것이 아니라, 이 컴퓨터에 기록된 진행 단계를 보여 줍니다."))
-        self.btn_check = button("작업 진행 상태 보기")
+        self.btn_check = button("작업 진행 상태 보기", small=True)
         self.btn_check.clicked.connect(self._check)
         prog.add(_hrow([self.btn_check]))
         self.panel = TaskPanel()
@@ -1200,7 +1237,7 @@ class AccountScreen(Screen):
         self.box.addWidget(safe)
 
         act = Card("연결 관리")
-        self.btn_open = button("로그인 폴더 열기")
+        self.btn_open = button("로그인 폴더 열기", small=True)
         self.btn_open.clicked.connect(
             lambda: open_folder(PROJECT_ROOT / "private" / "browser-profile"))
         self.btn_reset = button("연결 끊기", "Danger")
@@ -1313,11 +1350,11 @@ class SettingsScreen(Screen):
         av.setContentsMargins(0, 0, 0, 0)
         av.setSpacing(10)
         av.addWidget(lead("아래 기능은 평소에는 쓸 일이 없습니다."))
-        b1 = button("설정 파일 직접 열기")
+        b1 = button("설정 파일 직접 열기", small=True)
         b1.clicked.connect(self._open_settings)
-        b2 = button("설정 폴더 열기")
+        b2 = button("설정 폴더 열기", small=True)
         b2.clicked.connect(lambda: open_folder(PROJECT_ROOT / "config"))
-        self.btn_fetch = button("내 블로그 글 다시 가져오기")
+        self.btn_fetch = button("내 블로그 글 다시 가져오기", small=True)
         self.btn_fetch.clicked.connect(self._fetch)
         av.addWidget(_hrow([b1, b2, self.btn_fetch]))
         self.panel = TaskPanel()
@@ -1393,7 +1430,7 @@ class HelpScreen(Screen):
         t.add(lead("아래 폴더의 가장 최근 기록 파일을 열어 보시면 무엇이 잘못됐는지 적혀 있습니다."))
         b1 = button("기록(로그) 폴더 열기", "Primary")
         b1.clicked.connect(lambda: open_folder(PROJECT_ROOT / "logs"))
-        b2 = button("프로그램 폴더 열기")
+        b2 = button("프로그램 폴더 열기", small=True)
         b2.clicked.connect(lambda: open_folder(PROJECT_ROOT))
         t.add(_hrow([b1, b2]))
         self.box.addWidget(t)

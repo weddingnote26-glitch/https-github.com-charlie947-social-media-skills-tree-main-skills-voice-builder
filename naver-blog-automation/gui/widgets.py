@@ -24,11 +24,20 @@ def lead(text: str) -> QLabel:
     return lb
 
 
-def button(text: str, kind: str = "", tip: str = "") -> QPushButton:
+def button(text: str, kind: str = "", tip: str = "", small: bool = False) -> QPushButton:
+    """
+    공통 버튼.
+
+    small=True 는 보조 동작용(42px)입니다. 주요 동작은 기본(46px)을 씁니다.
+    """
     b = QPushButton(text)
     if kind:
         b.setObjectName(kind)          # Primary / Danger
-    b.setMinimumHeight(theme.BTN_H)
+    if small:
+        b.setProperty("small", "true")
+        b.setMinimumHeight(theme.BTN_H_SM)
+    else:
+        b.setMinimumHeight(theme.BTN_H)
     b.setCursor(Qt.PointingHandCursor)
     if tip:
         b.setToolTip(tip)
@@ -132,7 +141,7 @@ class TaskPanel(QWidget):
 
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMinimumHeight(200)
+        self.log.setMinimumHeight(140)
         v.addWidget(self.log, 1)
 
     def start(self, step_text: str) -> None:
@@ -188,8 +197,10 @@ class Collapsible(QWidget):
         v.setSpacing(8)
         self._label = label
         self.btn = QPushButton(f"{label} ▾")
+        self.btn.setProperty("small", "true")
+        self.btn.setMinimumHeight(theme.BTN_H_SM)
         self.btn.setCursor(Qt.PointingHandCursor)
-        self.btn.setMaximumWidth(260)
+        self.btn.setMaximumWidth(240)
         self.inner = inner
         self.inner.setVisible(False)
         self.btn.clicked.connect(self._toggle)
