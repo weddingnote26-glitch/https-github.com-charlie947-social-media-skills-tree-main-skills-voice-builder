@@ -43,6 +43,15 @@ images:
 data_asof: '2026-08-24 11:17 KST'
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: weekly_check
+  title: 월요일 아침에 볼 숫자 셋
+  points:
+    - 코스피와 코스닥 지수
+    - 달러 대비 원화 환율
+    - 지난주와 견주어 보기
+  footer: 숫자보다 방향을 보세요
 ---
 
 안녕하세요. 오락(ORAK) 5070 경제공부소입니다.

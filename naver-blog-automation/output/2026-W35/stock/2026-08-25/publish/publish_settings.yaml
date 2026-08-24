@@ -1,0 +1,32 @@
+post_id: stock-2026-08-25-기초용어
+content_hash: a1c99cf6ec507df8
+channel:
+  key: stock
+  name: 오락 5070 경제공부소
+  blog_id: playorak
+  url: https://blog.naver.com/playorak
+  confirm_phrase: 오락 5070 경제공부소 / playorak
+title: '[주식완전기초]- 회사가 돈을 잘 버는지 보는 자, ROE 3분 만에 이해하기'
+category: 주식완전기초
+schedule:
+  date: '2026-08-25'
+  time: 07:30
+  weekday: 화
+  timezone: Asia/Seoul
+visibility: closed
+allow_comment: true
+allow_search: true
+tags:
+- 주식초보
+- 주식공부
+- ROE
+- 자기자본이익률
+- 경제상식
+- 50대재테크
+- 60대재테크
+images:
+  count: 3
+  total_mb: 0.05
+  upload_method: 네이버 포토 업로더로 파일 직접 등록 (복사·붙여넣기 금지)
+naver_log_no: null
+post_url: null

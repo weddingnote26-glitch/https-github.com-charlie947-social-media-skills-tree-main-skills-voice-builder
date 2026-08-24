@@ -44,6 +44,15 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: impatience_three
+  title: 조급함이 만드는 세 실수
+  points:
+    - 이유 없이 사 버리기
+    - 계획보다 일찍 팔기
+    - 하루에 자꾸 확인하기
+  footer: 기다리는 연습이 곧 매매 실력입니다
 ---
 
 안녕하세요! 10년 차 실전 투자자, 여러분의 멘토 '친절한 코인 설명서'입니다. ☀️ 오늘도 원칙을 지키는 잃지 않는 매매, 잘하고 계시나요?

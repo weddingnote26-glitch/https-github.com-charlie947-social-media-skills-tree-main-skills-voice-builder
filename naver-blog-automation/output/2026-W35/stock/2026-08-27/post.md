@@ -42,6 +42,21 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: compare
+  slug: payout_ratio
+  title: 배당 성향으로 보는 회사 성격
+  left_label: 배당 성향 낮음
+  right_label: 배당 성향 높음
+  left_items:
+    - 번 돈을 다시 넣습니다
+    - 키우는 중인 회사
+    - 주가가 오르기를 기대
+  right_items:
+    - 번 돈을 나눠 줍니다
+    - 자리 잡은 회사
+    - 꾸준한 배당을 기대
+  footer: 액수보다 비율을, 한 해보다 여러 해를
 ---
 
 안녕하세요. 오락(ORAK) 5070 경제공부소입니다.

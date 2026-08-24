@@ -44,6 +44,15 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: whitepaper_three
+  title: 백서에서 볼 곳은 세 곳
+  points:
+    - 무슨 문제를 푸는가
+    - 모두 몇 개를 만드는가
+    - 누가 얼마나 가졌는가
+  footer: 백서는 파는 쪽이 쓴 안내문입니다
 ---
 
 안녕하세요! 10년 차 실전 투자자, 여러분의 멘토 '친절한 코인 설명서'입니다. ☀️ 오늘도 원칙을 지키는 잃지 않는 매매, 잘하고 계시나요?

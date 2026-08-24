@@ -40,7 +40,7 @@ review:
   passed: true
   blocking_issues: 0
   warnings: 1
-  checked_at: 2026-08-24 13:09:20 KST
+  checked_at: 2026-08-24 15:29:18 KST
 approval:
   approved: false
   approved_at: null

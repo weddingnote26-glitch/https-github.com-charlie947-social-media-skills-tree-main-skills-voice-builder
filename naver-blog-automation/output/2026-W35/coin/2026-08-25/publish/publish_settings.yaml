@@ -1,0 +1,37 @@
+post_id: coin-2026-08-25-기초개념
+content_hash: 17726918fc9276b9
+channel:
+  key: coin
+  name: 친절한 코인 설명서
+  blog_id: dylankim26
+  url: https://blog.naver.com/dylankim26
+  confirm_phrase: 친절한 코인 설명서 / dylankim26
+title: '[코린이 매매팁] "이 코인 믿어도 되나요?" 백서에서 딱 세 곳만 보는 법 📄'
+category: 코인투자마인드
+schedule:
+  date: '2026-08-25'
+  time: 08:30
+  weekday: 화
+  timezone: Asia/Seoul
+visibility: closed
+allow_comment: true
+allow_search: true
+tags:
+- 코인시황
+- 비트코인
+- 알트코인
+- 가상자산
+- 암호화폐
+- 코린이
+- 코인투자
+- 크립토
+- 현금관망
+- 투자기초
+- 코인백서
+- 백서읽는법
+images:
+  count: 2
+  total_mb: 2.4
+  upload_method: 네이버 포토 업로더로 파일 직접 등록 (복사·붙여넣기 금지)
+naver_log_no: null
+post_url: null

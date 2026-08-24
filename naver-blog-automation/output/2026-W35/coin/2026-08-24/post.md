@@ -35,6 +35,15 @@ images: []
 data_asof: '2026-08-24 11:17 KST'
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: monday_market
+  title: 오른 뒤 첫 월요일에 볼 것
+  points:
+    - 추격 매수는 잠시 멈추기
+    - 현금 비중을 먼저 확인
+    - 숨 고르기 구간은 관망
+  footer: 확신이 가장 클 때가 가장 위험합니다
 ---
 
 안녕하세요! 여러분의 소중한 시드를 안전하게 지켜드리는 친절한 코인 설명서 입니다. 주말 이틀도 조급해하지 않고 잘 버텨내셨나요? 지난주는 오랜만에 시장이 크게 움직인 한 주였습니다. 오르는 것을 지켜보기만 한 분도, 미리 담아 두신 분도 마음이 편치는 않으셨을 겁니다.
