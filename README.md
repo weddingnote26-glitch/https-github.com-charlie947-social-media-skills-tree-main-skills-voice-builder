@@ -18,6 +18,14 @@
 
 **시작하기** → [naver-blog-automation/README.md](naver-blog-automation/README.md)
 
+### `orak-food-reel-studio/` — 오락푸드 AI 릴스 자동제작 스튜디오
+
+`@orak_food` 인스타그램용 릴스를 **맛집 입력 → 대본 → 팩트체크 → 이미지 → AI 음성 → 자막 → 영상(MP4) → 썸네일 → 예약 발행**까지 자동 제작하는 프로그램입니다.
+전속 캐릭터 **만두탐정 오락이**(맛집사건 시리즈) 포함. 월~토 주 6회 운영.
+
+**시작하기** → `orak-food-reel-studio/` 폴더의 **start.bat 더블클릭** / 자세한 설명은 [orak-food-reel-studio/README.md](orak-food-reel-studio/README.md)
+
+
 ```
 원고 자동 생성 → 사실 확인 → 자동 검수 → 사람 승인 → 네이버 예약 발행
 ```
@@ -68,6 +76,7 @@ WORKLOG 읽고 이어서 해줘
 ## 회사 PC에서 처음 시작할 때
 
 **→ [회사PC_처음설치.md](회사PC_처음설치.md) 를 보세요.** 한 단계씩 적어 뒀습니다.
+- 릴스 스튜디오를 회사 PC에서 처음 쓰신다면 → **`회사PC_릴스스튜디오.md`**
 
 10분이면 끝나고, 한 번만 하면 그다음부터는 클릭 두 번입니다.
 

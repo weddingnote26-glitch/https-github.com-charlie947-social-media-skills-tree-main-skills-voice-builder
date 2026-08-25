@@ -1,0 +1,8 @@
+{
+  "comment": "Sample Mode에서 참고할 수 있는 예시 맛집 입력값입니다. 오늘의 릴스 화면에 이대로 넣어보세요.",
+  "restaurants": [
+    { "name": "신림골목만두", "area": "신림", "address": "서울 관악구 신림동 000-00", "menus": [{ "name": "고기만두", "price": "6,000원", "verified": true }], "recommended_for": "혼밥·가성비" },
+    { "name": "봉천중앙국밥", "area": "봉천", "address": "서울 관악구 봉천동 000-00", "menus": [{ "name": "돼지국밥", "price": "9,000원", "verified": true }], "recommended_for": "부모님과 함께" },
+    { "name": "서울대입구 옛날백반", "area": "서울대입구", "menus": [{ "name": "제육백반", "price": "8,500원", "verified": true }], "recommended_for": "직장인 점심" }
+  ]
+}

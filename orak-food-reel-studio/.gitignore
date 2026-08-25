@@ -1,0 +1,44 @@
+node_modules/
+.next/
+# 윈도우에서 잠겨 있어 치워 둔 폴더 (다음 실행 때 자동으로 지워집니다)
+.next.old-*/
+/dist-app.old-*/
+/dist-bin.old-*/
+/dist-installer.old-*/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# 실행 중 생성되는 데이터 — 저장소에 올리지 않습니다
+/data/*.db
+/data/*.db-*
+/data/.secret
+/logs/*.log
+/output/*
+!/output/.gitkeep
+/assets/audio/*
+!/assets/audio/.gitkeep
+/assets/video/*
+!/assets/video/.gitkeep
+/assets/images/*
+!/assets/images/.gitkeep
+/assets/thumb/*
+!/assets/thumb/.gitkeep
+/assets/subtitles/*
+!/assets/subtitles/.gitkeep
+/assets/fonts/*.ttf
+/assets/fonts/*.otf
+
+# 비밀키
+.env
+.env.local
+.env.*.local
+.test-tmp/
+
+# 예시 환경파일은 저장소에 포함 (실제 .env는 계속 제외)
+!.env.example
+
+# 설치 파일 만들기 결과물 — 용량이 크고 PC마다 다시 만들면 된다
+/dist-app/
+/dist-bin/
+/dist-installer/

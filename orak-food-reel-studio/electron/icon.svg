@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F08A5D"/><stop offset="1" stop-color="#E86A3A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#g)"/>
+  <!-- 만두 모양 (오락이) -->
+  <ellipse cx="512" cy="590" rx="290" ry="235" fill="#FFF3E6"/>
+  <path d="M232 520 q40 -70 94 0 q40 -70 94 0 q40 -70 94 0 q40 -70 94 0 q40 -70 94 0 q22 -38 60 -8
+           l0 90 q-290 -40 -580 0 z" fill="#FFE3C4"/>
+  <!-- 탐정 모자 -->
+  <path d="M255 470 q255 -150 520 -40 l18 62 q-270 -95 -520 40 z" fill="#7B4A2B"/>
+  <ellipse cx="470" cy="392" rx="188" ry="128" fill="#8B5533"/>
+  <!-- 눈 -->
+  <circle cx="430" cy="610" r="30" fill="#2B2B2B"/>
+  <circle cx="600" cy="610" r="30" fill="#2B2B2B"/>
+  <circle cx="440" cy="600" r="10" fill="#fff"/>
+  <circle cx="610" cy="600" r="10" fill="#fff"/>
+  <!-- 돋보기 -->
+  <circle cx="742" cy="700" r="92" fill="none" stroke="#5A3A22" stroke-width="30"/>
+  <circle cx="742" cy="700" r="76" fill="#BFE3F5" opacity="0.55"/>
+  <rect x="800" y="762" width="130" height="34" rx="17" transform="rotate(42 800 762)" fill="#5A3A22"/>
+</svg>

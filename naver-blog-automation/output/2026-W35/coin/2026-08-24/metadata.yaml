@@ -5,29 +5,46 @@ channel:
   blog_id: dylankim26
   url: https://blog.naver.com/dylankim26
   confirm_phrase: 친절한 코인 설명서 / dylankim26
-title: ''
-title_candidates: []
+title: '[친절한코인설명서] 8월 24일 월요일 모닝 시황'
+title_candidates:
+- '[친절한코인설명서] 8월 24일 월요일 모닝 시황'
 publish:
   date: '2026-08-24'
   time: 08:30
   timezone: Asia/Seoul
   weekday: 월
   visibility: closed
-  category: 주간시황
+  category: 코인시황뉴스
 slot: 주간시황
-keywords: []
-hashtags: []
+keywords:
+- 주간시황
+- 비트코인도미넌스
+- 알트코인
+hashtags:
+- 코인시황
+- 비트코인
+- 알트코인
+- 가상자산
+- 암호화폐
+- 코린이
+- 코인투자
+- 크립토
+- 현금관망
+- 오늘의시황
+- 비트도미넌스
+- 주간시황
+- 이더리움
 status: draft
 history: []
 sources:
-  data_asof: null
+  data_asof: 2026-08-24 11:17 KST
   verified: false
   count: 0
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
+  warnings: 2
+  checked_at: 2026-08-24 18:04:32 KST
 approval:
   approved: false
   approved_at: null

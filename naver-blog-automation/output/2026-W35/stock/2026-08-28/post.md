@@ -42,6 +42,15 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: age_risk
+  title: 나이 들수록 달라지는 것
+  points:
+    - 달라지는 건 남은 시간
+    - 언제 쓸 돈인지로 나누기
+    - 노후 통장은 따로 두기
+  footer: 남과 비교하지 마세요
 ---
 
 안녕하세요. 오락(ORAK) 5070 경제공부소입니다.

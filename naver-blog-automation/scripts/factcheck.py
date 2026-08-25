@@ -150,23 +150,45 @@ def load_data_sources() -> dict:
     return c.read_yaml(c.CONFIG_DIR / "data_sources.yaml", default={}) or {}
 
 
-def _primary_names(ds: dict) -> list[str]:
-    """기준 출처를 가리키는 이름들. 표에 이 중 하나가 적혀 있으면 기준 출처로 봅니다."""
-    pri = ds.get("primary") or {}
-    names = [pri.get("name"), pri.get("name_en")]
-    url = str(pri.get("url") or "")
+def _names_of(entry: dict) -> list[str]:
+    """한 출처를 가리키는 이름들 — 이름, 영문 이름, 그리고 주소의 도메인."""
+    names = [entry.get("name"), entry.get("name_en")]
+    url = str(entry.get("url") or "")
     if "//" in url:                      # https://kr.tradingview.com/ → kr.tradingview.com
         names.append(url.split("//", 1)[1].strip("/"))
     return [str(n).lower() for n in names if n]
 
 
+def _primary_names(ds: dict) -> list[str]:
+    """사용자가 지정한 기준 출처를 가리키는 이름들."""
+    return _names_of(ds.get("primary") or {})
+
+
+def _quote_source_names(ds: dict) -> list[str]:
+    """
+    '화면에서 읽는 값(quote)' 으로 인정하는 출처 이름 전부.
+
+      · primary      — 사용자가 지정한 기준 출처 (트레이딩뷰)
+      · auto_sources — 프로그램이 값을 직접 받아 오는 곳 (CoinGecko·Yahoo Finance 등)
+
+    자동으로 받은 값도 화면에서 읽은 값과 성격이 같으므로 한 곳이면 됩니다.
+    여기에 없는 이름은 사건·발표(claim)로 보고 서로 다른 두 곳을 요구합니다.
+    새 출처를 쓰기 시작하면 config/data_sources.yaml 의 auto_sources 에 먼저 넣으세요.
+    """
+    names = list(_primary_names(ds))
+    for entry in (ds.get("auto_sources") or []):
+        if isinstance(entry, dict):
+            names.extend(_names_of(entry))
+    return [n for n in names if n]
+
+
 def _row_kind(row: dict, ds: dict) -> str:
     """
     이 줄이 '화면에서 읽는 값(quote)' 인지 '사건·발표(claim)' 인지 봅니다.
-    출처 칸에 기준 출처가 적혀 있으면 quote 로 봅니다.
+    출처 칸에 인정된 시세 출처가 적혀 있으면 quote 로 봅니다.
     """
     cited = f"{row.get('source1', '')} {row.get('source2', '')}".lower()
-    return "quote" if any(n in cited for n in _primary_names(ds)) else "claim"
+    return "quote" if any(n in cited for n in _quote_source_names(ds)) else "claim"
 
 
 def is_backed(claim: str, rows: list[dict], min_sources: int,

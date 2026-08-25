@@ -7,7 +7,7 @@ publish_date: '2026-08-25'
 publish_time: 07:30
 weekday: 화
 slot: 기초용어
-status: reviewed
+status: approved
 title_candidates:
 - '[주식완전기초]- 회사가 돈을 잘 버는지 보는 자, ROE 3분 만에 이해하기'
 - '[주식완전기초]- 주식 초보라면 이것부터, ROE 뜻과 보는 법 쉽게 알려드립니다'
@@ -42,6 +42,15 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: roe_basic
+  title: ROE 3분 만에 이해하기
+  points:
+    - 자기 돈으로 얼마 벌었나
+    - 번 돈보다 들인 돈과 견주기
+    - 한 해만 보지 않기
+  footer: 빚과 업종도 함께 보세요
 ---
 
 안녕하세요. 오락(ORAK) 5070 경제공부소입니다.

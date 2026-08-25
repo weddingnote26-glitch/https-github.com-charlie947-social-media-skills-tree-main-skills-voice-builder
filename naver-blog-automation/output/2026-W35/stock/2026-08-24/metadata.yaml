@@ -5,29 +5,42 @@ channel:
   blog_id: playorak
   url: https://blog.naver.com/playorak
   confirm_phrase: 오락 5070 경제공부소 / playorak
-title: ''
-title_candidates: []
+title: '[주식완전기초]- 한 주가 시작될 때, 주식 초보가 확인할 세 가지 숫자'
+title_candidates:
+- '[주식완전기초]- 한 주가 시작될 때, 주식 초보가 확인할 세 가지 숫자'
+- '[주식완전기초]- 월요일 아침 경제뉴스, 이 세 가지만 보면 됩니다'
+- '[주식완전기초]- 숫자가 쏟아지는 월요일, 초보는 무엇부터 볼까요'
 publish:
   date: '2026-08-24'
   time: 07:30
   timezone: Asia/Seoul
   weekday: 월
   visibility: closed
-  category: 주간일정
+  category: 3.경제·주식공부
 slot: 주간일정
-keywords: []
-hashtags: []
+keywords:
+- 코스피
+- 원달러환율
+- 주식초보
+hashtags:
+- 주식초보
+- 주식공부
+- 50대재테크
+- 60대재테크
+- 코스피
+- 환율
+- 경제기초
 status: draft
 history: []
 sources:
-  data_asof: null
+  data_asof: 2026-08-24 11:17 KST
   verified: false
   count: 0
 review:
-  passed: null
+  passed: true
   blocking_issues: 0
-  warnings: 0
-  checked_at: null
+  warnings: 1
+  checked_at: 2026-08-24 18:04:32 KST
 approval:
   approved: false
   approved_at: null

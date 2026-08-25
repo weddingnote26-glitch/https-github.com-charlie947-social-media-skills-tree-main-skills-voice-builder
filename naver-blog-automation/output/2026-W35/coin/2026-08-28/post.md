@@ -7,7 +7,7 @@ publish_date: '2026-08-28'
 publish_time: 08:30
 weekday: 금
 slot: 위험관리
-status: reviewed
+status: approved
 template: guide
 title_candidates:
 - '[코린이 매매팁] "거래소가 문을 닫으면 제 코인은요?" 미리 알아두는 세 가지 🏦'
@@ -44,6 +44,15 @@ images:
 data_asof: null
 sources_verified: true
 style_analyzed: true
+infographic:
+  kind: three
+  slug: exchange_risk
+  title: 거래소가 멈추면 어떻게 되나
+  points:
+    - 화면 숫자는 보관증입니다
+    - 한 곳에 다 두지 않기
+    - 2단계 인증 켜 두기
+  footer: 지키는 일은 오늘 혼자서도 됩니다
 ---
 
 안녕하세요! 10년 차 실전 투자자, 여러분의 멘토 '친절한 코인 설명서'입니다. ☀️ 오늘도 원칙을 지키는 잃지 않는 매매, 잘하고 계시나요?

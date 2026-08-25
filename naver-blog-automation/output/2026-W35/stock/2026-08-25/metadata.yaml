@@ -30,7 +30,7 @@ hashtags:
 - 경제상식
 - 50대재테크
 - 60대재테크
-status: reviewed
+status: approved
 history:
 - status: fact_checked
   at: 2026-08-22 22:30:39 KST
@@ -40,6 +40,10 @@ history:
   at: 2026-08-22 22:30:54 KST
   by: review.py
   note: 자동 검수 통과 (확인 1건)
+- status: approved
+  at: 2026-08-24 12:07:09 KST
+  by: 회사
+  note: 사람이 확인 후 승인
 sources:
   data_asof: null
   verified: true
@@ -48,11 +52,11 @@ review:
   passed: true
   blocking_issues: 0
   warnings: 1
-  checked_at: 2026-08-22 23:39:05 KST
+  checked_at: 2026-08-24 18:04:32 KST
 approval:
-  approved: false
-  approved_at: null
-  approved_by: null
+  approved: true
+  approved_at: 2026-08-24 12:07:09 KST
+  approved_by: 회사
   notes: ''
 scheduled:
   registered: false
@@ -64,3 +68,9 @@ published:
   post_url: null
 write_mode: advance
 needs_live_data: false
+content_hash: a1c99cf6ec507df8
+package:
+  built_at: 2026-08-24 16:06:53 KST
+  path: output/2026-W35/stock/2026-08-25/publish
+  blocks: 29
+  images: 3

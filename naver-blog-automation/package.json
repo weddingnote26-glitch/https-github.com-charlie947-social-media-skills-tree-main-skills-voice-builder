@@ -4,11 +4,20 @@
   "private": true,
   "description": "네이버 블로그 주간 콘텐츠 제작 및 예약 발행 보조 시스템 (원고 생성 → 사실확인 → 검수 → 승인 → 예약 발행 준비)",
   "scripts": {
-    "menu": "python scripts/menu.py",
-    "generate": "python scripts/generate_week.py",
-    "review": "python scripts/review.py",
-    "prepare": "python scripts/prepare_publish.py",
-    "browser:install": "playwright install chromium"
+    "menu": ".venv\\Scripts\\python.exe scripts/menu.py",
+    "generate": ".venv\\Scripts\\python.exe scripts/generate_week.py",
+    "review": ".venv\\Scripts\\python.exe scripts/review.py",
+    "prepare": ".venv\\Scripts\\python.exe scripts/prepare_publish.py",
+    "browser:install": "playwright install chromium",
+    "update:sources": ".venv\\Scripts\\python.exe scripts/update_sources.py",
+    "test:sources": ".venv\\Scripts\\python.exe scripts/test_update_sources.py",
+    "image": ".venv\\Scripts\\python.exe scripts/infographic.py",
+    "image:demo": ".venv\\Scripts\\python.exe scripts/infographic.py --demo",
+    "test:image": ".venv\\Scripts\\python.exe scripts/test_infographic.py",
+    "images:ai": ".venv/Scripts/python.exe scripts/openai_images.py",
+    "images:ai:dry": ".venv/Scripts/python.exe scripts/openai_images.py --dry-run",
+    "test:images:ai": ".venv/Scripts/python.exe scripts/test_openai_images.py",
+    "test:gui": ".venv\\Scripts\\python.exe scripts/test_gui_logic.py"
   },
   "devDependencies": {},
   "engines": {

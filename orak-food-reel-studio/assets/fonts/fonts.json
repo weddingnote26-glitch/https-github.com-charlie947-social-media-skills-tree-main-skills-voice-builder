@@ -1,0 +1,7 @@
+{
+  "comment": "자막·썸네일용 한글 폰트. 파일이 없으면 scripts/doctor.mjs 가 자동으로 내려받습니다. (SIL OFL 라이선스)",
+  "fonts": [
+    { "file": "NotoSansKR-Medium.ttf", "url": "https://fonts.gstatic.com/s/notosanskr/v39/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzztgyeLQ.ttf" },
+    { "file": "NotoSansKR-ExtraBold.ttf", "url": "https://fonts.gstatic.com/s/notosanskr/v39/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzmo1eLQ.ttf" }
+  ]
+}
