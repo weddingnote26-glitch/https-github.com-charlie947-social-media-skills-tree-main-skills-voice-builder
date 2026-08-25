@@ -3,6 +3,7 @@ import { useTempDb } from "./helpers";
 useTempDb("db");
 import { db, nextCaseNumber } from "../src/lib/db";
 import { saveScenes, getReel, updateReel } from "../src/lib/reels";
+import { REVIEW_ITEMS, saveReview } from "../src/lib/review";
 import { computeNextSlot, scheduleReel, publicUrlFor } from "../src/lib/scheduler";
 import { saveSettings } from "../src/lib/settings";
 import { resetEnvCache } from "../src/lib/env";
@@ -42,6 +43,9 @@ describe("§34 Scheduler 등록", () => {
   it("영상이 있는 릴스만 예약된다", () => {
     expect(() => scheduleReel("reel_test1")).toThrow(/영상/);
     updateReel("reel_test1", { video_path: "/tmp/x.mp4" });
+    // 영상이 있어도 발행 전 검수를 마쳐야 예약된다 (§5)
+    expect(() => scheduleReel("reel_test1")).toThrow(/검수/);
+    saveReview("reel_test1", Object.fromEntries(REVIEW_ITEMS.map((i) => [i.key, true])));
     const { publishAt } = scheduleReel("reel_test1");
     expect(publishAt).toMatch(/T11:30:00$/);
     const row = db().prepare("SELECT status FROM schedules WHERE reel_id='reel_test1'").get() as { status: string };

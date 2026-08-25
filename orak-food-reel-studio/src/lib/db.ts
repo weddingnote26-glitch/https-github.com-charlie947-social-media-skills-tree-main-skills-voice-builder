@@ -193,6 +193,19 @@ function migrate(d: SqliteDatabase): void {
   CREATE INDEX IF NOT EXISTS idx_schedules_at ON schedules(publish_at, status);
   CREATE INDEX IF NOT EXISTS idx_pubjobs_phase ON publishing_jobs(phase);
   `);
+
+  /* 나중에 늘어난 칸은 여기서 하나씩 더한다.
+     CREATE TABLE IF NOT EXISTS 는 이미 있는 표에는 아무 것도 하지 않으므로,
+     예전 자료를 그대로 두고 칸만 늘리려면 이 방법이 필요하다.
+     이미 있으면 조용히 넘어간다 — 사용자 자료는 절대 지우지 않는다. */
+  addColumn(d, "reels", "review_json", "TEXT NOT NULL DEFAULT '{}'");
+}
+
+/** 표에 칸이 없으면 더한다. 있으면 아무 것도 하지 않는다. */
+function addColumn(d: SqliteDatabase, table: string, column: string, decl: string): void {
+  const cols = d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === column)) return;
+  d.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
 }
 
 /* ---------- 공용 헬퍼 ---------- */

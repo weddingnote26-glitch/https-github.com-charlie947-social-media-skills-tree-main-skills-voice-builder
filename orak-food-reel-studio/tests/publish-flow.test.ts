@@ -3,7 +3,13 @@ import { useTempDb } from "./helpers";
 useTempDb("publish");
 process.env.APP_MODE = "sample";
 import { db } from "../src/lib/db";
+import { REVIEW_ITEMS, saveReview } from "../src/lib/review";
 import { publishNow, tick } from "../src/lib/scheduler";
+
+/** 발행 전 검수 다섯 항목을 모두 확인한 것으로 만든다 */
+function markReviewed(reelId: string): void {
+  saveReview(reelId, Object.fromEntries(REVIEW_ITEMS.map((i) => [i.key, true])));
+}
 
 describe("§32 발행 상태기계 (샘플 퍼블리셔)", () => {
   it("컨테이너 FINISHED 확인 후에만 publish된다", async () => {
@@ -12,6 +18,10 @@ describe("§32 발행 상태기계 (샘플 퍼블리셔)", () => {
     ).run("reel_pub1", "발행 테스트", "검수", "/tmp/reel.mp4", "/tmp/t.jpg", "본문", '["#오락푸드"]', "{}",
       JSON.stringify([{ field: "매장명", value: "x", status: "확인", source: "" }]),
       JSON.stringify({ fact_blocked: false }));
+
+    // 검수를 마치기 전에는 발행 자체가 막힌다 (§5)
+    expect(() => publishNow("reel_pub1")).toThrow(/검수/);
+    markReviewed("reel_pub1");
     publishNow("reel_pub1");
 
     await tick(); // 대기 → 컨테이너 생성
@@ -40,7 +50,8 @@ describe("§32 발행 상태기계 (샘플 퍼블리셔)", () => {
       JSON.stringify([{ field: "가격", value: "?", status: "미확인", source: "" }]),
       JSON.stringify({ fact_blocked: true, fact_block_reasons: ["가격 미확인"] }));
     // 잡을 만든 뒤 실패시키지 말고, 누른 그 자리에서 막는다 (§33)
-    expect(() => publishNow("reel_pub2")).toThrow(/팩트체크/);
+    markReviewed("reel_pub2");   // 검수를 마쳐도 팩트체크가 막으면 못 나간다
+    expect(() => publishNow("reel_pub2")).toThrow(/확인되지 않은 업체 정보/);
     await tick();
     const job = db().prepare("SELECT COUNT(*) AS c FROM publishing_jobs WHERE reel_id='reel_pub2'").get() as { c: number };
     expect(job.c, "막혔으면 발행 잡 자체가 생기지 않아야 한다").toBe(0);
@@ -54,6 +65,7 @@ describe("§32 발행 상태기계 (샘플 퍼블리셔)", () => {
       JSON.stringify([{ field: "매장명", value: "x", status: "확인", source: "" }]),
       JSON.stringify({ fact_blocked: false }));
 
+    markReviewed("reel_pub3");
     expect(() => publishNow("reel_pub3")).toThrow(/영상이 없어서/);
     await tick();
     const job = db().prepare("SELECT COUNT(*) AS c FROM publishing_jobs WHERE reel_id='reel_pub3'").get() as { c: number };

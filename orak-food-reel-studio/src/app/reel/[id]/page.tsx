@@ -169,6 +169,12 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 )}
               </div>
             )}
+            {reel.video_path && (
+              /* 발행 전에 미리보기·검수를 반드시 거치게 한다 (§5) */
+              <button className="btn-primary w-full mt-4" onClick={() => router.push(`/review/${id}`)}>
+                🔎 완성 콘텐츠 미리보기 · 검수
+              </button>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
               <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path || quality.fact_blocked}
                 onClick={() => run("schedule", () => api(`/api/reels/${id}/schedule`, { method: "POST", body: "{}" }), "다음 발행 슬롯에 예약했습니다.")}>

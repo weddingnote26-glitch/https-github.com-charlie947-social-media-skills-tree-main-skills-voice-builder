@@ -10,6 +10,8 @@ const MENU = [
   { href: "/calendar", icon: "📅", label: "콘텐츠 캘린더" },
   { href: "/producing", icon: "🎬", label: "제작중" },
   { href: "/library", icon: "✅", label: "완성 콘텐츠" },
+  // 발행 전에 반드시 거치는 화면 — 완성과 발행 사이에 둔다 (§5)
+  { href: "/review", icon: "🔎", label: "미리보기·검수" },
   { href: "/publish", icon: "🚀", label: "예약/발행" },
   { href: "/analytics", icon: "📊", label: "성과분석" },
   { href: "/restaurants", icon: "🍽", label: "맛집 DB" },

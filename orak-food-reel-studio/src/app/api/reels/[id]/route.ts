@@ -3,6 +3,7 @@ import { getReel, updateReel, saveScenes } from "@/lib/reels";
 import { SceneSchema } from "@/lib/schema";
 import { db } from "@/lib/db";
 import { restaurantForm } from "@/lib/restaurants";
+import { clearReview } from "@/lib/review";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (body.caption !== undefined) script.caption = body.caption;
       }
       patch.status = "검수"; // 수정하면 다시 검수 상태
+      clearReview(id);      // 내용이 바뀌었으니 발행 전 확인도 처음부터 (§5)
     }
     updateReel(id, patch);
     return ok({ reel: getReel(id) });

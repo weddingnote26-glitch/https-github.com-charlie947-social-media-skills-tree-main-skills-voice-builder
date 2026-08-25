@@ -15,6 +15,8 @@ export interface ReelRow {
   hashtags_json: string;
   quality_json: string;
   factcheck_json: string;
+  /** §5 발행 전 검수 체크 상태 */
+  review_json: string;
   output_dir: string | null;
   video_path: string | null;
   thumb_path: string | null;

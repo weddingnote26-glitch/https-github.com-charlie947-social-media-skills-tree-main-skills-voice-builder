@@ -5,6 +5,7 @@ import { getPublisher, friendlyInstagramError } from "./providers/instagram";
 import { getEnv } from "./env";
 import { updateReel, getReel, reelFactcheck } from "./reels";
 import { logError, logInfo, logWarn } from "./log";
+import { publishBlockReason } from "./review";
 import { redact } from "./redact";
 
 /**
@@ -41,12 +42,9 @@ function toLocalIso(d: Date): string {
 export function scheduleReel(reelId: string, publishAt?: string): { scheduleId: string; publishAt: string } {
   const reel = getReel(reelId);
   if (!reel) throw new Error("릴스를 찾을 수 없습니다");
-  if (!reel.video_path) throw new Error("영상이 아직 없습니다");
-  // §33: FACT CHECK 차단 콘텐츠는 예약 불가
-  const q = j<{ fact_blocked?: boolean; fact_block_reasons?: string[] }>(reel.quality_json, {});
-  if (q.fact_blocked) {
-    throw new Error("팩트체크 확인 필요 항목이 있어 예약할 수 없습니다: " + (q.fact_block_reasons ?? []).join(" / "));
-  }
+  // 영상 · 팩트체크 · 발행 전 검수를 한 자리에서 본다 (§5, §33)
+  const blocked = publishBlockReason(reelId);
+  if (blocked) throw new Error(blocked);
   const at = publishAt ?? computeNextSlot();
   const id = newId("sch");
   db().prepare("INSERT INTO schedules (id, reel_id, publish_at, status) VALUES (?,?,?,'예약')").run(id, reelId, at);
@@ -70,16 +68,21 @@ export function publishNow(reelId: string): { jobId: string } {
    * 영상이 안 만들어진 릴스도 발행 잡으로 넘어갔고, 샘플 발행기가 성공 처리해
    * "발행완료 인데 영상이 없는" 상태가 만들어졌다 — 실제로 그 화면을 받았다.
    */
-  const reel = getReel(reelId);
-  if (!reel) throw new Error("릴스를 찾을 수 없습니다");
-  if (!reel.video_path) {
-    throw new Error("아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 제작하기]로 영상을 만들어 주세요.");
+  const blocked = publishBlockReason(reelId);
+  if (blocked) throw new Error(blocked);
+
+  /* 같은 릴스를 두 번 발행하지 않는다.
+     단추를 연달아 누르거나 예약과 즉시 발행이 겹치면 같은 영상이 두 번 올라간다.
+     이미 올라간 기록이 있거나 진행 중인 잡이 있으면 여기서 막는다. */
+  const posted = db().prepare("SELECT ig_media_id FROM instagram_posts WHERE reel_id=? LIMIT 1").get(reelId) as { ig_media_id: string } | undefined;
+  if (posted) {
+    throw new Error(`이미 발행된 릴스입니다 (미디어 ID ${posted.ig_media_id}). 다시 올리려면 [다시 게시] 를 골라 주세요.`);
   }
-  // §33 팩트체크 차단 콘텐츠는 예약과 마찬가지로 발행하지 않는다
-  const q = j<{ fact_blocked?: boolean; fact_block_reasons?: string[] }>(reel.quality_json, {});
-  if (q.fact_blocked) {
-    throw new Error("팩트체크에서 막힌 내용이 있어 발행할 수 없습니다: " + (q.fact_block_reasons ?? []).join(" / "));
-  }
+  const running = db().prepare(
+    "SELECT id, phase FROM publishing_jobs WHERE reel_id=? AND phase NOT IN ('완료','실패') LIMIT 1"
+  ).get(reelId) as { id: string; phase: string } | undefined;
+  if (running) throw new Error(`이미 발행 중입니다 (${running.phase}). 잠시 기다려 주세요.`);
+
   const jobId = newId("pub");
   db().prepare("INSERT INTO publishing_jobs (id, reel_id, phase) VALUES (?,?,'대기')").run(jobId, reelId);
   updateReel(reelId, { status: "예약" });
