@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Scene } from "../schema";
 import { getSettings } from "../settings";
+import type { Overlay } from "./overlay";
 
 /** §18 자막: SRT 별도 저장 + 렌더용 ASS(스타일 포함) 생성 */
 
@@ -27,6 +28,11 @@ function srtTime(sec: number): string {
  */
 export interface AssOptions {
   highlightWords?: string[];
+  /**
+   * 한글 간판·메뉴판·정보판. AI 가 그린 글자는 깨지므로 여기서 한글 폰트로 얹는다.
+   * 자막과 같은 ASS 경로를 타므로 폰트 처리·번인이 이미 검증된 길을 그대로 쓴다.
+   */
+  overlays?: Overlay[];
   /** §26 엔딩 시그니처: 마지막 1초 "사건 해결" + ORAK FOOD */
   endBadge?: { from: number; to: number; text: string };
 }
@@ -49,6 +55,10 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,Noto Sans KR ExtraBold,${st.fontSize},${primary},${primary},${outline},&H96000000,-1,0,0,0,100,100,0,0,1,7,2,2,60,60,${marginV},1
 Style: Badge,Noto Sans KR ExtraBold,88,&H00FFFFFF,&H00FFFFFF,${assColor("#E86A3A").slice(0, -1)},&HB4000000,-1,0,0,0,100,100,2,0,1,9,3,5,60,60,0,1
+Style: SignTitle,Noto Sans KR ExtraBold,104,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,8,3,8,70,70,150,1
+Style: SignSub,Noto Sans KR Medium,52,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,0,0,0,0,100,100,0,0,1,5,2,8,70,70,150,1
+Style: PanelTitle,Noto Sans KR ExtraBold,64,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,7,2,7,70,70,430,1
+Style: PanelBody,Noto Sans KR ExtraBold,56,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,-1,0,0,0,100,100,0,0,1,6,2,7,70,70,430,1
 Style: Brand,Noto Sans KR Medium,40,&H00FFFFFF,&H00FFFFFF,${outline},&H96000000,0,0,0,0,100,100,4,0,1,4,1,2,60,60,120,1
 
 [Events]
@@ -60,10 +70,28 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return `Dialogue: 0,${assTime(s.start)},${assTime(s.end)},Default,,0,0,0,,${text}`;
   }).join("\n");
 
-  let extra = "";
+  /* 판은 자막보다 위 레이어(2)에 둔다 — 자막을 가리지 않게 위쪽에 배치한다.
+     넣을 줄이 없는 판은 buildOverlays 가 아예 만들지 않으므로 여기서는 그대로 그린다. */
+  const panels = (opts?.overlays ?? []).map((o) => {
+    const esc = (t: string) => t.replace(/\n/g, " ").replace(/\{/g, "(").replace(/\}/g, ")");
+    if (o.kind === "signboard") {
+      const sub = o.lines.filter(Boolean).map(esc).join(" · ");
+      return [
+        `Dialogue: 2,${assTime(o.start)},${assTime(o.end)},SignTitle,,0,0,0,,{\\fad(200,200)}${esc(o.title)}`,
+        sub ? `Dialogue: 2,${assTime(o.start)},${assTime(o.end)},SignSub,,0,0,0,,{\\fad(200,200)}${sub}` : "",
+      ].filter(Boolean).join("\n");
+    }
+    const body = o.lines.filter(Boolean).map(esc).join("\\N");
+    return [
+      `Dialogue: 2,${assTime(o.start)},${assTime(o.end)},PanelTitle,,0,0,0,,{\\fad(200,200)}${esc(o.title)}`,
+      body ? `Dialogue: 2,${assTime(o.start)},${assTime(o.end)},PanelBody,,0,0,0,,{\\fad(200,200)}${body}` : "",
+    ].filter(Boolean).join("\n");
+  }).filter(Boolean).join("\n");
+
+  let extra = panels ? "\n" + panels : "";
   if (opts?.endBadge) {
     const b = opts.endBadge;
-    extra =
+    extra +=
       `\nDialogue: 1,${assTime(b.from)},${assTime(b.to)},Badge,,0,0,0,,{\\fad(120,0)}${b.text}` +
       `\nDialogue: 1,${assTime(b.from)},${assTime(b.to)},Brand,,0,0,0,,{\\fad(120,0)}ORAK FOOD`;
   }
@@ -101,10 +129,11 @@ export function writeSubtitles(
   outDir: string,
   highlightWords: string[],
   endBadge?: AssOptions["endBadge"],
+  overlays?: Overlay[],
 ): { srtPath: string; assPath: string } {
   const srtPath = path.join(outDir, "subtitle.srt");
   const assPath = path.join(outDir, "subtitle.ass");
   fs.writeFileSync(srtPath, buildSrt(scenes), "utf8");
-  fs.writeFileSync(assPath, buildAss(scenes, { highlightWords, endBadge }), "utf8");
+  fs.writeFileSync(assPath, buildAss(scenes, { highlightWords, endBadge, overlays }), "utf8");
   return { srtPath, assPath };
 }

@@ -112,6 +112,9 @@ ${facts}
 {"title":"","restaurant":"","target":"","hook":"","duration":${opts.duration},"content_mode":"${opts.contentMode}","content_type":"${opts.contentType}",${opts.caseNumber ? `"case_number":${opts.caseNumber},"case_title":"",` : ""}"scenes":[{"scene":1,"start":0,"end":2.5,"narration":"","subtitle":"","visual_prompt":"","camera_motion":"slow_zoom_in","character_action":null,"character_expression":null,"character_presence":"none","fact_source":""}],"caption":"","hashtags":[],"cta":""${opts.contentMode === "ORAKI_DETECTIVE" ? `,"verdict":{"label":"오락이 탐정 판정","가성비":4,"맛":4,"양":4,"재방문":4,"한줄판정":""}` : ""}}
 
 visual_prompt는 영어로, 실제 스마트폰으로 찍은 듯한 사실적 한국 음식점 묘사로 쓸 것.
+visual_prompt에 간판 글자·메뉴판 글자·가격표 글자를 넣지 마라. 간판과 메뉴판은 "blank"(빈 판)으로 묘사한다.
+글자는 프로그램이 한글 폰트로 따로 합성한다 — AI가 그린 글자는 깨지기 때문이다.
+장소는 언제나 대한민국이다. 외국 거리·외국 간판·외국 통화 표시를 묘사하지 마라.
 narration은 TTS로 읽기 좋은 짧은 문장. subtitle은 한 줄 8~15자, 최대 2줄(\\n 구분).
 
 ${ENUM_RULES(opts.contentMode)}`;

@@ -8,6 +8,7 @@ import { resolvedReferencePaths } from "../character/oraki";
 import { orakiAssets, characterReferences, masterMissingReason } from "../character/asset-root";
 import { tierFor, sceneKindOf, TIERS, KIND_LABEL, type SceneKind } from "../providers/image-quality";
 import { logInfo, logWarn } from "../log";
+import { buildScenePrompt } from "../content/scene-prompt";
 
 export interface SceneImageResult {
   scene: number;
@@ -52,6 +53,8 @@ export async function generateSceneImages(
   outDir: string,
   onProgress?: (done: number, total: number, note?: string) => void,
   onlyScenes?: number[],
+  /** 배경을 그 동네처럼 그리게 하려면 업체 지역을 넘긴다 (§한국 배경 규칙) */
+  place?: { area?: string | null; address?: string | null },
 ): Promise<SceneImageResult[]> {
   const provider = getImageProvider();
   const settings = getSettings();
@@ -86,10 +89,18 @@ export async function generateSceneImages(
     const kind = sceneKindOf(scene);
     const tier = TIERS[tierFor(policy.costPolicy, kind)];
     const refPaths = characterScene ? (charRefs.length ? charRefs : resolvedReferencePaths()) : [];
+    /* 대본이 만든 프롬프트를 그대로 보내면 배경이 외국처럼 나오고 간판에 외국어가 찍힌다.
+       한국 조건과 "글자 없는 빈 간판" 규칙을 여기서 한 번에 붙인다.
+       금지 규칙은 본문에도 넣는다 — negative prompt 를 안 받는 공급자가 있기 때문. */
+    const imagePrompt = buildScenePrompt({
+      visualPrompt: scene.visual_prompt,
+      area: place?.area, address: place?.address,
+      characterScene, supportsNegative: false,
+    });
     // 캐시 키 — 여기 들어간 것 중 하나라도 바뀌면 다시 만든다.
     // 에셋 판(version)이 들어 있어서 마스터를 바꾸면 옛 캐릭터 그림을 재사용하지 않는다.
     const hash = contentHash({
-      p: scene.visual_prompt, seed: lock.seed, provider: provider.name,
+      p: imagePrompt, seed: lock.seed, provider: provider.name,
       character: characterScene, refs: refPaths,
       kind, tier, assetVersion: characterScene ? assets.version : "",
     });
@@ -145,7 +156,7 @@ export async function generateSceneImages(
         usage.apiCalls++;
         try {
           const buf = await p_.generate({
-            prompt: scene.visual_prompt,
+            prompt: imagePrompt,
             seed: lock.seed,
             referenceImagePaths: refPaths,
             sceneKey: `${reelId}-${scene.scene}`,

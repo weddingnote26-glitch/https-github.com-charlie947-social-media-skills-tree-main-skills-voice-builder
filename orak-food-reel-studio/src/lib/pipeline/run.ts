@@ -12,6 +12,8 @@ import { generateSceneImages, lastImageUsage } from "./images";
 import { sceneKindOf } from "../providers/image-quality";
 import { generateVoice } from "./tts";
 import { writeSubtitles } from "./subtitles";
+import { buildOverlays } from "./overlay";
+import { ensureCharacterPresence } from "../content/character-presence";
 import { renderReel } from "./render";
 import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
@@ -152,6 +154,16 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       // 재시도 횟수는 알지만 "몇 % 남았는지"는 알 수 없다 — 문구로만 알린다
       (p) => mark("script", { indeterminate: true, message: p.message }),
     );
+    /* 오락이 콘셉트인데 캐릭터가 장면에서 빠지는 일이 있었다 (광고 내레이션처럼 나옴).
+       AI 가 매번 잘 넣어 주기를 기대하지 않고 여기서 규칙으로 채운다:
+       오프닝·마무리는 필수, 전체의 60% 이상. */
+    if (mode === "ORAKI_DETECTIVE") {
+      const presence = ensureCharacterPresence(script.scenes, "most", 0.6);
+      script.scenes = presence.scenes;
+      if (presence.filled.length) {
+        logInfo("script", `오락이 등장 규칙 적용 — ${presence.summary}`);
+      }
+    }
     const date = input.plannedDate ?? todayISO();
     const outDir = reelOutputDir(date, slugify(info.name));
     upsertReel(reelId, restaurantId, script, outDir, date);
@@ -172,7 +184,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     mark("images", { status: "진행중", progress: 0, indeterminate: false });
     const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), (done, total, note) => {
       mark("images", { progress: Math.round((done / total) * 100), message: note ?? `${done}/${total} 장면` });
-    });
+    }, undefined, { area: info.area, address: info.address });
     for (const img of images) {
       const sc = script.scenes.find((s) => s.scene === img.scene);
       if (sc) { sc.image_path = img.path; sc.image_hash = img.hash; }
@@ -234,7 +246,14 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     const endBadge = script.content_mode === "ORAKI_DETECTIVE"
       ? { from: Math.max(0, voice.totalSec - 1.1), to: voice.totalSec, text: "사건 해결" }
       : undefined;
-    const subs = writeSubtitles(script.scenes, outDir, highlightWords, endBadge);
+    /* 한글 간판·메뉴판·정보판을 프로그램이 얹는다 (§한글 합성).
+       AI 가 그린 글자는 깨지므로 배경은 글자 없이 만들고 여기서 정확한 한글을 올린다.
+       확인 안 된 값은 buildOverlays 가 걸러 낸다 — 가격을 지어내지 않는다. */
+    const overlays = buildOverlays(script.scenes, info, {
+      checkedOn: new Date().toISOString().slice(0, 10),
+      brandLine: script.content_mode === "ORAKI_DETECTIVE" ? "만두탐정 오락이의 맛집 조사" : undefined,
+    });
+    const subs = writeSubtitles(script.scenes, outDir, highlightWords, endBadge, overlays);
     mark("subtitles", { status: "완료", progress: 100, indeterminate: false });
 
     // 7) 렌더 (§20)
@@ -404,6 +423,15 @@ export async function regenerateScene(
     if (dbScene) Object.assign(s, dbScene);
   }
   const outDir = reel.output_dir;
+  /* 다시 만들 때도 처음과 같은 한국 배경 조건을 써야 한다.
+     업체가 연결돼 있지 않으면 지역 없이 기본 한국 조건만 쓴다. */
+  let place: { area?: string | null; address?: string | null } | undefined;
+  try {
+    if (reel.restaurant_id) {
+      const info = restaurantInfoOf(reel.restaurant_id);
+      place = { area: info.area, address: info.address };
+    }
+  } catch { /* 업체를 못 찾아도 제작은 계속한다 */ }
 
   let touched: number[] = [];
   if (what === "image") {
@@ -419,7 +447,7 @@ export async function regenerateScene(
     for (const s of script.scenes) {
       if (targets.includes(s.scene)) s.image_hash = null; // 캐시 무효화
     }
-    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), undefined, targets);
+    const images = await generateSceneImages(reelId, script.scenes, path.join(outDir, "images"), undefined, targets, place);
     for (const img of images) {
       const sc = script.scenes.find((s) => s.scene === img.scene);
       if (sc) { sc.image_path = img.path; sc.image_hash = img.hash; }

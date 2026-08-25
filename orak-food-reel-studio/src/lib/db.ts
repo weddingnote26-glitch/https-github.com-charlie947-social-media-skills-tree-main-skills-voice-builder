@@ -209,6 +209,10 @@ function migrate(d: SqliteDatabase): void {
   addColumn(d, "instagram_posts", "attempts", "INTEGER NOT NULL DEFAULT 1");
   // 선택 삭제는 소프트 삭제 — 목록에서만 빠지고 파일·기록은 그대로 남는다 (§12·13)
   addColumn(d, "reels", "deleted_at", "TEXT");
+  /* 장면에 오락이가 나오는지를 저장할 자리가 없었다.
+     그래서 DB 에서 다시 읽으면 모든 장면이 "캐릭터 없음" 이 되고,
+     다시 만들 때 그 값이 대본을 덮어써서 오락이가 영상에서 사라졌다. */
+  addColumn(d, "scenes", "character_presence", "TEXT NOT NULL DEFAULT 'none'");
   addColumn(d, "restaurants", "deleted_at", "TEXT");
 }
 

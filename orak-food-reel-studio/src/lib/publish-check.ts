@@ -111,6 +111,17 @@ export async function publishPreflight(reelId: string): Promise<PublishPreflight
   if (q.image_notice) {
     add("images", "장면 이미지", false, q.image_notice.slice(0, 160), false);
   }
+  /* 오락이 콘셉트인데 캐릭터가 빠진 영상을 그대로 올리지 않게 알린다.
+     발행을 막지는 않는다 — 이미 만들어진 영상이라 판단은 사람이 한다. */
+  if (reel.content_mode === "ORAKI_DETECTIVE" && reel.scenes?.length) {
+    const shown = reel.scenes.filter((sc) => sc.character_presence !== "none").length;
+    if (shown === 0) {
+      add("character", "만두탐정 오락이", false,
+        "캐릭터가 한 장면에도 나오지 않습니다. [장면 편집]에서 넣고 다시 만들어 주세요.", false);
+    } else {
+      add("character", "만두탐정 오락이", true, `${shown}/${reel.scenes.length} 장면에 등장`, false);
+    }
+  }
   const fmtOk = info.exists && /\.(mp4|mov)$/i.test(reel.video_path ?? "");
   add("videoFile", "영상 파일", fmtOk,
     !info.exists ? "완성된 영상 파일이 없습니다."

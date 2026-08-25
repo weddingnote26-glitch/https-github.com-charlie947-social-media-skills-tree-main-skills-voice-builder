@@ -9,6 +9,7 @@ import { apiLog } from "../db";
 import { runFFmpeg } from "../ffmpeg";
 import { logInfo, logWarn } from "../log";
 import { ORAKI_IDENTITY_LOCK, ORAKI_NEGATIVE_PROMPT, negativeAsRules } from "../character/identity";
+import { KOREAN_SCENE_NEGATIVE } from "../content/scene-prompt";
 import {
   DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL, capabilityOf,
 } from "./cloudflare-models";
@@ -145,7 +146,13 @@ export class CloudflareImage implements ImageProvider {
     const prompt = [req.prompt, identity].filter(Boolean).join("\n\n");
 
     const body: Record<string, unknown> = { prompt };
-    if (cap.negativePrompt && req.characterScene) body.negative_prompt = ORAKI_NEGATIVE_PROMPT;
+    /* 외국어·깨진 글자 금지는 캐릭터 장면이든 아니든 언제나 넣는다 —
+       간판에 영어·일본어가 찍히는 문제는 배경 장면에서 더 자주 났다. */
+    if (cap.negativePrompt) {
+      body.negative_prompt = req.characterScene
+        ? `${ORAKI_NEGATIVE_PROMPT}, ${KOREAN_SCENE_NEGATIVE}`
+        : KOREAN_SCENE_NEGATIVE;
+    }
     // 등급별 설정 — 배경·음식은 작게·적은 단계로 만들어 무료 사용량을 아낀다.
     // 최종 1080×1920 은 합성 단계에서 다시 잡히므로 원본이 작아도 영상은 정상이다.
     const tier = req.tier;
