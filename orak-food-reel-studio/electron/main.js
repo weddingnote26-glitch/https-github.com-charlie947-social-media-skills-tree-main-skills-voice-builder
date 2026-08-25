@@ -153,12 +153,29 @@ function createWindow(port) {
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, "preload.js"),
-      devTools: isDev,
+      /* 배포판에서도 개발자 도구를 열 수 있게 둔다 (Ctrl+Shift+I / F12).
+         화면이 "불러오는 중…" 에서 멈췄을 때 원인이 브라우저 쪽에만 남는데,
+         도구가 잠겨 있으면 사용자도 개발자도 그걸 볼 방법이 없었다.
+         nodeIntegration=false · contextIsolation · sandbox 는 그대로다. */
+      devTools: true,
     },
   });
 
-  // 배포판에는 개발자 메뉴를 두지 않는다
+  // 배포판에는 개발자 메뉴를 두지 않는다 (도구는 단축키로만 연다)
   Menu.setApplicationMenu(isDev ? Menu.getApplicationMenu() : null);
+
+  // Ctrl+Shift+I · F12 로 개발자 도구, Ctrl+R 로 새로고침
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const key = (input.key || "").toLowerCase();
+    if (key === "f12" || (input.control && input.shift && key === "i")) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (input.control && key === "r") {
+      mainWindow.webContents.reload();
+      event.preventDefault();
+    }
+  });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("closed", () => { mainWindow = null; });
