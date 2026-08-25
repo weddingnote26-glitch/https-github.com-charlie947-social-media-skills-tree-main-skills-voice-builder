@@ -162,6 +162,15 @@ if (-not (Test-Path -LiteralPath $SettingsPath)) {
 }
 
 # ── 5. 폴더 만들기 ────────────────────────────────────────
+# 깃이 편집기를 열어야 할 때 vim 대신 메모장을 씁니다.
+# (vim 은 나가는 법을 모르면 갇힙니다. 이 저장소에만 적용합니다.)
+$repoRoot = Split-Path -Parent $Root
+if (Test-Path -LiteralPath (Join-Path $repoRoot '.git')) {
+    Push-Location $repoRoot
+    git config --local core.editor "notepad" 2>$null
+    Pop-Location
+}
+
 Write-Host '  [5/5] 폴더를 확인하는 중 …'
 
 foreach ($d in @('output', 'logs', 'data\source_cache', 'private\browser-profile')) {

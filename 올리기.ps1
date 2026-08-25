@@ -143,7 +143,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host '        다른 PC에서 먼저 올린 내용이 있습니다.' -ForegroundColor Yellow
     Write-Host '        먼저 받아온 뒤 다시 올려 보겠습니다 …'
     Write-Host ''
-    git pull --no-rebase origin $branch
+    git pull --no-rebase --no-edit origin $branch
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''
         Write-Host '        [멈춤] 양쪽에서 같은 파일을 고쳤습니다.' -ForegroundColor Red

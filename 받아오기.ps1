@@ -111,7 +111,7 @@ Write-Host "  브랜치 : $branch"
 Write-Host '  받아오는 중 …'
 Write-Host ''
 
-git pull --no-rebase origin $branch
+git pull --no-rebase --no-edit origin $branch
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ''
