@@ -71,3 +71,34 @@ darwin 폴더를 빼고 다시 풀어 자동으로 재시도합니다.
 - **삭제에 휴지통 없음** — 기본 오락이 이미지는 `npm run character` 로 복구 가능
 - **오늘의 릴스에 메뉴·가격 직접 입력 칸 없음** — 그만큼 팩트체크가 약합니다
 - **Instagram 연결 미완** — Professional 계정 + 토큰 + 공개 주소가 필요합니다
+
+---
+
+## 설치본 안의 .bat 을 누르면 `Cannot find module ...` (2026-08-25 해결)
+
+**증상**
+
+```
+Error: Cannot find module
+  'C:\Users\USER\AppData\Local\Programs\orak-food-reel-studio\resources\app\scripts\fix-ffmpeg.mjs'
+```
+
+**원인**
+
+`설치파일만들기.bat` 이 설치본 안(`resources\app\`)까지 딸려 들어갔습니다.
+그 안에는 `scripts/` 폴더가 없어서(일부러 안 담습니다) 누르는 순간 죽습니다.
+`prepare-desktop.mjs` 의 제외 목록에 `start.bat` · `업데이트.bat` 만 있고
+`설치파일만들기.bat` 이 빠져 있었습니다.
+
+**고친 것 (세 겹)**
+
+1. 제외 목록(SKIP)에 `설치파일만들기.bat` · `폴더열기.bat` 추가 — 아예 안 담깁니다
+2. 금지 목록(FORBIDDEN)에도 추가 — 혹시 담기면 **설치본 만들기가 중단**됩니다
+3. `설치파일만들기.bat` · `업데이트.bat` 맨 앞에 자리 확인 —
+   소스 폴더가 아니면 한글로 안내하고 소스 폴더를 열어 줍니다
+
+**이미 설치하신 분**
+
+설치본 안의 `설치파일만들기.bat` 은 그대로 남아 있습니다. 누르지 마세요.
+**소스 폴더**(`start.bat` 이 있는 곳)의 같은 이름 파일을 쓰시면 됩니다.
+`폴더열기.bat` → `[4]` 번이 그 폴더를 열어 줍니다.

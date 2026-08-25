@@ -4,6 +4,9 @@ title 오락푸드 AI릴스 스튜디오 - 폴더 열기
 cd /d "%~dp0"
 setlocal enabledelayedexpansion
 
+rem 설치 폴더 이름은 package.json 의 name 을 따른다 (한글 productName 이 아니다).
+rem 실제 설치본 경로로 확인함: %LOCALAPPDATA%\Programs\orak-food-reel-studio
+set "APPDIRNAME=orak-food-reel-studio"
 set "APPNAME=오락푸드 AI릴스 자동제작 스튜디오"
 set "SRC=%CD%"
 set "SETUP=%CD%\dist-installer"
@@ -40,6 +43,10 @@ rem 1) 기본 자리  2) 바탕화면 바로가기가 가리키는 곳  3) 시�
 :FIND_INSTALLED
 set "FOUND="
 
+set "TRY=%LOCALAPPDATA%\Programs\%APPDIRNAME%"
+if exist "!TRY!" set "FOUND=!TRY!"
+if defined FOUND goto OPEN_INSTALLED
+
 set "TRY=%LOCALAPPDATA%\Programs\%APPNAME%"
 if exist "!TRY!" set "FOUND=!TRY!"
 if defined FOUND goto OPEN_INSTALLED
@@ -73,9 +80,10 @@ echo.
 echo  [X] 설치된 프로그램을 찾지 못했습니다.
 echo.
 echo      찾아본 곳
-echo        1. %LOCALAPPDATA%\Programs\%APPNAME%
-echo        2. 바탕화면 바로가기
-echo        3. 시작 메뉴 바로가기
+echo        1. %LOCALAPPDATA%\Programs\%APPDIRNAME%
+echo        2. %LOCALAPPDATA%\Programs\%APPNAME%
+echo        3. 바탕화면 바로가기
+echo        4. 시작 메뉴 바로가기
 echo.
 echo      아직 설치하지 않으셨다면 [설치파일만들기.bat] 으로 Setup.exe 를 만들고
 echo      그 파일을 실행해 설치하시면 이 폴더가 생깁니다.

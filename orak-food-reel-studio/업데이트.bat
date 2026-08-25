@@ -3,6 +3,46 @@ chcp 65001 >nul
 title 오락푸드 스튜디오 - 업데이트
 cd /d "%~dp0"
 
+rem ── 여기가 소스 폴더가 맞는지 먼저 본다 ──────────────────
+rem 설치된 프로그램 안(resources\app)에서 누르면 scripts 폴더가 없어
+rem node 가 "Cannot find module ..." 이라는 알 수 없는 말로 죽는다.
+rem 그 전에 사람 말로 막는다.
+if not exist "%CD%\package.json" goto WRONG_PLACE
+if not exist "%CD%\scripts\" goto WRONG_PLACE
+if not exist "%CD%\src\" goto WRONG_PLACE
+goto PLACE_OK
+
+:WRONG_PLACE
+echo.
+echo  ================================================
+echo    여기서는 실행할 수 없습니다
+echo  ================================================
+echo.
+echo   지금 자리: %CD%
+echo.
+echo   이 파일은 "프로그램 소스 폴더" 에서만 동작합니다.
+echo   설치된 프로그램 폴더 안에서 누르면 필요한 파일이 없어 실패합니다.
+echo.
+echo   소스 폴더는 start.bat 과 scripts 폴더가 같이 있는 곳입니다.
+echo   보통 이런 자리입니다:
+echo     %USERPROFILE%\Documents\블로그작업\orak-food-reel-studio
+echo.
+if exist "%USERPROFILE%\Documents\블로그작업\orak-food-reel-studio\package.json" goto OFFER
+echo   * 그 폴더를 찾으시면 그 안의 같은 이름 파일을 실행해 주세요.
+echo.
+pause
+exit /b 1
+
+:OFFER
+echo   [i] 소스 폴더를 찾았습니다. 탐색기로 열어 드리겠습니다.
+echo       그 안의 같은 이름 파일을 눌러 주세요.
+echo.
+start "" "%USERPROFILE%\Documents\블로그작업\orak-food-reel-studio"
+pause
+exit /b 1
+
+:PLACE_OK
+
 echo.
 echo  ================================================
 echo    오락푸드 AI 릴스 스튜디오 - 업데이트

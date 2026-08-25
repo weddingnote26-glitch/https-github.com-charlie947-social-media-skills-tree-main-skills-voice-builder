@@ -47,6 +47,9 @@ const r = (s) => `\x1b[31m${s}\x1b[0m`;
 /** 설치본에 절대 들어가면 안 되는 것 */
 const FORBIDDEN = [
   ".env", ".env.local", ".env.production",
+  // 소스 폴더 전용 .bat — 설치본 안에서 누르면 scripts/ 가 없어 그대로 죽는다.
+  // 실제로 사용자가 설치본 안의 설치파일만들기.bat 을 눌러 오류를 겪었다.
+  "설치파일만들기.bat", "업데이트.bat", "start.bat", "폴더열기.bat",
   path.join("data", ".secret"),
   path.join("data", "orak-studio.db"),
 ];
@@ -58,7 +61,9 @@ const SKIP = new Set([
   "dist-app", "dist-bin", "dist-installer",
   ".env", ".env.local", ".env.production", ".env.example",
   "tsconfig.tsbuildinfo", "vitest.config.ts", "tsconfig.json",
-  "package-lock.json", "start.bat", "업데이트.bat",
+  // .bat 은 소스 폴더에서만 뜻이 있다. 설치본 안에 들어가면 scripts/ 가 없어
+  // 누르는 순간 node 가 "Cannot find module ...\\resources\\app\\scripts\\..." 로 죽는다.
+  "package-lock.json", "start.bat", "업데이트.bat", "설치파일만들기.bat", "폴더열기.bat",
 ]);
 
 /**
@@ -191,7 +196,7 @@ function scan(dir, depth = 0) {
 scan(OUT);
 
 if (leaked.length) {
-  console.log(r("\n  ❌ 비밀값이 설치본에 들어갔습니다. 중단합니다."));
+  console.log(r("\n  ❌ 설치본에 들어가면 안 되는 것이 들어갔습니다. 중단합니다."));
   for (const l of [...new Set(leaked)]) console.log("     " + l);
   process.exit(1);
 }
