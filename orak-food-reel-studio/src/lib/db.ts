@@ -207,6 +207,9 @@ function migrate(d: SqliteDatabase): void {
   addColumn(d, "instagram_posts", "status", "TEXT NOT NULL DEFAULT '발행완료'");
   addColumn(d, "instagram_posts", "last_error", "TEXT");
   addColumn(d, "instagram_posts", "attempts", "INTEGER NOT NULL DEFAULT 1");
+  // 선택 삭제는 소프트 삭제 — 목록에서만 빠지고 파일·기록은 그대로 남는다 (§12·13)
+  addColumn(d, "reels", "deleted_at", "TEXT");
+  addColumn(d, "restaurants", "deleted_at", "TEXT");
 }
 
 /** 표에 칸이 없으면 더한다. 있으면 아무 것도 하지 않는다. */

@@ -20,7 +20,7 @@ interface ReviewData {
   scenes: Array<{ scene: number; subtitle: string; image_path: string | null; fact_source: string }>;
   video: VideoInfo;
   facts: FactCheckItem[];
-  quality: { total?: number; fact_blocked?: boolean; image_notice?: string };
+  quality: { total?: number; fact_blocked?: boolean; image_notice?: string; voice_notice?: string };
   restaurant: FormValue | null;
   review: { checks: Record<string, boolean>; done: boolean; missing: string[]; checkedAt: string | null };
   items: Array<{ key: string; label: string }>;
@@ -69,6 +69,19 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const unknownFacts = facts.filter((f) => f.status === "미확인");
 
   const go = (to: string) => router.push(to);
+  /** 음성 등 한 가지를 다시 만들고 영상에 입힌다 */
+  const run = async (what: "voice", done: string) => {
+    setBusy(true); setErr(null); setMsg(null);
+    try {
+      await api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ what }) });
+      await api(`/api/reels/${id}/rerender`, { method: "POST", body: "{}" });
+      setMsg(done + " 내용이 바뀌었으니 검수를 다시 확인해 주세요.");
+      setChecks(null); reload();
+    } catch (e) {
+      setErr(`다시 만들지 못했습니다. — ${e instanceof Error ? e.message : String(e)}`);
+    } finally { setBusy(false); }
+  };
+
   const rebuild = async () => {
     setBusy(true); setErr(null); setMsg(null);
     try {
@@ -108,11 +121,33 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
               <Fact label="해상도" value={video.width && video.height ? `${video.width}×${video.height}` : "확인 못 함"} />
               <Fact label="길이" value={video.durationSec !== null ? `${video.durationSec}초` : "확인 못 함"} />
               <Fact label="파일 크기" value={video.sizeText} />
-              <Fact label="음성" value={video.hasAudio === null ? "확인 못 함" : video.hasAudio ? "포함" : "없음"}
-                tone={video.hasAudio === false ? "warn" : video.hasAudio ? "ok" : undefined} />
+              {/* 무음 트랙도 "오디오 스트림 있음" 으로 잡힌다 — 생성 실패 기록이 있으면
+                  "포함" 이라고 말하지 않는다. 실제로 그렇게 표시돼 사용자가 혼란을 겪었다. */}
+              <Fact label="음성"
+                value={data.quality.voice_notice ? "무음 (AI 음성 생성 실패)"
+                  : video.hasAudio === null ? "확인 못 함" : video.hasAudio ? "포함" : "없음"}
+                tone={data.quality.voice_notice || video.hasAudio === false ? "warn" : video.hasAudio ? "ok" : undefined} />
               <Fact label="자막 파일" value={video.hasSubtitleFile ? "포함" : "없음"}
                 tone={video.hasSubtitleFile ? "ok" : "warn"} />
             </div>
+            {data.quality.voice_notice && (
+              <div className="mt-3 rounded-xl bg-amber-50 border-2 border-amber-300 p-3">
+                <p className="text-sm text-amber-900 break-words">
+                  <b>⚠ AI 음성이 생성되지 않아 무음으로 만들어졌습니다.</b>
+                  <br />원인: {data.quality.voice_notice}
+                </p>
+                <button className="btn-secondary mt-2" disabled={busy}
+                  onClick={() => void run("voice", "음성을 다시 만들고 영상에 입혔습니다. 재생해서 확인해 주세요.")}>
+                  {busy ? "다시 만드는 중…" : "🎙 음성 다시 만들기"}
+                </button>
+              </div>
+            )}
+            {data.quality.image_notice && (
+              <p className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 break-words">
+                ⚠ {data.quality.image_notice}
+                <br />릴스 화면의 [이미지 다시] 로 다시 만들 수 있습니다. 설정 → 이미지 생성에서 공급자·키를 확인해 주세요.
+              </p>
+            )}
             {video.notes.length > 0 && (
               <ul className="mt-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 list-disc pl-6 space-y-1">
                 {video.notes.map((n) => <li key={n}>{n}</li>)}

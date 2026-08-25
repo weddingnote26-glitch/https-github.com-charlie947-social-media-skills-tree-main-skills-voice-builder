@@ -39,6 +39,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // 실수로 호출되거나 예전 화면에서 눌러도 실제 게시가 나가지 않게 한다
       return fail("최종 확인 후에만 발행할 수 있습니다. 미리보기 화면에서 [게시하기] 를 눌러 주세요.");
     }
+    // 휴지통 릴스는 사유를 정확히 알려 준다 — 팩트체크 안내보다 먼저
+    if (reel.deleted_at) return fail("휴지통에 있는 릴스입니다. 복원한 뒤에 발행해 주세요.");
     if (reelFactcheck(reel).length === 0) return fail("팩트체크가 없는 콘텐츠는 발행할 수 없습니다");
 
     const pre = await publishPreflight(id);

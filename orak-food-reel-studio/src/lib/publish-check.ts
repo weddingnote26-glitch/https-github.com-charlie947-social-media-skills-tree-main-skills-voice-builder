@@ -104,6 +104,13 @@ export async function publishPreflight(reelId: string): Promise<PublishPreflight
 
   // 4) 영상 파일 자체
   const info = await videoInfo(reel.video_path, reel.srt_path);
+  const q = j<{ voice_notice?: string; image_notice?: string }>(reel.quality_json, {});
+  if (q.voice_notice) {
+    add("voice", "AI 음성", false, `무음으로 만들어졌습니다 — ${q.voice_notice.slice(0, 140)}`, false);
+  }
+  if (q.image_notice) {
+    add("images", "장면 이미지", false, q.image_notice.slice(0, 160), false);
+  }
   const fmtOk = info.exists && /\.(mp4|mov)$/i.test(reel.video_path ?? "");
   add("videoFile", "영상 파일", fmtOk,
     !info.exists ? "완성된 영상 파일이 없습니다."

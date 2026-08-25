@@ -25,6 +25,8 @@ export interface ReelRow {
   duration_sec: number | null;
   status: string;
   planned_date: string | null;
+  /** 소프트 삭제 시각 — 값이 있으면 휴지통에 있는 것 */
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,13 +90,14 @@ export function updateReel(id: string, patch: Partial<Record<keyof ReelRow, unkn
     .run(...keys.map((k) => (patch as Record<string, unknown>)[k]), id);
 }
 
-export function listReels(where?: { status?: string; date?: string }): ReelRow[] {
+export function listReels(where?: { status?: string; date?: string; trash?: boolean }): ReelRow[] {
   let sql = "SELECT * FROM reels";
-  const cond: string[] = [];
+  // 소프트 삭제된 것은 휴지통에서만 보인다 — 파일과 기록은 그대로 있다
+  const cond: string[] = [where?.trash ? "deleted_at IS NOT NULL" : "deleted_at IS NULL"];
   const params: unknown[] = [];
   if (where?.status) { cond.push("status=?"); params.push(where.status); }
   if (where?.date) { cond.push("planned_date=?"); params.push(where.date); }
-  if (cond.length) sql += " WHERE " + cond.join(" AND ");
+  sql += " WHERE " + cond.join(" AND ");
   sql += " ORDER BY created_at DESC LIMIT 200";
   return db().prepare(sql).all(...params) as unknown as ReelRow[];
 }

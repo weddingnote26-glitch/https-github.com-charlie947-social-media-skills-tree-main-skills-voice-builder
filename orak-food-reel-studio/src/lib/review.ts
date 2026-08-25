@@ -65,6 +65,7 @@ export function clearReview(reelId: string): void {
 export function publishBlockReason(reelId: string): string | null {
   const reel = getReel(reelId);
   if (!reel) return "릴스를 찾을 수 없습니다";
+  if (reel.deleted_at) return "휴지통에 있는 릴스입니다. 복원한 뒤에 발행해 주세요.";
   if (!reel.video_path) {
     return "아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 제작하기]로 영상을 만들어 주세요.";
   }

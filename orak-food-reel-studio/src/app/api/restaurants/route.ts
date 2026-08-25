@@ -27,8 +27,11 @@ export async function GET(req: Request) {
     if (params.has("q") || params.has("list")) {
       return ok({ list: searchRestaurants(params.get("q") ?? "") });
     }
+    const trash = params.get("trash") === "1";
     return ok({
-      restaurants: db().prepare("SELECT * FROM restaurants ORDER BY updated_at DESC LIMIT 200").all(),
+      restaurants: db().prepare(
+        `SELECT * FROM restaurants WHERE deleted_at IS ${trash ? "NOT NULL" : "NULL"} ORDER BY updated_at DESC LIMIT 200`
+      ).all(),
     });
   });
 }

@@ -67,6 +67,10 @@ export default function RestaurantForm({ value, title = "✏️ 업체 정보 �
   /** 사람이 직접 고친 항목 — DB 값으로 말없이 덮어쓰지 않는다 (§2-5 userEdited) */
   const [edited, setEdited] = useState<Set<ManualField>>(new Set());
   const [picking, setPicking] = useState(false);
+  /** §9 URL 자동 분석 — 페이지에 적힌 값만 제안하고 확정은 사람이 한다 */
+  const [analyzeUrl, setAnalyzeUrl] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzed, setAnalyzed] = useState<{ applied: Array<{ label: string; source: string }>; skipped: string[]; notice: string | null } | null>(null);
   /** 불러온 DB 값과 지금 값이 다를 때 하나씩 고르게 한다 */
   const [compare, setCompare] = useState<{ from: FormValue; rows: ManualField[] } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -95,6 +99,38 @@ export default function RestaurantForm({ value, title = "✏️ 업체 정보 �
       </Card>
     );
   }
+
+  /** URL 을 읽어 "빈 칸만" 채운다. 이미 값이 있거나 직접 고친 칸은 건드리지 않는다. */
+  const runAnalyze = async () => {
+    const target = (analyzeUrl || draft?.source_url || "").trim();
+    if (!target || !draft) { setErr("분석할 식당 페이지 주소를 넣어 주세요."); return; }
+    setAnalyzing(true); setErr(null); setMsg(null); setAnalyzed(null);
+    try {
+      const r = await api<{ url: string; notice: string | null;
+        fields: Partial<Record<ManualField | "menus_text", { value: string; source: string }>> }>(
+        "/api/restaurants/analyze", { method: "POST", body: JSON.stringify({ url: target }) });
+      const applied: Array<{ label: string; source: string }> = [];
+      const skipped: string[] = [];
+      let next = draft;
+      for (const f of FIELDS) {
+        const key = f.key === "menus" ? "menus_text" : f.key;
+        const got = r.fields[key as keyof typeof r.fields];
+        if (!got?.value) continue;
+        if (valueOf(next, f.key).trim() || edited.has(f.key)) { skipped.push(f.label); continue; }
+        next = withValue(next, f.key, got.value);
+        applied.push({ label: f.label, source: got.source });
+      }
+      if (!valueOf(next, "source_url").trim()) next = withValue(next, "source_url", r.url);
+      setDraft(next);
+      if (applied.length) setDirty(true);
+      setAnalyzed({ applied, skipped, notice: r.notice });
+      setMsg(applied.length
+        ? `페이지에서 ${applied.length}개 항목을 채웠습니다. 눈으로 확인하고 [업체 정보 저장] 을 눌러 주세요.`
+        : "페이지에서 새로 채울 값을 찾지 못했습니다. 직접 입력해 주세요.");
+    } catch (e) {
+      setErr(`식당 정보를 자동으로 확인하지 못했습니다. — ${e instanceof Error ? e.message : String(e)}`);
+    } finally { setAnalyzing(false); }
+  };
 
   const set = (key: ManualField, next: string) => {
     setDirty(true); setMsg(null);
@@ -235,6 +271,37 @@ export default function RestaurantForm({ value, title = "✏️ 업체 정보 �
         자동으로 못 찾은 정보는 여기에 직접 적어 주세요. 적어 넣은 항목은 <b>직접 입력</b> 으로 표시되고
         팩트체크에서 확인된 정보로 봅니다. 빈 칸은 저장은 되지만 <b>확인 필요</b> 로 남습니다.
       </p>
+      {/* §9 식당 URL 자동 분석 */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 mb-4">
+        <label className="label text-sm" htmlFor="rf-analyze">식당 정보 링크를 입력하세요 <span className="font-normal text-gray-600">(홈페이지 · 플레이스 · 지도)</span></label>
+        <div className="flex flex-wrap gap-2">
+          <input id="rf-analyze" className="input flex-1 min-w-[220px]" placeholder="https://…"
+            value={analyzeUrl || draft.source_url} onChange={(e) => setAnalyzeUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void runAnalyze(); }} />
+          <button type="button" className="btn-secondary" disabled={analyzing} onClick={() => void runAnalyze()}>
+            {analyzing ? "분석 중…" : "🔍 자동 분석하기"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-600 mt-1.5">
+          페이지에 적힌 값만 가져와 <b>빈 칸에만</b> 채웁니다. 이미 적은 값과 직접 고친 값은 건드리지 않습니다.
+          로그인이 필요한 페이지는 읽지 않습니다.
+        </p>
+        {analyzed && (
+          <div className="mt-2 text-sm space-y-1">
+            {analyzed.applied.map((a) => (
+              <div key={a.label} className="flex flex-wrap items-center gap-2">
+                <span className="badge bg-sky-100 text-sky-800">{a.label}</span>
+                <span className="text-gray-600 text-xs">출처: {a.source}</span>
+              </div>
+            ))}
+            {analyzed.skipped.length > 0 && (
+              <p className="text-xs text-gray-600">이미 값이 있어 건너뜀: {analyzed.skipped.join(", ")}</p>
+            )}
+            {analyzed.notice && <p className="text-xs text-amber-800">{analyzed.notice}</p>}
+          </div>
+        )}
+      </div>
+
       {picking && (
         <RestaurantPicker
           excludeId={draft.id || undefined}

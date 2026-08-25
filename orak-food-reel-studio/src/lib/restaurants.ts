@@ -220,14 +220,14 @@ export function looksSimilar(a: string, b: string): boolean {
 export function findByName(name: string): (RestaurantInfo & { id: string }) | null {
   const key = normalizeName(name);
   if (!key) return null;
-  const rows = db().prepare("SELECT id, name FROM restaurants").all() as Array<{ id: string; name: string }>;
+  const rows = db().prepare("SELECT id, name FROM restaurants WHERE deleted_at IS NULL").all() as Array<{ id: string; name: string }>;
   const hit = rows.find((r) => normalizeName(r.name) === key);
   return hit ? readRestaurant(hit.id) : null;
 }
 
 /** 헷갈릴 만큼 비슷한 이름의 업체들 — 화면에서 "혹시 이 가게인가요?" 로 쓴다 */
 export function similarRestaurants(name: string, excludeId?: string): Array<{ id: string; name: string; area: string }> {
-  const rows = db().prepare("SELECT id, name, area FROM restaurants").all() as Array<{ id: string; name: string; area: string }>;
+  const rows = db().prepare("SELECT id, name, area FROM restaurants WHERE deleted_at IS NULL").all() as Array<{ id: string; name: string; area: string }>;
   return rows.filter((r) => r.id !== excludeId && looksSimilar(name, r.name));
 }
 
@@ -241,7 +241,7 @@ export interface RestaurantBrief {
  * 검색어는 업체명·주소·전화번호·지역에서 찾는다.
  */
 export function searchRestaurants(q = "", limit = 50): RestaurantBrief[] {
-  const rows = db().prepare("SELECT * FROM restaurants ORDER BY updated_at DESC LIMIT 500").all() as RestaurantRow[];
+  const rows = db().prepare("SELECT * FROM restaurants WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 500").all() as RestaurantRow[];
   const needle = normalizeName(q);
   const out: RestaurantBrief[] = [];
   for (const r of rows) {

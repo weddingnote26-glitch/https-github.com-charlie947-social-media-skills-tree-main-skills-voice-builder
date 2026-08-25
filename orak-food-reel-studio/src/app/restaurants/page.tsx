@@ -10,13 +10,19 @@ interface Restaurant {
 interface Tip { id: string; restaurant_name: string; location: string; reason: string; submitted_by: string; status: string; case_number: number | null }
 
 export default function RestaurantsPage() {
-  const { data, reload } = useApi<{ restaurants: Restaurant[] }>("/api/restaurants");
+
   const { data: tips, reload: reloadTips } = useApi<{ tips: Tip[] }>("/api/tips");
   const [tab, setTab] = useState<"db" | "tips">("db");
   const [tip, setTip] = useState({ restaurant_name: "", location: "", reason: "", submitted_by: "" });
   const [err, setErr] = useState<string | null>(null);
   // 수기 입력 폼에 채워 넣을 업체. null 이면 폼을 닫아 둔다.
   const [editing, setEditing] = useState<FormValue | null>(null);
+  /** §13 선택 삭제 — 소프트 삭제라 파일·연결 콘텐츠는 그대로다 */
+  const [trashView, setTrashView] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+  const { data, reload } = useApi<{ restaurants: Restaurant[] }>(trashView ? "/api/restaurants?trash=1" : "/api/restaurants");
 
   /** 표에서 고른 업체를 폼에 불러온다 */
   const openEdit = async (id: string) => {
@@ -52,17 +58,48 @@ export default function RestaurantsPage() {
       {tab === "db" && (
         <>
           <Card right={
-            <button className="btn-primary" onClick={() => setEditing(emptyForm())}>➕ 업체 직접 등록</button>
+            <>
+              <button className="btn-secondary" aria-pressed={trashView}
+                onClick={() => { setTrashView((v) => !v); setPicked(new Set()); setBulkMsg(null); }}>
+                {trashView ? "← 목록으로" : "🗑 휴지통 보기"}
+              </button>
+              {!trashView && <button className="btn-primary" onClick={() => setEditing(emptyForm())}>➕ 업체 직접 등록</button>}
+            </>
           }>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <button className="btn-ghost" disabled={(data?.restaurants?.length ?? 0) === 0}
+                onClick={() => setPicked(new Set((data?.restaurants ?? []).map((r) => r.id)))}>전체 선택</button>
+              <button className="btn-ghost" disabled={picked.size === 0} onClick={() => setPicked(new Set())}>선택 해제</button>
+              <button className={trashView ? "btn-primary" : "btn-secondary text-red-600"}
+                disabled={bulkBusy || picked.size === 0}
+                onClick={() => {
+                  const n = picked.size;
+                  if (!trashView && !window.confirm(
+                    `선택한 업체 ${n}곳을 맛집 DB 목록에서 삭제하시겠습니까?\n연결된 완성 콘텐츠와 게시물은 삭제되지 않으며, 휴지통에서 복원할 수 있습니다.`)) return;
+                  setBulkBusy(true); setErr(null); setBulkMsg(null);
+                  void api("/api/restaurants/bulk", {
+                    method: "POST",
+                    body: JSON.stringify({ action: trashView ? "restore" : "trash", ids: [...picked] }),
+                  }).then(() => {
+                    setBulkMsg(trashView ? `${n}곳을 복원했습니다.` : `${n}곳을 휴지통으로 옮겼습니다. 연결된 콘텐츠는 그대로 있습니다.`);
+                    setPicked(new Set()); reload();
+                  }).catch((e) => setErr(e instanceof Error ? e.message : String(e)))
+                    .finally(() => setBulkBusy(false));
+                }}>
+                {bulkBusy ? "처리 중…" : trashView ? `♻️ 선택 복원 (${picked.size})` : `🗑 선택 삭제 (${picked.size})`}
+              </button>
+              {trashView && <span className="text-sm text-gray-600">휴지통 — 복원하면 목록으로 돌아옵니다.</span>}
+              {bulkMsg && <span className="text-sm text-emerald-700 font-bold">{bulkMsg}</span>}
+            </div>
             {/* 좁은 폭에서 매장명이 낱자로 쪼개져 옆 칸 글자와 뒤섞여 보였다.
                 열 폭을 못 박고, 표 자체를 가로로만 스크롤시킨다. */}
             <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[720px] table-fixed">
               <colgroup>
-                <col className="w-[26%]" /><col className="w-[12%]" /><col className="w-[38%]" />
+                <col className="w-10" /><col className="w-[24%]" /><col className="w-[12%]" /><col className="w-[36%]" />
                 <col className="w-[12%]" /><col className="w-[12%]" />
               </colgroup>
-              <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2 pr-3">매장명</th><th className="pr-3">지역</th><th className="pr-3">대표 메뉴</th><th className="pr-3">정보 상태</th><th className="text-right">수정</th></tr></thead>
+              <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2 pr-2 w-10"></th><th className="py-2 pr-3">매장명</th><th className="pr-3">지역</th><th className="pr-3">대표 메뉴</th><th className="pr-3">정보 상태</th><th className="text-right">수정</th></tr></thead>
               <tbody>
                 {(data?.restaurants ?? []).map((r) => {
                   const menus = JSON.parse(r.menus_json || "[]") as Array<{ name: string; price: string; verified: boolean }>;
@@ -71,6 +108,11 @@ export default function RestaurantsPage() {
                   const verified = Object.values(st).filter((v) => v === "확인" || v === "사용자 입력").length;
                   return (
                     <tr key={r.id} className="border-b border-gray-100 align-top">
+                      <td className="py-2.5 pr-2">
+                        <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" aria-label={`${r.name} 선택`}
+                          checked={picked.has(r.id)}
+                          onChange={() => setPicked((cur) => { const n = new Set(cur); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })} />
+                      </td>
                       <td className="py-2.5 pr-3 font-bold break-keep">{r.name}</td>
                       <td className="pr-3 whitespace-nowrap">{r.area}</td>
                       <td className="pr-3 text-gray-600 truncate" title={menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ")}>
@@ -83,7 +125,7 @@ export default function RestaurantsPage() {
                     </tr>
                   );
                 })}
-                {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={5} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작하거나, 오른쪽 위 [업체 직접 등록] 으로 직접 적어 넣으세요.</td></tr>}
+                {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={6} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작하거나, 오른쪽 위 [업체 직접 등록] 으로 직접 적어 넣으세요.</td></tr>}
               </tbody>
             </table>
             </div>

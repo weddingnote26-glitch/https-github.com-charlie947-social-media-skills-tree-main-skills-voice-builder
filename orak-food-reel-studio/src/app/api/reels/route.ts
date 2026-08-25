@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const status = url.searchParams.get("status") ?? undefined;
     const date = url.searchParams.get("date") ?? undefined;
-    return ok({ reels: listReels({ status, date }) });
+    const trash = url.searchParams.get("trash") === "1";
+    return ok({ reels: listReels({ status, date, trash }) });
   });
 }
