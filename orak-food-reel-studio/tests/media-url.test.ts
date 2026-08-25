@@ -48,3 +48,24 @@ describe("영상 공개 주소 검사", () => {
     expect(r.warn).toContain("https");
   });
 });
+
+describe("SNS 페이지 주소는 공개 영상 주소가 될 수 없다", () => {
+  it("실제로 넣었던 인스타그램 프로필 주소를 거른다", () => {
+    // 실제로 겪은 일: 이 값이 ✅ 로 통과해 발행 직전까지 갔다
+    const r = checkPublicMediaUrl("https://www.instagram.com/orak_food");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("SNS 페이지 주소");
+  });
+  it("다른 SNS·포털도 마찬가지다", () => {
+    for (const u of [
+      "https://facebook.com/orak", "https://youtube.com/@orak",
+      "https://blog.naver.com/orak", "https://www.tiktok.com/@orak",
+    ]) {
+      expect(checkPublicMediaUrl(u).ok, u).toBe(false);
+    }
+  });
+  it("터널 주소는 통과한다", () => {
+    expect(checkPublicMediaUrl("https://reels.example.com").ok).toBe(true);
+    expect(checkPublicMediaUrl("https://my-tunnel.trycloudflare.com").ok).toBe(true);
+  });
+});

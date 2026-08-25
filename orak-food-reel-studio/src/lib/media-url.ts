@@ -10,6 +10,10 @@
 const PRIVATE_HOST =
   /^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|\[?::1\]?|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i;
 
+/** 영상 파일을 내려줄 리 없는 SNS·포털 페이지 주소들 */
+const SNS_HOST =
+  /(^|\.)(instagram\.com|facebook\.com|fb\.com|youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|threads\.net|naver\.com|blog\.me|kakao\.com|band\.us)$/i;
+
 export interface UrlCheck { ok: boolean; reason?: string; warn?: string }
 
 export function checkPublicMediaUrl(raw: string): UrlCheck {
@@ -24,6 +28,17 @@ export function checkPublicMediaUrl(raw: string): UrlCheck {
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") {
     return { ok: false, reason: `${u.protocol} 로는 영상을 받을 수 없습니다. https:// 로 시작하는 주소를 넣어 주세요.` };
+  }
+  /* 실제로 겪은 일: 이 칸에 https://www.instagram.com/orak_food (프로필 주소)를
+     넣었는데 모양 검사만 하던 예전 코드가 ✅ 로 통과시켰다.
+     SNS 페이지 주소는 우리 영상 파일을 내려줄 수 없다 — 이름을 보고 거른다. */
+  if (SNS_HOST.test(u.hostname)) {
+    return {
+      ok: false,
+      reason: `"${u.hostname}" 은 SNS 페이지 주소입니다. 여기에는 Instagram 서버가 내려받을 ` +
+        "우리 영상 파일 주소를 넣어야 합니다 — 인스타그램 계정 주소가 아닙니다. " +
+        "Cloudflare Tunnel 등으로 이 프로그램을 인터넷에 연 주소(예: https://reels.내주소.com)를 넣어 주세요.",
+    };
   }
   if (PRIVATE_HOST.test(u.hostname)) {
     return {

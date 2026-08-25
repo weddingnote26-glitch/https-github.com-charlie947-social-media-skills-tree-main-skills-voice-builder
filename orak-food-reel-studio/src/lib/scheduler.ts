@@ -1,4 +1,5 @@
 import { db, j } from "./db";
+import { DIRS } from "./paths";
 import { newId } from "./id";
 import { getSettings } from "./settings";
 import { getPublisher, friendlyInstagramError, igAuthStatus } from "./providers/instagram";
@@ -290,10 +291,19 @@ export function resolvePublicMediaBase(): string {
 
 export function publicUrlFor(absPath: string): string {
   const norm = absPath.replace(/\\/g, "/");
-  const idx = norm.lastIndexOf("/output/");
-  const rel = idx >= 0 ? norm.slice(idx) : `/output/${norm.split("/").slice(-2).join("/")}`;
+  const outRoot = DIRS.output.replace(/\\/g, "/").replace(/\/+$/, "");
+  let rel: string;
+  if (norm.startsWith(outRoot + "/")) {
+    /* 설치형 앱의 출력 폴더(내 문서\...\완성영상)는 경로에 "/output/" 이 없다.
+       예전 코드는 마지막 두 조각만 잘라 붙여, 장면 이미지처럼 한 단계 더 깊은
+       파일은 틀린 주소가 됐다. 출력 폴더 기준 상대 경로를 그대로 쓴다. */
+    rel = "/output/" + norm.slice(outRoot.length + 1);
+  } else {
+    const idx = norm.lastIndexOf("/output/");
+    rel = idx >= 0 ? norm.slice(idx) : `/output/${norm.split("/").slice(-2).join("/")}`;
+  }
   const base = resolvePublicMediaBase() || "http://localhost:3000";
-  return base + rel;
+  return base + rel.split("/").map((seg, i) => (i === 0 ? seg : encodeURIComponent(seg))).join("/");
 }
 
 /* ---- 싱글턴 타이머 (§39 Scheduler) ---- */

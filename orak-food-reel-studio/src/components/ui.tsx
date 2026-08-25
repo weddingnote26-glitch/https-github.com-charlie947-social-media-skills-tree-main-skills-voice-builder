@@ -179,7 +179,10 @@ export function mediaUrl(absPath: string | null | undefined): string | null {
   if (idx >= 0) return "/api/media" + norm.slice(idx);
   const ai = norm.lastIndexOf("/assets/");
   if (ai >= 0) return "/api/media" + norm.slice(ai);
-  return null;
+  /* 설치형 앱의 완성 영상은 "내 문서\...\완성영상" 아래라 위 표식이 없다.
+     그동안 여기서 null 을 돌려줘 파일이 있는데도 화면마다 "영상 없음" 이 떴다.
+     절대 경로를 그대로 묻고, 허용 폴더 안인지는 서버가 검사한다. */
+  return "/api/media/abs?p=" + encodeURIComponent(norm);
 }
 
 /**

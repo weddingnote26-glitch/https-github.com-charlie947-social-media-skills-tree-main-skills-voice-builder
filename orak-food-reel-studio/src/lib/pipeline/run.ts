@@ -51,6 +51,10 @@ export interface StepState {
 }
 
 export interface ProduceInput {
+  /** 맛집 DB 에서 고른 업체 — 주면 조사 없이 이 업체를 그대로 쓴다.
+      이름을 조금 다르게 칠 때마다 새 업체가 생기고, 수기 입력이
+      그 릴스에 반영되지 않던 문제의 뿌리를 여기서 자른다. */
+  restaurantId?: string;
   restaurantName?: string;
   restaurantUrl?: string;
   area?: string;
@@ -118,11 +122,21 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
   try {
     // 1) 콘텐츠 조사
     mark("research", { status: "진행중", progress: 0, indeterminate: true });
-    const research: ResearchInput = {
-      name: input.restaurantName, url: input.restaurantUrl, area: input.area, manual: input.manual,
-    };
-    const { info, notice } = await researchRestaurant(research);
-    const restaurantId = saveRestaurant(info);
+    let info: RestaurantInfo;
+    let notice: string | undefined;
+    let restaurantId: string;
+    if (input.restaurantId) {
+      // 맛집 DB 에서 고른 업체 — 저장된 정보(수기 입력 포함)를 그대로 쓴다
+      info = restaurantInfoOf(input.restaurantId);
+      restaurantId = input.restaurantId;
+      notice = undefined;
+    } else {
+      const research: ResearchInput = {
+        name: input.restaurantName, url: input.restaurantUrl, area: input.area, manual: input.manual,
+      };
+      ({ info, notice } = await researchRestaurant(research));
+      restaurantId = saveRestaurant(info);
+    }
     mark("research", { status: "완료", progress: 100, indeterminate: false, message: notice ?? `${info.name} (${info.area})` });
 
     // 2) 대본
@@ -183,13 +197,36 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
 
     // 5) 음성 (§16) — 실제 음성 길이에 맞춰 장면 시간 재조정
     mark("voice", { status: "진행중", progress: 0, indeterminate: false });
-    const voice = await generateVoice(script.scenes, outDir, (done, total) => {
-      mark("voice", { progress: Math.round((done / total) * 100) });
-    });
-    script.scenes = voice.scenes as ReelScript["scenes"];
-    script.duration = Math.round(voice.totalSec);
-    saveScenes(reelId, script.scenes);
-    mark("voice", { status: "완료", progress: 100, indeterminate: false, message: `${voice.totalSec}s` });
+    /**
+     * 음성 생성이 실패해도 영상은 만든다.
+     *
+     * 실제로 겪은 일: ElevenLabs 402(무료 사용량) 하나로 릴스 전체가 실패해
+     * MP4 가 아예 나오지 않았다. 음성은 빠질 수 있는 재료다 —
+     * 실패하면 무음 + 자막으로 계속 가고, 무엇이 왜 빠졌는지 화면에 남긴다.
+     */
+    let voicePath: string | null = null;
+    let voiceNotice: string | null = null;
+    try {
+      const voice = await generateVoice(script.scenes, outDir, (done, total) => {
+        mark("voice", { progress: Math.round((done / total) * 100) });
+      });
+      script.scenes = voice.scenes as ReelScript["scenes"];
+      script.duration = Math.round(voice.totalSec);
+      voicePath = voice.voicePath;
+      mark("voice", { status: "완료", progress: 100, indeterminate: false, message: `${voice.totalSec}s` });
+    } catch (e) {
+      voiceNotice = redactError(e);
+      logError("voice", `음성 실패 — 무음으로 계속: ${voiceNotice}`);
+      mark("voice", {
+        status: "실패", progress: 100, indeterminate: false,
+        message: `⚠ 음성 없이 계속 만듭니다 — ${voiceNotice.slice(0, 160)}`,
+      });
+    }
+    const voice = {
+      voicePath,
+      totalSec: script.scenes[script.scenes.length - 1].end,
+      scenes: script.scenes,
+    };
 
     // 6) 자막 (§18) — SRT + ASS, 엔딩 시그니처(§26 캐릭터)
     mark("subtitles", { status: "진행중", progress: 0, indeterminate: true });
@@ -244,6 +281,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       quality_json: JSON.stringify({
         ...quality, duplicate: dup, fact_blocked: fact.blocked, fact_block_reasons: fact.blockReasons,
         image_notice: imageNotice,
+        voice_notice: voiceNotice,
       }),
       video_path: videoPath, thumb_path: thumbPath, srt_path: subs.srtPath, voice_path: voice.voicePath,
       duration_sec: rendered.totalSec,
@@ -426,8 +464,10 @@ export async function rerender(reelId: string): Promise<void> {
   const reel = getReel(reelId);
   if (!reel || !reel.script || !reel.output_dir) throw new Error("릴스를 찾을 수 없습니다");
   const script = reel.script;
-  const voicePath = reel.voice_path ?? path.join(reel.output_dir, "voice.mp3");
-  if (!fs.existsSync(voicePath)) throw new Error("음성 파일이 없습니다 — 음성부터 다시 생성하세요");
+  /* 음성이 없어도 다시 만들 수 있다 — 무음으로 간다.
+     "음성 파일이 없습니다" 로 여기서 멈추면, 음성이 실패한 릴스는 영영 영상을 못 만든다. */
+  const voiceCandidate = reel.voice_path ?? path.join(reel.output_dir, "voice.mp3");
+  const voicePath = fs.existsSync(voiceCandidate) ? voiceCandidate : null;
   const assPath = path.join(reel.output_dir, "subtitle.ass");
   const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
   const videoPath = path.join(reel.output_dir, "reel.mp4");

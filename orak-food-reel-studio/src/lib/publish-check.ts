@@ -71,6 +71,37 @@ export async function publishPreflight(reelId: string): Promise<PublishPreflight
       ? "공개 주소가 설정돼 있지 않습니다. Instagram 서버가 영상을 내려받을 수 있어야 합니다 (설정 → Instagram → 공개 영상 주소)."
       : urlCheck.ok ? `${base}${urlCheck.warn ? ` — ${urlCheck.warn}` : ""}` : (urlCheck.reason ?? "주소를 확인해 주세요."));
 
+  // 3-2) 조립된 영상 주소가 "실제로" 내려받아지는가 — 짐작하지 않고 받아 본다.
+  //      PUBLIC_MEDIA_BASE_URL 로 글자만 이어 붙이고 끝나는 가짜 확인을 막는다.
+  if (base && urlCheck.ok && reel.video_path) {
+    const url = publicUrlFor(reel.video_path);
+    try {
+      const r = await fetch(url, {
+        method: "GET",
+        headers: { range: "bytes=0-1" },
+        signal: AbortSignal.timeout(8000),
+        redirect: "follow",
+      });
+      const ct = (r.headers.get("content-type") ?? "").toLowerCase();
+      if ((r.status === 200 || r.status === 206) && (ct.includes("video/") || ct.includes("octet-stream"))) {
+        add("publicFetch", "공개 주소 실제 확인", true, `영상이 내려받아집니다 (${r.status} · ${ct || "형식 미상"})`);
+      } else if (ct.includes("text/html")) {
+        add("publicFetch", "공개 주소 실제 확인", false,
+          `이 주소에서는 영상이 아니라 웹페이지가 열립니다 (${r.status}). 공개 영상 주소가 이 프로그램을 가리키는지 확인해 주세요.`);
+      } else if (r.status === 404 || r.status === 403) {
+        add("publicFetch", "공개 주소 실제 확인", false,
+          `주소는 열리지만 영상을 찾지 못했습니다 (${r.status}). 공개 주소가 이 프로그램(포트 포함)을 가리키는지 확인해 주세요.`);
+      } else {
+        add("publicFetch", "공개 주소 실제 확인", false, `예상치 못한 응답입니다 (${r.status} · ${ct || "형식 미상"}).`, false);
+      }
+    } catch {
+      // 인터넷이 잠시 안 되거나 터널이 꺼져 있을 수 있다 — 막지는 말고 알려만 준다.
+      // Meta 도 같은 길로 받으므로, 발행이 실패하면 이 줄부터 의심하면 된다.
+      add("publicFetch", "공개 주소 실제 확인", false,
+        "여기서는 접속하지 못했습니다. 터널(공개 주소)이 켜져 있는지 확인해 주세요 — Meta 서버도 같은 길로 내려받습니다.", false);
+    }
+  }
+
   // 4) 영상 파일 자체
   const info = await videoInfo(reel.video_path, reel.srt_path);
   const fmtOk = info.exists && /\.(mp4|mov)$/i.test(reel.video_path ?? "");

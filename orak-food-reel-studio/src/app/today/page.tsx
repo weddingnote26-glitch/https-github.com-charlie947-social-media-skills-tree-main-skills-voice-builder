@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, ProgressBar, ErrorBox, StepRow, api } from "@/components/ui";
 import { jobProgress, type ProgressStep } from "@/lib/pipeline/progress";
 import { useToast } from "@/components/Toast";
+import RestaurantPicker from "@/components/RestaurantPicker";
 
 const AREAS = ["관악구", "신림", "봉천", "서울대입구", "낙성대", "기타 서울"];
 const TYPES = ["자동 추천", "가성비 맛집", "숨은 동네 맛집", "부모님과 가기 좋은 곳", "5070 추천 맛집", "혼밥 맛집", "데이트 맛집", "친구 모임 맛집", "메뉴 하나 집중 소개", "가격 대비 만족도", "오래된 동네 맛집", "반전 맛집", "직접 가보고 싶은 맛집"];
@@ -23,6 +24,10 @@ export default function Today() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  /** 맛집 DB 에서 고른 업체 — 있으면 조사 없이 그 업체(수기 입력 포함)를 그대로 쓴다 */
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [similar, setSimilar] = useState<Array<{ id: string; name: string; area: string }>>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const toast = useToast();
   // 같은 작업에 대해 알림을 한 번만 띄우기 위한 표시
@@ -34,13 +39,15 @@ export default function Today() {
       const { jobId } = await api<{ jobId: string }>("/api/produce", {
         method: "POST",
         body: JSON.stringify({
-          restaurantName: name || undefined, restaurantUrl: url || undefined,
+          restaurantId: picked?.id,
+          restaurantName: picked ? undefined : (name || undefined),
+          restaurantUrl: picked ? undefined : (url || undefined),
           area, contentType: type, contentMode: mode,
         }),
       });
       setJobId(jobId);
       notified.current = null;
-      toast.info("제작을 시작했습니다.", [`${name || url} · ${type}`]);
+      toast.info("제작을 시작했습니다.", [`${picked?.name || name || url} · ${type}`]);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
       toast.fromError(e, "입력값을 확인하고 다시 시도해 주세요.");
@@ -83,8 +90,49 @@ export default function Today() {
         <Card>
           <div className="space-y-5">
             <div>
-              <label className="label">맛집명</label>
-              <input className="input" placeholder="예: 신림동 ○○식당" value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="label mb-0">맛집명</label>
+                <button type="button" className="btn-secondary" onClick={() => setPicking((v) => !v)}>
+                  📇 맛집 DB에서 불러오기
+                </button>
+              </div>
+              {picked ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-3">
+                  <span className="font-bold break-keep">✅ {picked.name}</span>
+                  <span className="text-sm text-emerald-800">저장된 업체 정보(직접 입력 포함)를 그대로 씁니다.</span>
+                  <button type="button" className="btn-ghost ml-auto" onClick={() => setPicked(null)}>선택 해제</button>
+                </div>
+              ) : (
+                <input className="input mt-1.5" placeholder="예: 신림동 ○○식당" value={name}
+                  onChange={(e) => { setName(e.target.value); setSimilar([]); }}
+                  onBlur={() => {
+                    const q = name.trim();
+                    if (!q) return;
+                    // 비슷한 이름이 이미 있으면 알려 준다 — 같은 가게가 또 생기지 않게
+                    void api<{ list: Array<{ id: string; name: string; area: string }> }>(
+                      `/api/restaurants?q=${encodeURIComponent(q)}`
+                    ).then((r) => setSimilar(r.list.slice(0, 3))).catch(() => {});
+                  }} />
+              )}
+              {!picked && similar.length > 0 && (
+                <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-bold text-amber-900 mb-2">혹시 이 가게인가요? 고르면 저장된 정보를 그대로 씁니다.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {similar.map((r) => (
+                      <button key={r.id} type="button" className="btn-secondary"
+                        onClick={() => { setPicked({ id: r.id, name: r.name }); setSimilar([]); }}>
+                        {r.name}{r.area ? ` (${r.area})` : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {picking && (
+                <RestaurantPicker
+                  onClose={() => setPicking(false)}
+                  onPick={(id, pickedName) => { setPicked({ id, name: pickedName }); setPicking(false); setSimilar([]); }}
+                />
+              )}
             </div>
             <div>
               <label className="label">맛집 URL <span className="font-normal text-gray-600">(선택 — Instagram / 지도 / 블로그)</span></label>

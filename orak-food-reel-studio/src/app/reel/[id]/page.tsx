@@ -36,6 +36,15 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   /** §8 예약 시각 고르기 창 */
   const [schedOpen, setSchedOpen] = useState(false);
 
+  // 검수 화면에서 ?publish=now / ?publish=schedule 로 넘어오면 그 창을 바로 연다.
+  // (예전에는 단추가 여기로 보내 놓고 아무 일도 안 일어났다)
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get("publish");
+    if (want === "now") setConfirmPublish(true);
+    else if (want === "schedule") setSchedOpen(true);
+    if (want) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   useEffect(() => {
     if (data && scenes === null) {
       setScenes(data.reel.scenes);

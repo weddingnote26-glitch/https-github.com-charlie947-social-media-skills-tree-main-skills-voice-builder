@@ -42,7 +42,8 @@ export interface RenderPlan {
 export function buildRenderArgs(opts: {
   scenes: Scene[];
   imageByScene: Map<number, string>;
-  voicePath: string;
+  /** null 이면 무음으로 만든다 — 음성 생성이 실패해도 영상은 나와야 한다 */
+  voicePath: string | null;
   assPath: string;
   outPath: string;
   bgmPath?: string;
@@ -59,7 +60,14 @@ export function buildRenderArgs(opts: {
     args.push("-i", img);
   }
   const voiceIdx = scenes.length;
-  args.push("-i", opts.voicePath);
+  if (opts.voicePath) {
+    args.push("-i", opts.voicePath);
+  } else {
+    /* 음성 생성이 실패한 경우 — 조용한 소리 트랙을 깔아 같은 필터 그래프를 쓴다.
+       길이는 아래 -t 가 못 박으므로 무한 입력이어도 안전하다.
+       "음성이 없어서 영상 전체가 안 나오는" 일을 없애기 위한 길이다. */
+    args.push("-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo");
+  }
   let bgmIdx = -1;
   if (opts.bgmPath) {
     bgmIdx = voiceIdx + 1;
