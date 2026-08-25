@@ -45,12 +45,68 @@ export function scheduleReel(reelId: string, publishAt?: string): { scheduleId: 
   // 영상 · 팩트체크 · 발행 전 검수를 한 자리에서 본다 (§5, §33)
   const blocked = publishBlockReason(reelId);
   if (blocked) throw new Error(blocked);
-  const at = publishAt ?? computeNextSlot();
+  const at = publishAt ? normalizeSlot(publishAt) : computeNextSlot();
   const id = newId("sch");
   db().prepare("INSERT INTO schedules (id, reel_id, publish_at, status) VALUES (?,?,?,'예약')").run(id, reelId, at);
   updateReel(reelId, { status: "예약", planned_date: at.slice(0, 10) });
   logInfo("schedule", `예약 완료 — ${reelId} @ ${at}`);
   return { scheduleId: id, publishAt: at };
+}
+
+/**
+ * §8 사람이 고른 발행 시각을 검사하고 다듬는다.
+ *
+ * 시간대는 Asia/Seoul 하나로 본다 — 이 프로그램은 신림·관악구 가게를 다루고
+ * 사장님도 한국에 계신다. 화면에서 고른 시각을 그대로 저장한다.
+ * 지난 시각은 저장하지 않는다. 저장해 봐야 곧바로 발행되거나 영영 안 나간다.
+ */
+export const SCHEDULE_TIMEZONE = "Asia/Seoul";
+/** 지금부터 최소 이만큼 뒤라야 예약할 수 있다 (준비 시간) */
+export const MIN_LEAD_MINUTES = 5;
+
+export function normalizeSlot(input: string, now = new Date()): string {
+  const raw = input.trim();
+  // "2026-08-25T14:30" / "2026-08-25 14:30" / 초까지 붙은 것 모두 받는다
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(raw);
+  if (!m) throw new Error("발행 시각을 알아볼 수 없습니다. 날짜와 시간을 다시 골라 주세요.");
+  const at = `${m[1]}T${m[2]}:${m[3]}:${m[4] ?? "00"}`;
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) throw new Error("없는 날짜입니다. 다시 골라 주세요.");
+  const earliest = new Date(now.getTime() + MIN_LEAD_MINUTES * 60_000);
+  if (when.getTime() < earliest.getTime()) {
+    throw new Error(`지난 시각으로는 예약할 수 없습니다. 지금부터 ${MIN_LEAD_MINUTES}분 뒤부터 고를 수 있습니다.`);
+  }
+  return at;
+}
+
+/** 화면의 날짜·시간 칸에 넣을 "지금 고를 수 있는 가장 이른 시각" */
+export function earliestSlot(now = new Date()): string {
+  const t = new Date(now.getTime() + MIN_LEAD_MINUTES * 60_000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`;
+}
+
+/** 예약 하나의 시각을 바꾼다 (목록에서 [수정]) */
+export function rescheduleAt(scheduleId: string, publishAt: string): { publishAt: string } {
+  const row = db().prepare("SELECT reel_id, status FROM schedules WHERE id=?").get(scheduleId) as { reel_id: string; status: string } | undefined;
+  if (!row) throw new Error("예약을 찾을 수 없습니다");
+  if (row.status !== "예약") throw new Error(`이미 ${row.status} 상태라 시각을 바꿀 수 없습니다.`);
+  const at = normalizeSlot(publishAt);
+  db().prepare("UPDATE schedules SET publish_at=? WHERE id=?").run(at, scheduleId);
+  updateReel(row.reel_id, { planned_date: at.slice(0, 10) });
+  logInfo("schedule", `예약 시각 변경 — ${row.reel_id} @ ${at}`);
+  return { publishAt: at };
+}
+
+/** 예약 취소 — 릴스는 검수 상태로 되돌린다 (내용은 그대로 둔다) */
+export function cancelSchedule(scheduleId: string): void {
+  const row = db().prepare("SELECT reel_id, status FROM schedules WHERE id=?").get(scheduleId) as { reel_id: string; status: string } | undefined;
+  if (!row) throw new Error("예약을 찾을 수 없습니다");
+  if (row.status !== "예약") throw new Error(`이미 ${row.status} 상태라 취소할 수 없습니다.`);
+  db().prepare("UPDATE schedules SET status='취소' WHERE id=?").run(scheduleId);
+  const left = db().prepare("SELECT COUNT(*) AS c FROM schedules WHERE reel_id=? AND status='예약'").get(row.reel_id) as { c: number };
+  if (left.c === 0) updateReel(row.reel_id, { status: "검수" });
+  logInfo("schedule", `예약 취소 — ${row.reel_id}`);
 }
 
 export function autoSchedule(reelId: string): void {

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
 import RestaurantForm, { FieldStatusBadge, type FormValue } from "@/components/RestaurantForm";
 import PublishDialog from "@/components/PublishDialog";
+import ScheduleDialog from "@/components/ScheduleDialog";
 import type { Scene, ReelScript, FactCheckItem, Verdict } from "@/lib/schema";
 
 interface ReelDetail {
@@ -32,6 +33,8 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   const [err, setErr] = useState<string | null>(null);
   /** §7 실제 게시 전 최종 확인창 */
   const [confirmPublish, setConfirmPublish] = useState(false);
+  /** §8 예약 시각 고르기 창 */
+  const [schedOpen, setSchedOpen] = useState(false);
 
   useEffect(() => {
     if (data && scenes === null) {
@@ -179,9 +182,10 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
               </button>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-              <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path || quality.fact_blocked}
-                onClick={() => run("schedule", () => api(`/api/reels/${id}/schedule`, { method: "POST", body: "{}" }), "다음 발행 슬롯에 예약했습니다.")}>
-                📅 예약 발행 {busy === "schedule" && "…"}
+              {/* 시각을 사람이 고르게 한다 (§8) */}
+              <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path}
+                onClick={() => setSchedOpen(true)}>
+                📅 예약 발행
               </button>
               {/* 누르는 즉시 올리지 않는다 — 최종 확인창을 먼저 띄운다 (§7) */}
               <button className="btn-secondary" disabled={!!busy || !reel.video_path}
@@ -385,6 +389,18 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
           </Card>
         </div>
       </div>
+
+      {schedOpen && (
+        <ScheduleDialog
+          reelId={id}
+          onClose={() => setSchedOpen(false)}
+          onScheduled={(at) => {
+            setSchedOpen(false);
+            setMsg(`${at.replace("T", " ")} 에 예약했습니다. 그 시각에 프로그램이 켜져 있어야 합니다.`);
+            reload();
+          }}
+        />
+      )}
 
       {confirmPublish && (
         <PublishDialog
