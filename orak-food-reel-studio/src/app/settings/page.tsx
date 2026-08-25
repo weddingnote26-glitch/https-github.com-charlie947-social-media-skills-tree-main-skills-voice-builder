@@ -14,6 +14,8 @@ interface IgStatus {
   tokenSet: boolean; tokenSource: string; tokenHint: string;
   userIdSet: boolean; userIdSource: string; userId: string;
   loginKind: "instagram" | "facebook" | null;
+  declaredMode: "auto" | "instagram" | "facebook";
+  mismatch: string | null;
 }
 interface SettingsResponse {
   settings: AppSettings;
@@ -349,6 +351,37 @@ export default function SettingsPage() {
           <li>아래 <b>[영상 공개 주소]</b> 칸에 인터넷에서 열리는 주소를 넣습니다 — Instagram 서버가 그 주소로 완성 영상을 내려받습니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
         <div className="field-grid mb-3">
+          {/* §11 두 방식은 주소도 권한도 다르다. 섞이지 않게 사용자가 못 박아 둘 수 있게 한다. */}
+          <div className="sm:col-span-2">
+            <label className="label text-sm">연동 방식</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {([
+                ["auto", "자동 (권장)", "토큰 앞글자를 보고 알아서 고릅니다"],
+                ["instagram", "Instagram Login", "graph.instagram.com · IGAA…"],
+                ["facebook", "Facebook Login", "graph.facebook.com · EAA…"],
+              ] as const).map(([mode, label, hint]) => (
+                <button key={mode} type="button"
+                  className={`text-left rounded-xl border-2 p-3 transition ${
+                    s.igLoginMode === mode ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  aria-pressed={s.igLoginMode === mode}
+                  onClick={() => setS({ ...s, igLoginMode: mode })}>
+                  <div className="font-bold text-sm">{label}</div>
+                  <div className="text-xs text-gray-600 mt-0.5 break-keep">{hint}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-600 mt-2 break-keep">
+              두 방식은 <b>권한 이름과 API 주소가 서로 다릅니다.</b> 섞어 쓰면 토큰을 알아보지 못합니다.
+              <br />· Instagram Login — <code className="bg-gray-100 px-1 rounded">instagram_business_basic</code>, <code className="bg-gray-100 px-1 rounded">instagram_business_content_publish</code>
+              <br />· Facebook Login — <code className="bg-gray-100 px-1 rounded">instagram_basic</code>, <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code>
+            </p>
+            {ig?.mismatch && (
+              <div className="mt-2 rounded-xl bg-red-50 border-2 border-red-300 p-3 text-sm text-red-800 break-keep">
+                ⚠ {ig.mismatch}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="label text-sm">Access Token</label>
             {/* 저장한 토큰은 다시 보여주지 않는다 — 칸이 비어 있어도 저장된 값으로 테스트한다 */}

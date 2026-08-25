@@ -1,3 +1,4 @@
+import { redact } from "../redact";
 /**
  * 실패 응답을 "무엇을 고쳐야 하는지"가 보이는 문장으로.
  *
@@ -81,7 +82,10 @@ function describeMetaFailure(status: number, raw: string, login: "instagram" | "
   const SCOPES = login === "instagram"
     ? "instagram_business_basic, instagram_business_content_publish"
     : "instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement";
-  const tail = message ? ` — ${message.slice(0, 200)}` : "";
+  /* Meta 가 오류 문구 안에 토큰을 그대로 되돌려줄 때가 있다.
+     부르는 쪽에서 걸러 주길 기대하지 말고 여기서 먼저 지운다.
+     실제로 이 시험이 토큰이 화면까지 새는 것을 잡았다. */
+  const tail = message ? ` — ${redact(message).slice(0, 200)}` : "";
 
   // 요청 한도 (code 4·17·32·613)
   if (status === 429 || [4, 17, 32, 613].includes(code)) {
@@ -101,6 +105,19 @@ function describeMetaFailure(status: number, raw: string, login: "instagram" | "
   if (subcode === 460 || subcode === 467) {
     return "액세스 토큰이 무효화되었습니다(비밀번호 변경 또는 로그아웃). " +
       `${META_TOOL} 에서 토큰을 새로 만들어 넣어 주세요.${tail}`;
+  }
+  /* 테스터·역할 승인 문제 — 앱이 개발 모드일 때 가장 흔하다.
+     "권한 부족" 과 문구가 비슷해 헷갈리므로 따로 짚는다. */
+  if (/tester|not been added|role|business account|not authorized to/i.test(message)) {
+    return "이 계정으로는 아직 쓸 수 없습니다. Meta 앱 설정에서 이 Instagram 계정이 " +
+      "테스터로 초대되고 초대를 수락했는지, 프로 계정(비즈니스/크리에이터)인지 확인해 주세요." + tail;
+  }
+  /* 영상 자체나 영상 주소 문제 — 컨테이너를 만들 때 나온다.
+     Instagram 서버가 우리 영상을 직접 내려받으므로, 주소가 공개돼 있지 않으면 여기서 걸린다. */
+  if (/media|video|download|fetch|url|format|codec|duration|aspect/i.test(message)) {
+    return "영상을 가져오지 못했거나 형식이 맞지 않습니다. " +
+      "① 공개 영상 주소(https)가 인터넷에서 열리는지 ② MP4(H.264)+AAC 인지 " +
+      "③ 세로 9:16, 15~60초인지 확인해 주세요." + tail;
   }
   // "Cannot parse access token" — 토큰은 멀쩡한데 로그인 방식이 다른 주소로 갔을 때 나온다.
   // Instagram 로그인 토큰(IGAA…)은 graph.instagram.com, 페이스북 로그인 토큰(EAA…)은
@@ -143,7 +160,7 @@ export function describeKeyFailure(
   if (service === "instagram") return describeMetaFailure(status, raw, opts?.igLogin ?? "facebook");
 
   const reason = extractReason(raw);
-  const tail = reason ? ` — ${reason.slice(0, 160)}` : "";
+  const tail = reason ? ` — ${redact(reason).slice(0, 160)}` : "";
 
   // 키 자체는 맞는데 권한이 없는 경우 — 키를 다시 만들라고 하면 안 된다
   if (/missing_permission|insufficient_permission|not authorized|scope/i.test(reason)) {

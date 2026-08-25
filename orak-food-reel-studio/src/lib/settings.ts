@@ -93,6 +93,13 @@ export const AppSettingsSchema = z.object({
   // Instagram 서버가 직접 영상을 받아 가므로 내 PC 주소(localhost)로는 발행되지 않는다.
   // 비우면 .env 의 PUBLIC_MEDIA_BASE_URL 을 쓴다.
   publicMediaBaseUrl: z.string().default(""),
+  /**
+   * §11 Instagram 연동 방식.
+   * "auto" 는 토큰 앞글자로 알아서 고른다 (IGAA… → Instagram, EAA… → Facebook).
+   * 사용자가 하나로 못 박아 두면, 넣은 토큰이 그 방식과 다를 때 바로 알려 준다.
+   * 두 방식의 토큰·권한·주소는 절대 섞지 않는다.
+   */
+  igLoginMode: z.enum(["auto", "instagram", "facebook"]).default("auto"),
 
   // 실행 모드 — auto 면 .env 의 APP_MODE 를 따른다
   appMode: z.enum(["auto", "sample", "live"]).default("auto"),

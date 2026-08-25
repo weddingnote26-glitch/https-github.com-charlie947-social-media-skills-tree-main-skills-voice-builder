@@ -1,6 +1,6 @@
 import { getEnv } from "../env";
 import { isSampleMode } from "../secrets";
-import { kvGet } from "../settings";
+import { kvGet, getSettings } from "../settings";
 import { decrypt } from "../crypto";
 import { ApiError, fetchJson, withRetry } from "./http";
 import { describeKeyFailure } from "./api-failure";
@@ -31,6 +31,40 @@ export function graphBase(token: string): string {
   return igLoginKind(token) === "instagram" ? GRAPH_INSTAGRAM : GRAPH_FACEBOOK;
 }
 
+/** 방식마다 다른 주소와 권한 — 화면 안내와 오류 설명이 같은 값을 본다 */
+export const IG_LOGIN_INFO = {
+  instagram: {
+    label: "Instagram Login",
+    host: "graph.instagram.com",
+    scopes: ["instagram_business_basic", "instagram_business_content_publish"],
+    tokenPrefix: "IGAA… / IGQ…",
+    note: "Instagram 계정으로 바로 로그인해 받는 토큰입니다. Facebook 페이지 연결이 필요 없습니다.",
+  },
+  facebook: {
+    label: "Facebook Login",
+    host: "graph.facebook.com",
+    scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement"],
+    tokenPrefix: "EAA…",
+    note: "Facebook 페이지에 연결된 Instagram 프로 계정을 통해 받는 토큰입니다.",
+  },
+} as const;
+
+/**
+ * 고른 방식과 실제 토큰이 어긋나는지 본다.
+ *
+ * 어긋난 채로 밀어붙이면 Meta 가 "Cannot parse access token" 만 돌려준다 —
+ * 실제로 그 400 을 며칠 봤다. 여기서 사람 말로 먼저 알려 준다.
+ */
+export function igLoginMismatch(declared: "auto" | IgLoginKind, token: string): string | null {
+  if (declared === "auto" || !token.trim()) return null;
+  const actual = igLoginKind(token);
+  if (actual === declared) return null;
+  const want = IG_LOGIN_INFO[declared], got = IG_LOGIN_INFO[actual];
+  return `설정에서 고르신 방식은 ${want.label} (${want.tokenPrefix}) 인데, ` +
+    `넣으신 토큰은 ${got.label} 토큰 (${got.tokenPrefix}) 으로 보입니다. ` +
+    "두 방식은 주소와 권한이 서로 달라 섞어 쓸 수 없습니다. 방식을 바꾸거나 토큰을 다시 받아 주세요.";
+}
+
 /** 토큰: 설정화면에서 암호화 저장한 값 우선, 없으면 .env */
 export function resolveIgAuth(): { token: string; userId: string; base: string; kind: IgLoginKind } {
   const env = getEnv();
@@ -54,6 +88,10 @@ export function igAuthStatus(): {
   tokenSet: boolean; tokenSource: "설정" | ".env" | "없음"; tokenHint: string;
   userIdSet: boolean; userIdSource: "설정" | ".env" | "없음"; userId: string;
   loginKind: IgLoginKind | null;
+  /** 설정에서 사용자가 못 박아 둔 방식 */
+  declaredMode: "auto" | IgLoginKind;
+  /** 고른 방식과 토큰이 어긋나면 그 이유 */
+  mismatch: string | null;
 } {
   const env = getEnv();
   const storedToken = kvGet("ig_token_encrypted");
@@ -68,7 +106,10 @@ export function igAuthStatus(): {
   const userId = storedId || env.INSTAGRAM_USER_ID;
   const userIdSource = storedId ? "설정" : env.INSTAGRAM_USER_ID ? ".env" : "없음";
 
+  const declaredMode = getSettings().igLoginMode;
   return {
+    declaredMode,
+    mismatch: igLoginMismatch(declaredMode, token),
     tokenSet: !!token,
     tokenSource,
     // 토큰은 길다 — 같은 값인지 알아볼 수 있을 만큼만

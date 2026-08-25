@@ -1,7 +1,7 @@
 import { handle, ok } from "@/lib/api";
 import { getEnv } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
-import { resolveIgAuth } from "@/lib/providers/instagram";
+import { igLoginMismatch, resolveIgAuth } from "@/lib/providers/instagram";
 import { resolveSecret } from "@/lib/secrets";
 import { imageKeyMismatch } from "@/lib/providers/image-model";
 import { resolveCloudflareAuth, cloudflareModels, listCloudflareImageModels } from "@/lib/providers/cloudflare-image";
@@ -90,6 +90,10 @@ export async function POST(req: Request) {
               return { ok: false, detail: "Access Token 과 Instagram User ID 를 아직 저장하지 않았습니다. 위 두 칸에 넣고 [암호화 저장]을 누른 뒤 다시 눌러 주세요." };
             }
             if (!token) return { ok: false, detail: "Access Token 이 없습니다. 위 칸에 붙여넣고 [암호화 저장]을 누르세요." };
+            /* §11 고른 방식과 토큰이 어긋나면 Meta 를 부르기 전에 여기서 알린다.
+               그대로 보내면 "Cannot parse access token" 만 돌아온다. */
+            const wrongMode = igLoginMismatch(getSettings().igLoginMode, token);
+            if (wrongMode) return { ok: false, detail: wrongMode };
             // 토큰이 잘려 붙여넣어진 경우 — Meta 토큰은 보통 100자가 넘는다
             if (token.length < 30) {
               return { ok: false, detail: `저장된 토큰이 너무 짧습니다 (${token.length}자). 액세스 토큰은 보통 100자가 넘습니다 — 복사할 때 일부만 붙여넣지 않았는지 확인해 주세요.` };
