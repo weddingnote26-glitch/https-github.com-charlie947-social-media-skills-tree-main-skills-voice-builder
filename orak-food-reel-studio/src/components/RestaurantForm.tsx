@@ -54,10 +54,12 @@ export function emptyForm(): FormValue {
  * 자동 수집이 막힌 곳은 사람이 적어 넣는다. 적어 넣은 값은 "직접 입력" 으로 표시되고
  * 팩트체크에서 확인된 값과 같이 취급된다. 빈 칸은 저장은 되지만 "확인 필요" 로 남는다.
  */
-export default function RestaurantForm({ value, title = "✏️ 업체 정보 직접 입력", onSaved }: {
+export default function RestaurantForm({ value, title = "✏️ 업체 정보 직접 입력", onSaved, onProduce }: {
   value: FormValue | null;
   title?: string;
   onSaved?: (r: SaveResult) => void;
+  /** 주면 [저장하고 영상 제작하기] 단추가 생긴다. 저장이 끝난 뒤에만 불린다. */
+  onProduce?: (r: SaveResult) => Promise<void> | void;
 }) {
   const [draft, setDraft] = useState<FormValue | null>(value);
   const [dirty, setDirty] = useState(false);
@@ -90,33 +92,75 @@ export default function RestaurantForm({ value, title = "✏️ 업체 정보 �
     setDraft((cur) => (cur ? withValue(cur, key, next) : cur));
   };
 
-  const save = async () => {
+  /**
+   * 저장은 이 함수 하나만 한다. 위아래 단추가 서로 다른 저장 경로를 타면
+   * 같은 업체가 두 번 등록되는 사고가 난다.
+   * 저장과 영상 제작은 단계를 나눠 알린다 — 어디서 실패했는지 알아야 한다.
+   */
+  const save = async (opts: { thenProduce?: boolean } = {}) => {
     setBusy(true); setErr(null); setMsg(null);
+    let saved: SaveResult;
     try {
       // id 가 없으면 새 업체 등록이다 (맛집 DB 화면의 "업체 직접 등록")
       const body: Record<string, string> = draft.id ? { id: draft.id } : {};
       for (const f of FIELDS) body[f.key === "menus" ? "menus_text" : f.key] = valueOf(draft, f.key);
-      const r = await api<SaveResult>("/api/restaurants", { method: "PATCH", body: JSON.stringify(body) });
-      setDraft(r.form); setDirty(false);
-      const unblocked = r.rechecked.filter((x) => !x.blocked).length;
-      const blocked = r.rechecked.filter((x) => x.blocked).length;
+      saved = await api<SaveResult>("/api/restaurants", { method: "PATCH", body: JSON.stringify(body) });
+      setDraft(saved.form); setDirty(false);
+      const unblocked = saved.rechecked.filter((x) => !x.blocked).length;
+      const blocked = saved.rechecked.filter((x) => x.blocked).length;
       setMsg(
-        `업체 정보를 저장했습니다 — 직접 입력 ${r.marked.length}개.` +
-        (r.rechecked.length ? ` 팩트체크 다시 확인: 통과 ${unblocked}건${blocked ? `, 아직 확인 필요 ${blocked}건` : ""}.` : "")
+        `업체 정보가 저장되었습니다 — 직접 입력 ${saved.marked.length}개.` +
+        (saved.rechecked.length ? ` 팩트체크 다시 확인: 통과 ${unblocked}건${blocked ? `, 아직 확인 필요 ${blocked}건` : ""}.` : "")
       );
-      onSaved?.(r);
+      onSaved?.(saved);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(`업체 정보를 저장하지 못했습니다. 다시 시도해 주세요. — ${e instanceof Error ? e.message : String(e)}`);
+      setBusy(false);
+      return;
+    }
+
+    if (!opts.thenProduce || !onProduce) { setBusy(false); return; }
+
+    try {
+      setMsg("업체 정보를 저장했습니다. 이어서 영상을 만듭니다…");
+      await onProduce(saved);
+    } catch (e) {
+      // 어느 단계에서 멈췄는지 분명히 한다
+      setErr(`업체 정보는 저장됐지만 영상 제작에 실패했습니다. — ${e instanceof Error ? e.message : String(e)}`);
     } finally { setBusy(false); }
+  };
+
+  /** 저장하지 않은 수정을 버리고 마지막 저장 상태로 되돌린다 */
+  const cancel = () => {
+    if (!value) return;
+    setDraft(value); setDirty(false); setErr(null);
+    setMsg("수정을 취소하고 저장된 내용으로 되돌렸습니다.");
+  };
+
+  /** 입력칸만 비운다 (저장하지 않으면 DB 는 그대로다) */
+  const reset = () => {
+    setDraft((cur) => {
+      if (!cur) return cur;
+      let next = cur;
+      for (const f of FIELDS) if (f.key !== "name") next = withValue(next, f.key, "");
+      return next;
+    });
+    setDirty(true); setErr(null);
+    setMsg("입력칸을 비웠습니다. 저장하기 전까지 저장된 정보는 그대로입니다.");
   };
 
   const need = FIELDS.filter((f) => !valueOf(draft, f.key).trim()).length;
 
+  const bottomId = `rf-actions-${draft.id || "new"}`;
+
   return (
+    /* 저장 단추는 화면 아래 한 곳에만 둔다.
+       위아래 두 곳에 두었더니 어느 것을 눌러야 하는지 헷갈렸다.
+       위쪽은 그 자리로 데려다주는 바로가기 역할만 한다. */
     <Card title={title} right={
-      <button className="btn-primary" disabled={busy || !draft.name.trim()} onClick={save}>
-        {busy ? "저장 중…" : "💾 업체 정보 저장"}
-      </button>
+      <button className="btn-secondary" onClick={() => {
+        document.getElementById(bottomId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }}>맨 아래 저장 단추로 ↓</button>
     }>
       <p className="text-sm text-gray-600 mb-4">
         자동으로 못 찾은 정보는 여기에 직접 적어 주세요. 적어 넣은 항목은 <b>직접 입력</b> 으로 표시되고
@@ -144,12 +188,25 @@ export default function RestaurantForm({ value, title = "✏️ 업체 정보 �
           );
         })}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button className="btn-primary" disabled={busy || !draft.name.trim()} onClick={save}>
-          {busy ? "저장 중…" : "💾 업체 정보 저장"}
-        </button>
-        {dirty && <span className="text-sm font-bold text-amber-700">저장하지 않은 수정이 있습니다</span>}
-        {need > 0 && <span className="text-sm text-gray-600">빈 칸 {need}개는 계속 “확인 필요” 로 표시됩니다</span>}
+      <div id={bottomId} className="mt-5 border-t border-gray-200 pt-4 scroll-mt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn-primary" disabled={busy || !draft.name.trim()} onClick={() => void save()}>
+            {busy ? "저장 중…" : "💾 업체 정보 저장"}
+          </button>
+          {onProduce && (
+            <button className="btn-primary" disabled={busy || !draft.name.trim()}
+              title="업체 정보를 저장한 뒤 이어서 영상을 만듭니다"
+              onClick={() => void save({ thenProduce: true })}>
+              🎬 저장하고 영상 제작하기
+            </button>
+          )}
+          <button className="btn-secondary" disabled={busy || !dirty} onClick={cancel}>취소</button>
+          <button className="btn-ghost" disabled={busy} onClick={reset}>초기화</button>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          {dirty && <span className="text-sm font-bold text-amber-700">저장하지 않은 수정이 있습니다</span>}
+          {need > 0 && <span className="text-sm text-gray-600">빈 칸 {need}개는 계속 “확인 필요” 로 표시됩니다</span>}
+        </div>
       </div>
       {msg && <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">{msg}</div>}
       {err && <div className="mt-3 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{err}</div>}

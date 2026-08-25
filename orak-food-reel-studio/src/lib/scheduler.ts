@@ -73,7 +73,7 @@ export function publishNow(reelId: string): { jobId: string } {
   const reel = getReel(reelId);
   if (!reel) throw new Error("릴스를 찾을 수 없습니다");
   if (!reel.video_path) {
-    throw new Error("아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 다시 만들기]로 영상을 만들어 주세요.");
+    throw new Error("아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 제작하기]로 영상을 만들어 주세요.");
   }
   // §33 팩트체크 차단 콘텐츠는 예약과 마찬가지로 발행하지 않는다
   const q = j<{ fact_blocked?: boolean; fact_block_reasons?: string[] }>(reel.quality_json, {});

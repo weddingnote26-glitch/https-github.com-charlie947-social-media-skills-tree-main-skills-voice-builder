@@ -54,8 +54,15 @@ export default function RestaurantsPage() {
           <Card right={
             <button className="btn-primary" onClick={() => setEditing(emptyForm())}>➕ 업체 직접 등록</button>
           }>
-            <table className="w-full text-sm">
-              <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2">매장명</th><th>지역</th><th>대표 메뉴</th><th>정보 상태</th><th className="text-right">수정</th></tr></thead>
+            {/* 좁은 폭에서 매장명이 낱자로 쪼개져 옆 칸 글자와 뒤섞여 보였다.
+                열 폭을 못 박고, 표 자체를 가로로만 스크롤시킨다. */}
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px] table-fixed">
+              <colgroup>
+                <col className="w-[26%]" /><col className="w-[12%]" /><col className="w-[38%]" />
+                <col className="w-[12%]" /><col className="w-[12%]" />
+              </colgroup>
+              <thead><tr className="text-left text-gray-600 font-bold border-b"><th className="py-2 pr-3">매장명</th><th className="pr-3">지역</th><th className="pr-3">대표 메뉴</th><th className="pr-3">정보 상태</th><th className="text-right">수정</th></tr></thead>
               <tbody>
                 {(data?.restaurants ?? []).map((r) => {
                   const menus = JSON.parse(r.menus_json || "[]") as Array<{ name: string; price: string; verified: boolean }>;
@@ -63,12 +70,14 @@ export default function RestaurantsPage() {
                   // 사람이 직접 적어 넣은 값도 확인된 정보로 센다
                   const verified = Object.values(st).filter((v) => v === "확인" || v === "사용자 입력").length;
                   return (
-                    <tr key={r.id} className="border-b border-gray-100">
-                      <td className="py-2.5 font-bold">{r.name}</td>
-                      <td>{r.area}</td>
-                      <td className="text-gray-600">{menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ") || "-"}</td>
-                      <td><span className={`badge ${verified >= 5 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>확인 {verified}/{Object.keys(st).length || 8}</span></td>
-                      <td className="text-right">
+                    <tr key={r.id} className="border-b border-gray-100 align-top">
+                      <td className="py-2.5 pr-3 font-bold break-keep">{r.name}</td>
+                      <td className="pr-3 whitespace-nowrap">{r.area}</td>
+                      <td className="pr-3 text-gray-600 truncate" title={menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ")}>
+                        {menus.map((m) => `${m.name} ${m.price}`.trim()).join(", ") || "-"}
+                      </td>
+                      <td className="pr-3"><span className={`badge ${verified >= 5 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>확인 {verified}/{Object.keys(st).length || 8}</span></td>
+                      <td className="text-right whitespace-nowrap">
                         <button className="btn-ghost" onClick={() => openEdit(r.id)}>✏️ 정보 수정</button>
                       </td>
                     </tr>
@@ -77,6 +86,7 @@ export default function RestaurantsPage() {
                 {(data?.restaurants?.length ?? 0) === 0 && <tr><td colSpan={5} className="text-center text-gray-600 py-10">아직 조사된 맛집이 없습니다. 오늘의 릴스에서 첫 조사를 시작하거나, 오른쪽 위 [업체 직접 등록] 으로 직접 적어 넣으세요.</td></tr>}
               </tbody>
             </table>
+            </div>
             <button className="btn-ghost mt-3" onClick={reload}>새로고침</button>
           </Card>
 

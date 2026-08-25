@@ -76,13 +76,34 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
     finally { setBusy(null); }
   };
 
-  const saveEdits = () => run("save", async () => {
-    await api(`/api/reels/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ scenes, caption, hashtags: (hashtags ?? "").split(/\s+/).filter(Boolean) }),
-    });
-    await api(`/api/reels/${id}/rerender`, { method: "POST", body: "{}" });
-  }, "수정 내용을 저장하고 영상을 다시 렌더링했습니다.");
+  /**
+   * 저장과 영상 제작은 별개의 단계다.
+   * 한꺼번에 실패로 뭉뚱그리면 "내가 고친 게 날아갔나?" 를 알 수 없다.
+   * 어느 단계에서 멈췄는지 문장으로 구분해 알린다.
+   */
+  const saveEdits = async () => {
+    setBusy("save"); setErr(null); setMsg(null);
+    try {
+      await api(`/api/reels/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ scenes, caption, hashtags: (hashtags ?? "").split(/\s+/).filter(Boolean) }),
+      });
+    } catch (e) {
+      setErr(`수정 내용을 저장하지 못했습니다. 다시 시도해 주세요. — ${e instanceof Error ? e.message : String(e)}`);
+      setBusy(null);
+      return;
+    }
+
+    setMsg("수정 내용을 저장했습니다. 이어서 영상을 만듭니다…");
+    try {
+      await api(`/api/reels/${id}/rerender`, { method: "POST", body: "{}" });
+      setMsg("수정 내용을 저장하고 영상을 만들었습니다. 아래 미리보기에서 확인해 주세요.");
+      setScenes(null); reload();
+    } catch (e) {
+      setErr(`수정 내용은 저장됐지만 영상 제작에 실패했습니다. — ${e instanceof Error ? e.message : String(e)}`);
+      setScenes(null); reload();
+    } finally { setBusy(null); }
+  };
 
   const move = (i: number, dir: -1 | 1) => {
     const next = [...scenes];
@@ -139,7 +160,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                   {reel.status === "발행완료" || reel.status === "예약"
                     ? "발행 기록은 있는데 영상 파일이 없습니다. 예전에 만들다 만 릴스일 수 있습니다."
                     : "대본은 있지만 영상이 아직 만들어지지 않았습니다."}
-                  <br />아래 [저장하고 영상 다시 만들기]를 누르면 지금 있는 대본·음성·이미지로 영상을 만듭니다.
+                  <br />아래 [저장하고 영상 제작하기]를 누르면 지금 있는 대본·음성·이미지로 영상을 만듭니다.
                 </p>
                 {lastPublishError && (
                   <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">
@@ -286,7 +307,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 </button>
               ))}
               <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
-                {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
+                {busy === "save" ? "저장하고 만드는 중…" : "💾 저장하고 영상 제작하기"}
               </button>
             </div>
           }>
