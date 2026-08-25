@@ -1,19 +1,31 @@
 import { handle, ok, fail } from "@/lib/api";
 import { db } from "@/lib/db";
 import { researchRestaurant } from "@/lib/pipeline/research";
-import { saveManualRestaurant, recheckReelsOfRestaurant, readRestaurant, toForm } from "@/lib/restaurants";
+import {
+  saveManualRestaurant, recheckReelsOfRestaurant, readRestaurant, toForm,
+  searchRestaurants, similarRestaurants,
+} from "@/lib/restaurants";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   return handle(() => {
+    const params = new URL(req.url).searchParams;
     // ?id= 를 주면 수정 폼 한 개만 돌려준다
-    const id = new URL(req.url).searchParams.get("id");
+    const id = params.get("id");
     if (id) {
       const info = readRestaurant(id);
       if (!info) return fail("맛집을 찾을 수 없습니다", 404);
-      return ok({ form: toForm(id, info) });
+      return ok({
+        form: toForm(id, info),
+        // 헷갈릴 만큼 이름이 비슷한 업체 — 화면에서 "혹시 이 가게인가요?" 로 쓴다
+        similar: similarRestaurants(info.name, id),
+      });
+    }
+    // ?q= 를 주면 [맛집 DB에서 불러오기] 용 목록을 돌려준다
+    if (params.has("q") || params.has("list")) {
+      return ok({ list: searchRestaurants(params.get("q") ?? "") });
     }
     return ok({
       restaurants: db().prepare("SELECT * FROM restaurants ORDER BY updated_at DESC LIMIT 200").all(),

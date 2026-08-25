@@ -16,6 +16,7 @@ import { renderReel } from "./render";
 import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
 import { saveScenes, updateReel, getReel } from "../reels";
+import { findByName } from "../restaurants";
 import { logError, logInfo } from "../log";
 import { isSampleMode } from "../secrets";
 import { redactError } from "../redact";
@@ -283,7 +284,10 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
 
 function saveRestaurant(info: RestaurantInfo): string {
   const d = db();
-  const existing = d.prepare("SELECT id FROM restaurants WHERE name=? AND area=?").get(info.name, info.area) as { id: string } | undefined;
+  /* 이름과 지역이 글자까지 같을 때만 같은 가게로 보던 탓에,
+     AI 조사가 "신림"/"관악구" 처럼 지역을 조금씩 다르게 돌려줄 때마다
+     같은 가게가 새로 쌓였다. 이제 이름만 다듬어 맞춰 본다. */
+  const existing = findByName(info.name);
   const id = existing?.id ?? newId("rest");
   const params = {
     id, name: info.name, area: info.area, address: info.address, phone: info.phone,

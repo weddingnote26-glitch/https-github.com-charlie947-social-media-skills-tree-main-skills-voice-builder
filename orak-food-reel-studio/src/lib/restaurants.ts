@@ -170,6 +170,100 @@ export function saveManualRestaurant(patch: ManualPatch): { id: string; form: Re
   return { id, form: toForm(id, saved), marked };
 }
 
+/* ── 같은 가게가 여러 번 등록되는 문제 ─────────────────────────
+   예전에는 이름과 지역이 "글자까지 똑같을 때만" 같은 가게로 봤다.
+   AI 조사가 매번 조금씩 다르게 돌려주니
+     신림동 막불감동 / 관악구
+     신림동 막불감동 / 신림
+     신림 막불감동   / 신림
+   이 전부 다른 가게로 쌓였다.
+
+   그래서 두 단계로 나눈다.
+   1) 이름만 다듬어서 똑같으면 같은 가게로 본다 (지역은 보지 않는다)
+   2) 한두 글자 차이면 자동으로 합치지 않고 화면에서 물어본다
+      — 진짜 다른 가게를 마음대로 합치면 안 된다 */
+
+/** 비교용으로 이름을 다듬는다 — 공백·기호를 없애고 소문자로 */
+export function normalizeName(name: string): string {
+  return (name ?? "").normalize("NFC").replace(/[\s·・.,'"“”‘’()\[\]-]+/g, "").toLowerCase();
+}
+
+/** 글자 하나를 넣고·빼고·바꿔 몇 번 만에 같아지는지 (Levenshtein) */
+export function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length || !b.length) return Math.max(a.length, b.length);
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        prev[j] + 1,
+        row[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/** 두 이름이 "같은 가게로 볼 만큼" 비슷한가 — 자동 합치기가 아니라 물어보기용 */
+export function looksSimilar(a: string, b: string): boolean {
+  const x = normalizeName(a), y = normalizeName(b);
+  if (!x || !y || x === y) return false;                 // 같은 건 여기서 다루지 않는다
+  if (Math.min(x.length, y.length) < 3) return false;    // 너무 짧으면 우연히 비슷해진다
+  const allow = x.length >= 8 || y.length >= 8 ? 2 : 1;
+  return editDistance(x, y) <= allow;
+}
+
+/** 이름이 다듬어서 같은 업체를 찾는다 (지역은 보지 않는다) */
+export function findByName(name: string): (RestaurantInfo & { id: string }) | null {
+  const key = normalizeName(name);
+  if (!key) return null;
+  const rows = db().prepare("SELECT id, name FROM restaurants").all() as Array<{ id: string; name: string }>;
+  const hit = rows.find((r) => normalizeName(r.name) === key);
+  return hit ? readRestaurant(hit.id) : null;
+}
+
+/** 헷갈릴 만큼 비슷한 이름의 업체들 — 화면에서 "혹시 이 가게인가요?" 로 쓴다 */
+export function similarRestaurants(name: string, excludeId?: string): Array<{ id: string; name: string; area: string }> {
+  const rows = db().prepare("SELECT id, name, area FROM restaurants").all() as Array<{ id: string; name: string; area: string }>;
+  return rows.filter((r) => r.id !== excludeId && looksSimilar(name, r.name));
+}
+
+export interface RestaurantBrief {
+  id: string; name: string; area: string; address: string; phone: string;
+  menuSummary: string; confirmed: number; total: number; updated_at: string;
+}
+
+/**
+ * 맛집 DB 목록 — 화면의 [맛집 DB에서 불러오기] 가 쓴다.
+ * 검색어는 업체명·주소·전화번호·지역에서 찾는다.
+ */
+export function searchRestaurants(q = "", limit = 50): RestaurantBrief[] {
+  const rows = db().prepare("SELECT * FROM restaurants ORDER BY updated_at DESC LIMIT 500").all() as RestaurantRow[];
+  const needle = normalizeName(q);
+  const out: RestaurantBrief[] = [];
+  for (const r of rows) {
+    if (needle) {
+      const hay = normalizeName([r.name, r.address, r.phone, r.area].filter(Boolean).join(" "));
+      if (!hay.includes(needle)) continue;
+    }
+    const menus = j<MenuItem[]>(r.menus_json, []);
+    const st = j<Record<string, string>>(r.field_status_json, {});
+    const values = Object.values(st);
+    out.push({
+      id: r.id, name: r.name, area: r.area ?? "", address: r.address ?? "", phone: r.phone ?? "",
+      menuSummary: menus.map((m) => `${m.name} ${m.price}`.trim()).join(", "),
+      confirmed: values.filter((v) => v === "확인" || v === "사용자 입력").length,
+      total: values.length || MANUAL_FIELDS.length,
+      updated_at: r.updated_at ?? "",
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export interface RecheckResult { reelId: string; blocked: boolean; reasons: string[]; confirmed: number; total: number }
 
 /**
