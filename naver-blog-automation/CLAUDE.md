@@ -231,12 +231,26 @@ python scripts/menu.py               # 번호 선택 메뉴
 | `G:\내 드라이브\ORAK-작업\` | 문서·보고서 | 구글 드라이브 |
 | `내 문서\블로그작업\` | **이 프로젝트** | 깃허브만 |
 
-**이 프로젝트를 클라우드 동기화 폴더 안에 두지 않습니다.**
-구글 드라이브·원드라이브는 `.git` 의 작은 파일 수천 개를 순서 없이 올려
-작업 기록을 깨뜨립니다.
+**이 프로젝트는 사용자 PC에 저장합니다. 클라우드 폴더에서는 실행을 멈춥니다.**
+(2026-08-26 사용자 지정 — 경고가 아니라 차단입니다)
 
-`common.cloud_folder_name()` / `warn_if_cloud_synced()` 가 검사하며
-`menu.py`, `받아오기.ps1`, `올리기.ps1`, `setup.ps1` 이 실행할 때 경고합니다.
+원드라이브·구글 드라이브·드롭박스·아이클라우드·네이버 마이박스는
+`.git` 의 작은 파일 수천 개를 순서 없이 올려 작업 기록을 깨뜨립니다.
+
+| 함수 | 하는 일 |
+|---|---|
+| `common.cloud_folder_name(path)` | 클라우드 폴더면 서비스 이름, 아니면 `None` |
+| `common.require_local_storage(path)` | 클라우드면 `CloudFolderError` 를 냅니다 |
+| `common.safe_location_hint()` | 어디에 두면 되는지 문자열 |
+
+경로 이름으로 찾고, 이름으로 안 잡히는 **'문서 폴더 이전'** 은
+`OneDrive` / `OneDriveConsumer` / `OneDriveCommercial` 환경변수로 잡습니다.
+
+`menu.py` 는 `main()` 맨 앞에서, `받아오기.ps1` · `올리기.ps1` · `setup.ps1` 은
+git 검사 앞에서 막습니다.
+
+빠져나갈 구멍은 `settings.yaml` 의 `storage.allow_cloud_folder: true` 하나뿐이며
+기본값은 `false` 입니다. **사용자가 직접 요청하지 않는 한 켜지 마세요.**
 사용자가 클라우드 폴더로 옮기려 하면 말리세요.
 
 ## 코드를 고칠 때

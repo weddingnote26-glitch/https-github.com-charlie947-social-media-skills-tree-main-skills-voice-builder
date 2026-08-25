@@ -44,7 +44,6 @@ def pause() -> None:
 
 def show_state() -> None:
     """맨 위에 지금 상황을 간단히 보여줍니다."""
-    c.warn_if_cloud_synced()
 
     try:
         weeks = sorted((p for p in c.OUTPUT_DIR.iterdir()
@@ -374,6 +373,17 @@ HANDLERS = {
 
 
 def main() -> None:
+    # 클라우드 동기화 폴더 안이면 여기서 멈춥니다.
+    try:
+        c.require_local_storage()
+    except c.CloudFolderError:
+        c.say("  Enter 를 누르면 창이 닫힙니다.")
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            pass
+        raise SystemExit(1)
+
     while True:
         c.say()
         c.say("=" * 60)

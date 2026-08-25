@@ -7,7 +7,7 @@ publish_date: '2026-08-24'
 publish_time: 07:30
 weekday: 월
 slot: 주간일정
-status: draft
+status: reviewed
 template: basic
 title_candidates:
 - '[주식완전기초]- 한 주가 시작될 때, 주식 초보가 확인할 세 가지 숫자'
@@ -40,7 +40,7 @@ images:
   position: 오늘의 3줄 정리 아래
   alt: 한 주를 시작할 때 확인할 세 가지를 정리한 그림
   kind: 정리이미지
-data_asof: '2026-08-24 11:17 KST'
+data_asof: 2026-08-24 11:17 KST
 sources_verified: true
 style_analyzed: true
 infographic:
@@ -48,9 +48,9 @@ infographic:
   slug: weekly_check
   title: 월요일 아침에 볼 숫자 셋
   points:
-    - 코스피와 코스닥 지수
-    - 달러 대비 원화 환율
-    - 지난주와 견주어 보기
+  - 코스피와 코스닥 지수
+  - 달러 대비 원화 환율
+  - 지난주와 견주어 보기
   footer: 숫자보다 방향을 보세요
 ---
 

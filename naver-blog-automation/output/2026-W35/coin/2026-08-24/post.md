@@ -7,7 +7,7 @@ publish_date: '2026-08-24'
 publish_time: 08:30
 weekday: 월
 slot: 주간시황
-status: draft
+status: reviewed
 template: market
 title_candidates:
 - '[친절한코인설명서] 8월 24일 월요일 모닝 시황'
@@ -32,7 +32,7 @@ hashtags:
 - 주간시황
 - 이더리움
 images: []
-data_asof: '2026-08-24 11:17 KST'
+data_asof: 2026-08-24 11:17 KST
 sources_verified: true
 style_analyzed: true
 infographic:
@@ -40,9 +40,9 @@ infographic:
   slug: monday_market
   title: 오른 뒤 첫 월요일에 볼 것
   points:
-    - 추격 매수는 잠시 멈추기
-    - 현금 비중을 먼저 확인
-    - 숨 고르기 구간은 관망
+  - 추격 매수는 잠시 멈추기
+  - 현금 비중을 먼저 확인
+  - 숨 고르기 구간은 관망
   footer: 확신이 가장 클 때가 가장 위험합니다
 ---
 

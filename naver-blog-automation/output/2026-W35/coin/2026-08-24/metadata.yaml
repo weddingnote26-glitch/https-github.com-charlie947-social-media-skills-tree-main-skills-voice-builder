@@ -34,17 +34,25 @@ hashtags:
 - 비트도미넌스
 - 주간시황
 - 이더리움
-status: draft
-history: []
+status: reviewed
+history:
+- status: fact_checked
+  at: 2026-08-26 07:44:04 KST
+  by: factcheck.py
+  note: 본문 수치가 모두 출처로 뒷받침됨
+- status: reviewed
+  at: 2026-08-26 07:44:04 KST
+  by: review.py
+  note: 자동 검수 통과 (확인 2건)
 sources:
   data_asof: 2026-08-24 11:17 KST
-  verified: false
+  verified: true
   count: 0
 review:
   passed: true
   blocking_issues: 0
   warnings: 2
-  checked_at: 2026-08-24 18:04:32 KST
+  checked_at: 2026-08-26 07:44:04 KST
 approval:
   approved: false
   approved_at: null

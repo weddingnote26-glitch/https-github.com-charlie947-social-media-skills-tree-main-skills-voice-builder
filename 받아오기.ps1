@@ -21,14 +21,16 @@ Write-Host '   깃허브에서 받아오기'
 Write-Host '════════════════════════════════════════════════════════════'
 Write-Host ''
 
-# ── 클라우드 동기화 폴더 안이면 경고 ─────────────────────────
-#  구글 드라이브·원드라이브는 .git 폴더의 작은 파일 수천 개를
-#  순서 없이 올립니다. 그러면 작업 기록이 깨집니다.
+# ── 클라우드 동기화 폴더에서는 실행하지 않습니다 ─────────────
+#  원드라이브·구글 드라이브는 .git 의 작은 파일 수천 개를
+#  순서 없이 올려 작업 기록을 깨뜨립니다.
+#  이 프로그램은 사용자 PC에 저장하고 깃허브로만 동기화합니다.
 $CloudMarkers = @{
-    'google drive' = '구글 드라이브'; 'googledrive' = '구글 드라이브'
-    '내 드라이브'   = '구글 드라이브'; 'my drive'    = '구글 드라이브'
-    'onedrive'     = '원드라이브';    'dropbox'     = '드롭박스'
-    'icloud'       = '아이클라우드';   'naver mybox' = '네이버 마이박스'
+    'onedrive'     = '원드라이브';    'google drive' = '구글 드라이브'
+    'googledrive'  = '구글 드라이브';  '내 드라이브'   = '구글 드라이브'
+    'my drive'     = '구글 드라이브';  'dropbox'      = '드롭박스'
+    'icloud'       = '아이클라우드';   'mybox'        = '네이버 마이박스'
+    'ncloud'       = '네이버 클라우드'
 }
 $CloudHit = $null
 foreach ($seg in ($Root -split '[\\/]')) {
@@ -37,24 +39,34 @@ foreach ($seg in ($Root -split '[\\/]')) {
     }
     if ($CloudHit) { break }
 }
+# 이름으로 안 잡히는 '문서 폴더 이전' 은 환경변수로 확인합니다.
+if (-not $CloudHit) {
+    foreach ($v in @('OneDrive','OneDriveConsumer','OneDriveCommercial')) {
+        $base = [Environment]::GetEnvironmentVariable($v)
+        if ($base -and $Root.ToLower().StartsWith($base.ToLower())) {
+            $CloudHit = '원드라이브'; break
+        }
+    }
+}
 if ($CloudHit) {
     Write-Host ''
-    Write-Host "  [경고] 이 폴더가 $CloudHit 안에 있습니다." -ForegroundColor Yellow
+    Write-Host "  [멈춤] 이 폴더가 $CloudHit 안에 있습니다." -ForegroundColor Red
     Write-Host "        위치: $Root"
     Write-Host ''
-    Write-Host '        이대로 두면 작업 기록(.git)이 깨질 수 있습니다.'
     Write-Host "        $CloudHit 는 작은 파일 수천 개를 순서 없이 올립니다."
-    Write-Host '        절반만 올라간 상태에서 다른 PC가 받으면 기록이 망가집니다.'
+    Write-Host '        절반만 올라간 상태에서 다른 PC가 받으면 기록이 깨집니다.'
+    Write-Host '        그래서 여기서는 실행하지 않습니다.'
     Write-Host ''
-    Write-Host '        이 프로젝트는 깃허브로만 동기화합니다.'
-    Write-Host "        폴더를 $CloudHit 밖으로 옮겨 주세요. (예: 내 문서\블로그작업)"
+    Write-Host '        이 프로그램은 사용자 PC에 저장하고 깃허브로만 동기화합니다.'
     Write-Host ''
+    Write-Host "        폴더를 $CloudHit 밖으로 옮겨 주세요. 예를 들면:" -ForegroundColor Cyan
+    Write-Host '            C:\작업\블로그작업' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host '        옮기는 방법은 회사PC_처음설치.md 에 있습니다.'
     Write-Host '        문서·보고서는 클라우드에 두셔도 괜찮습니다.'
-    Write-Host '        프로그램 폴더만 밖으로 옮기시면 됩니다.'
     Write-Host ''
-    $go = Read-Host '  그래도 계속하시겠습니까? (계속하려면 y, 멈추려면 Enter)'
-    if ($go -ne 'y') { exit 1 }
-    Write-Host ''
+    Read-Host '  Enter 를 누르면 창이 닫힙니다'
+    exit 1
 }
 
 $git = Get-Command git -ErrorAction SilentlyContinue

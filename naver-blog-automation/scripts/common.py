@@ -66,22 +66,43 @@ LOG_DIR = PROJECT_ROOT / "logs"
 
 
 # ──────────────────────────────────────────────────────────────
-# 1-1. 클라우드 동기화 폴더 안에 있으면 경고합니다.
+# 1-1. 클라우드 동기화 폴더에는 저장하지 않습니다. (2026-08-26 확정)
 #
-#  구글 드라이브·원드라이브·드롭박스는 .git 폴더의 작은 파일 수천 개를
+#  원드라이브·구글 드라이브·드롭박스는 .git 폴더의 작은 파일 수천 개를
 #  순서를 지키지 않고 올립니다. 절반만 올라간 상태에서 다른 PC가 받으면
-#  작업 기록이 깨집니다. 이 프로젝트는 깃허브로만 동기화합니다.
+#  작업 기록이 깨집니다.
+#
+#  이 프로젝트는 **사용자 PC에 저장하고 깃허브로만 동기화**합니다.
+#  클라우드 폴더 안에서는 경고가 아니라 **실행을 멈춥니다.**
 # ──────────────────────────────────────────────────────────────
 CLOUD_MARKERS: list[tuple[str, str]] = [
+    ("onedrive", "원드라이브"),
     ("google drive", "구글 드라이브"),
     ("googledrive", "구글 드라이브"),
     ("내 드라이브", "구글 드라이브"),
     ("my drive", "구글 드라이브"),
-    ("onedrive", "원드라이브"),
     ("dropbox", "드롭박스"),
     ("icloud", "아이클라우드"),
-    ("naver mybox", "네이버 마이박스"),
+    ("mybox", "네이버 마이박스"),          # '네이버 MYBOX', 'NAVER MYBOX' 모두 잡습니다
+    ("naver cloud", "네이버 클라우드"),
+    ("ncloud", "네이버 클라우드"),
 ]
+
+#  윈도우는 OneDrive 가 '문서' 폴더를 통째로 가져가는 경우가 있습니다.
+#  그때는 경로에 OneDrive 라는 글자가 없을 수도 있어, 환경변수로도 확인합니다.
+CLOUD_ENV_VARS: list[tuple[str, str]] = [
+    ("OneDrive", "원드라이브"),
+    ("OneDriveConsumer", "원드라이브"),
+    ("OneDriveCommercial", "원드라이브"),
+]
+
+
+def _is_inside(child: Path, parent: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
 
 
 def cloud_folder_name(path: Path | str | None = None) -> str | None:
@@ -91,37 +112,94 @@ def cloud_folder_name(path: Path | str | None = None) -> str | None:
     """
     target = Path(path) if path else PROJECT_ROOT
     try:
-        parts = [seg.lower() for seg in target.resolve().parts]
+        resolved = target.resolve()
     except OSError:
-        parts = [seg.lower() for seg in target.parts]
-    for seg in parts:
+        resolved = target
+
+    # ① 경로 이름으로 확인
+    for seg in (s.lower() for s in resolved.parts):
         for marker, korean in CLOUD_MARKERS:
             if marker in seg:
                 return korean
+
+    # ② 환경변수로 확인 (이름만으로는 안 잡히는 '문서 폴더 이전' 대응)
+    for var, korean in CLOUD_ENV_VARS:
+        root = os.environ.get(var)
+        if root and _is_inside(resolved, Path(root)):
+            return korean
     return None
 
 
-def warn_if_cloud_synced(path: Path | str | None = None) -> bool:
-    """클라우드 폴더 안이면 경고를 띄웁니다. 경고했으면 True."""
+def safe_location_hint() -> str:
+    """어디에 두면 되는지 알려 줍니다."""
+    if os.name == "nt":
+        drive = os.environ.get("SystemDrive", "C:")
+        return f"{drive}\\작업\\블로그작업"
+    return "~/작업/블로그작업"
+
+
+def cloud_block_message(name: str, target: Path) -> list[str]:
+    return [
+        f"이 폴더가 {name} 안에 있습니다.",
+        f"위치: {target}",
+        "",
+        f"{name}는 작은 파일 수천 개를 순서 없이 올립니다.",
+        "절반만 올라간 상태에서 다른 PC가 받으면 작업 기록이 깨집니다.",
+        "그래서 여기서는 실행하지 않습니다.",
+        "",
+        "이 프로그램은 사용자 PC에 저장하고 깃허브로만 동기화합니다.",
+        "",
+        f"폴더를 {name} 밖으로 옮겨 주세요. 예를 들면 이렇게:",
+        f"    {safe_location_hint()}",
+        "",
+        "옮기는 방법은 회사PC_처음설치.md 를 보세요.",
+        "문서·보고서는 클라우드에 두셔도 괜찮습니다. 이 폴더만 밖으로 옮기시면 됩니다.",
+    ]
+
+
+def cloud_override_allowed() -> bool:
+    """
+    설정에서 일부러 켠 경우에만 클라우드 폴더에서 동작합니다.
+    기본값은 꺼짐이며, 켜는 것을 권하지 않습니다.
+    """
+    try:
+        st = load_settings()
+    except Exception:
+        return False
+    return bool((st.get("storage") or {}).get("allow_cloud_folder", False))
+
+
+def require_local_storage(path: Path | str | None = None) -> None:
+    """
+    클라우드 동기화 폴더 안이면 실행을 멈춥니다.
+    설정에서 storage.allow_cloud_folder 를 켠 경우에만 경고만 하고 넘어갑니다.
+    """
     name = cloud_folder_name(path)
     if not name:
-        return False
+        return
     target = Path(path) if path else PROJECT_ROOT
+    lines = cloud_block_message(name, target)
+
+    if cloud_override_allowed():
+        say()
+        warn(lines[0] + "  (설정에서 허용해 두셨습니다)")
+        say(f"      {lines[1]}")
+        say("      작업 기록이 깨질 수 있습니다. 되도록 옮겨 주세요.")
+        say()
+        return
+
     say()
-    warn(f"이 폴더가 {name} 안에 있습니다.")
-    say(f"      위치: {target}")
+    error(lines[0])
+    for ln in lines[1:]:
+        say(f"      {ln}" if ln else "")
     say()
-    say("      이대로 두면 작업 기록(.git)이 깨질 수 있습니다.")
-    say(f"      {name}는 작은 파일 수천 개를 순서 없이 올립니다.")
-    say("      절반만 올라간 상태에서 다른 PC가 받으면 기록이 망가집니다.")
-    say()
-    say("      이 프로젝트는 깃허브로만 동기화합니다.")
-    say(f"      폴더를 {name} 밖으로 옮겨 주세요. (예: 내 문서\\블로그작업)")
-    say()
-    say("      문서·보고서는 클라우드에 두셔도 괜찮습니다.")
-    say("      프로그램 폴더만 밖으로 옮기시면 됩니다.")
-    say()
-    return True
+    raise CloudFolderError(f"{name} 안에서는 실행하지 않습니다: {target}")
+
+
+def warn_if_cloud_synced(path: Path | str | None = None) -> bool:
+    """예전 이름입니다. 이제는 멈추는 검사를 부릅니다."""
+    require_local_storage(path)
+    return False
 
 
 def rel(path: Path | str) -> str:
@@ -188,6 +266,10 @@ def write_yaml(path: Path | str, data: Any) -> Path:
 # ──────────────────────────────────────────────────────────────
 class ConfigError(RuntimeError):
     """설정 파일이 없거나 잘못됐을 때."""
+
+
+class CloudFolderError(RuntimeError):
+    """클라우드 동기화 폴더 안에서 실행하려 할 때."""
 
 
 def load_settings() -> dict:
