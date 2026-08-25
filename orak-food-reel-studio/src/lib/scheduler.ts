@@ -1,7 +1,7 @@
 import { db, j } from "./db";
 import { newId } from "./id";
 import { getSettings } from "./settings";
-import { getPublisher, friendlyInstagramError } from "./providers/instagram";
+import { getPublisher, friendlyInstagramError, igAuthStatus } from "./providers/instagram";
 import { getEnv } from "./env";
 import { updateReel, getReel, reelFactcheck } from "./reels";
 import { logError, logInfo, logWarn } from "./log";
@@ -60,7 +60,7 @@ export function autoSchedule(reelId: string): void {
 }
 
 /** 지금 발행 — 예약 없이 즉시 발행 잡 생성 */
-export function publishNow(reelId: string): { jobId: string } {
+export function publishNow(reelId: string, requestKey?: string): { jobId: string; reused: boolean } {
   /**
    * 영상이 없는 릴스를 발행하려 하면 여기서 막는다.
    *
@@ -70,6 +70,14 @@ export function publishNow(reelId: string): { jobId: string } {
    */
   const blocked = publishBlockReason(reelId);
   if (blocked) throw new Error(blocked);
+
+  /* 같은 요청 열쇠로 두 번 들어오면 (단추 연타·새로고침 재전송) 새 잡을 만들지 않는다.
+     이 검사는 "이미 발행 중" 보다 먼저 와야 한다. 같은 요청을 오류로 돌려주면
+     사용자는 실패한 줄 알고 다시 누른다 — 그게 진짜 중복 게시를 부른다. */
+  if (requestKey) {
+    const same = db().prepare("SELECT id FROM publishing_jobs WHERE request_key=? LIMIT 1").get(requestKey) as { id: string } | undefined;
+    if (same) return { jobId: same.id, reused: true };
+  }
 
   /* 같은 릴스를 두 번 발행하지 않는다.
      단추를 연달아 누르거나 예약과 즉시 발행이 겹치면 같은 영상이 두 번 올라간다.
@@ -84,9 +92,10 @@ export function publishNow(reelId: string): { jobId: string } {
   if (running) throw new Error(`이미 발행 중입니다 (${running.phase}). 잠시 기다려 주세요.`);
 
   const jobId = newId("pub");
-  db().prepare("INSERT INTO publishing_jobs (id, reel_id, phase) VALUES (?,?,'대기')").run(jobId, reelId);
+  db().prepare("INSERT INTO publishing_jobs (id, reel_id, phase, request_key) VALUES (?,?,'대기',?)")
+    .run(jobId, reelId, requestKey ?? null);
   updateReel(reelId, { status: "예약" });
-  return { jobId };
+  return { jobId, reused: false };
 }
 
 /** 매 분 호출되는 틱 — 예약 도래분을 발행 잡으로 전환하고, 발행 잡 상태기계를 진행 */
@@ -162,8 +171,15 @@ async function advancePublishJob(job: {
       // FINISHED 확인 후에만 publish (§32)
       const { mediaId } = await publisher.publish(job.container_id!);
       const permalink = await publisher.getPermalink(mediaId).catch(() => "");
-      db().prepare("INSERT INTO instagram_posts (id, reel_id, ig_media_id, permalink) VALUES (?,?,?,?)")
-        .run(newId("igp"), job.reel_id, mediaId, permalink);
+      /* 나중에 "이거 언제 어느 계정으로 올렸더라" 를 찾을 수 있게 남긴다.
+         토큰은 절대 남기지 않는다 — 계정 ID 는 비밀이 아니다. */
+      const who = igAuthStatus();
+      const reelRow = getReel(job.reel_id);
+      db().prepare(
+        `INSERT INTO instagram_posts (id, reel_id, ig_media_id, permalink, restaurant_id, account, status, attempts)
+         VALUES (?,?,?,?,?,?,'발행완료',?)`
+      ).run(newId("igp"), job.reel_id, mediaId, permalink,
+        reelRow?.restaurant_id ?? null, who.userId || null, (job.attempts ?? 0) + 1);
       jobUpdate(job.id, { phase: "완료" });
       if (job.schedule_id) db().prepare("UPDATE schedules SET status='발행완료' WHERE id=?").run(job.schedule_id);
       updateReel(job.reel_id, { status: "발행완료" });

@@ -3,6 +3,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
 import RestaurantForm, { FieldStatusBadge, type FormValue } from "@/components/RestaurantForm";
+import PublishDialog from "@/components/PublishDialog";
 import type { Scene, ReelScript, FactCheckItem, Verdict } from "@/lib/schema";
 
 interface ReelDetail {
@@ -29,6 +30,8 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  /** §7 실제 게시 전 최종 확인창 */
+  const [confirmPublish, setConfirmPublish] = useState(false);
 
   useEffect(() => {
     if (data && scenes === null) {
@@ -180,8 +183,9 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 onClick={() => run("schedule", () => api(`/api/reels/${id}/schedule`, { method: "POST", body: "{}" }), "다음 발행 슬롯에 예약했습니다.")}>
                 📅 예약 발행 {busy === "schedule" && "…"}
               </button>
-              <button className="btn-secondary" disabled={!!busy || !reel.video_path || quality.fact_blocked}
-                onClick={() => run("publish", () => api(`/api/reels/${id}/publish`, { method: "POST", body: "{}" }), "발행을 시작했습니다. 아래 발행 상태에서 진행을 확인하세요.")}>
+              {/* 누르는 즉시 올리지 않는다 — 최종 확인창을 먼저 띄운다 (§7) */}
+              <button className="btn-secondary" disabled={!!busy || !reel.video_path}
+                onClick={() => setConfirmPublish(true)}>
                 🚀 지금 발행
               </button>
               <button className="btn-secondary" disabled={!!busy}
@@ -381,6 +385,19 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
           </Card>
         </div>
       </div>
+
+      {confirmPublish && (
+        <PublishDialog
+          reelId={id}
+          videoPath={reel.video_path}
+          onClose={() => setConfirmPublish(false)}
+          onPublished={() => {
+            setConfirmPublish(false);
+            setMsg("발행을 시작했습니다. 아래 발행 상태에서 진행을 확인하세요.");
+            reload();
+          }}
+        />
+      )}
 
       {/* §6 자동 수집이 막힌 정보를 사람이 적어 넣는 곳 — 칸이 12개라 폭을 다 쓴다 */}
       <div id="업체정보" className="scroll-mt-4">

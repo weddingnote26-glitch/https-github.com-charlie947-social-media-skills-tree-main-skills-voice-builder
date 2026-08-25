@@ -199,6 +199,14 @@ function migrate(d: SqliteDatabase): void {
      예전 자료를 그대로 두고 칸만 늘리려면 이 방법이 필요하다.
      이미 있으면 조용히 넘어간다 — 사용자 자료는 절대 지우지 않는다. */
   addColumn(d, "reels", "review_json", "TEXT NOT NULL DEFAULT '{}'");
+  // §6 같은 요청을 두 번 보내도 한 번만 올라가게 하는 열쇠
+  addColumn(d, "publishing_jobs", "request_key", "TEXT");
+  // §6 게시 결과를 사람이 다시 찾아볼 수 있게 남긴다
+  addColumn(d, "instagram_posts", "restaurant_id", "TEXT");
+  addColumn(d, "instagram_posts", "account", "TEXT");
+  addColumn(d, "instagram_posts", "status", "TEXT NOT NULL DEFAULT '발행완료'");
+  addColumn(d, "instagram_posts", "last_error", "TEXT");
+  addColumn(d, "instagram_posts", "attempts", "INTEGER NOT NULL DEFAULT 1");
 }
 
 /** 표에 칸이 없으면 더한다. 있으면 아무 것도 하지 않는다. */
