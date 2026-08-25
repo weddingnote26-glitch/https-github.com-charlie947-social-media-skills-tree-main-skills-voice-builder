@@ -42,13 +42,18 @@ const DEFAULT_REFERENCES = ["character_sheet.png", "front.png", "face_detective.
 export function resolvedReferencePaths(): string[] {
   const lock = getSettings().characterLock;
   if (!lock.enabled) return [];
-  const chosen = lock.referenceImages.length ? lock.referenceImages : DEFAULT_REFERENCES;
-  return chosen
-    // 하위 폴더에 넣은 이미지도 쓸 수 있게 상대 경로를 그대로 푼다.
-    // resolveRef 는 assets/character 밖으로 나가는 값을 거부한다.
+  // 하위 폴더에 넣은 이미지도 쓸 수 있게 상대 경로를 그대로 푼다.
+  // resolveRef 는 assets/character 밖으로 나가는 값을 거부한다.
+  const resolve = (names: string[]) => names
     .map((f) => resolveRef(f))
     .filter((p): p is string => !!p && fs.existsSync(p))
     .slice(0, 3);
+
+  const picked = resolve(lock.referenceImages);
+  if (picked.length) return picked;
+  // 고른 이미지가 전부 사라졌더라도(밖에서 지웠거나 폴더를 옮겼거나) 기본 Master Reference 로
+  // 되돌아간다. 기준 없이 그리면 오락이 얼굴이 장면마다 달라진다 (§14).
+  return resolve(DEFAULT_REFERENCES);
 }
 
 /** §7 대표 말투 — 매번 그대로 반복하지 말고 변형해서 사용 */
@@ -88,12 +93,12 @@ export const SCENE_ROLE_MAP: Array<{
 }> = [
   { role: "사건 발생", action: "골목 살펴보기", expression: "Suspicious", presence: "side" },
   { role: "현장 출동", action: "걷기", expression: "Curious", presence: "hero" },
-  { role: "첫 번째 단서", action: "돋보기로 음식 관찰", expression: "Curious", presence: "corner" },
-  { role: "가격 조사", action: "메뉴판 확인", expression: "Surprised", presence: "side" },
-  { role: "결정적 증거", action: "손가락으로 음식 가리키기", expression: "Excited", presence: "none" },
+  { role: "첫 번째 단서", action: null, expression: null, presence: "none" },
+  { role: "가격 조사", action: null, expression: null, presence: "none" },
+  { role: "결정적 증거", action: null, expression: null, presence: "none" },
   { role: "직접 검증", action: "한입 먹기", expression: "Shocked", presence: "side" },
-  { role: "탐정 판정", action: "수첩에 기록하기", expression: "Serious Detective", presence: "side" },
-  { role: "사건 해결", action: "사건 해결 포즈", expression: "Satisfied", presence: "corner" },
+  { role: "탐정 판정", action: null, expression: null, presence: "none" },
+  { role: "사건 해결", action: null, expression: null, presence: "none" },
   { role: "다음 사건 예고", action: "카메라 쪽으로 설명하기", expression: "Happy", presence: "hero" },
 ];
 

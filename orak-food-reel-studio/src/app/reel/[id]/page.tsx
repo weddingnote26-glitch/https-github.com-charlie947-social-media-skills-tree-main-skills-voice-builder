@@ -1,7 +1,8 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi } from "@/components/ui";
+import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
+import RestaurantForm, { FieldStatusBadge, type FormValue } from "@/components/RestaurantForm";
 import type { Scene, ReelScript, FactCheckItem, Verdict } from "@/lib/schema";
 
 interface ReelDetail {
@@ -9,12 +10,13 @@ interface ReelDetail {
     id: string; title: string; status: string; content_mode: string; content_type: string;
     case_number: number | null; caption: string; hashtags_json: string; quality_json: string;
     factcheck_json: string; video_path: string | null; thumb_path: string | null;
-    duration_sec: number | null; planned_date: string | null;
+    duration_sec: number | null; planned_date: string | null; output_dir: string | null;
     script: ReelScript | null; scenes: Scene[]; verdict_json: string;
   };
+  restaurant: FormValue | null;
   schedules: Array<{ id: string; publish_at: string; status: string }>;
   posts: Array<{ ig_media_id: string; permalink: string | null; published_at: string }>;
-  publishingJobs: Array<{ id: string; phase: string; attempts: number; last_error: string | null }>;
+  publishingJobs: Array<{ id: string; phase: string; attempts: number; last_error: string | null; updated_at?: string | null }>;
 }
 
 export default function ReelPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +38,22 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
     }
   }, [data, scenes]);
 
+  /** 클립보드에 담고 결과를 알린다 (복사는 한 번만 시도한다) */
+  const copyAnd = async (what: string, text: string | null) => {
+    setErr(null);
+    if (!text) { setErr(`${what} 칸이 비어 있습니다.`); return; }
+    if (await copyText(text)) setMsg(`${what} 복사 완료 — Instagram 에 붙여넣으세요.`);
+    else setErr(`${what} 복사에 실패했습니다 — 아래 칸에서 직접 선택해 복사해 주세요.`);
+  };
+
+  /** 완성 영상 폴더 열기 (설치형 앱에서만) */
+  const openFolder = async () => {
+    setErr(null);
+    const folder = (data?.reel.output_dir ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    const r = await openOutputFolder(folder);
+    if (!r.ok) setErr(r.reason ?? "폴더를 열지 못했습니다.");
+  };
+
   if (error) return <ErrorBox msg={error} />;
   if (!data || !scenes) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
   const { reel } = data;
@@ -48,6 +66,8 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   const facts = JSON.parse(reel.factcheck_json || "[]") as FactCheckItem[];
   const verdict = JSON.parse(reel.verdict_json || "{}") as Partial<Verdict>;
   const videoUrl = mediaUrl(reel.video_path);
+  // 영상이 없을 때 "왜 없는지" 를 함께 보여주기 위해 마지막 발행 오류를 찾아 둔다
+  const lastPublishError = data.publishingJobs.find((jb) => jb.phase === "실패")?.last_error ?? null;
 
   const run = async (label: string, fn: () => Promise<unknown>, doneMsg: string) => {
     setBusy(label); setErr(null); setMsg(null);
@@ -102,14 +122,31 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
         </div>
       )}
 
-      <div className="grid grid-cols-[420px_1fr] gap-6">
+      {/* 왼쪽을 420px 로 못 박아 두니 화면이 좁을 때 오른쪽 장면 편집 칸이
+          350px 까지 눌려 글자·알약이 죄다 쪼개졌다.
+          · 넓을 때만 두 칸으로 나누고
+          · minmax(0,…) 로 두 칸 모두 줄어들 수 있게 한다 (1fr 만 쓰면 안 줄어든다) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-6">
         {/* 미리보기 */}
         <div className="space-y-4">
           <Card title="🎞 미리보기">
             {videoUrl ? (
               <video key={videoUrl + (reel.duration_sec ?? 0)} src={videoUrl} controls playsInline className="w-full rounded-xl bg-black aspect-9/16" />
             ) : (
-              <div className="aspect-9/16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600">영상이 아직 없습니다</div>
+              <div className="aspect-9/16 rounded-xl bg-gray-100 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <div className="text-lg font-extrabold text-gray-800">영상이 아직 없습니다</div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {reel.status === "발행완료" || reel.status === "예약"
+                    ? "발행 기록은 있는데 영상 파일이 없습니다. 예전에 만들다 만 릴스일 수 있습니다."
+                    : "대본은 있지만 영상이 아직 만들어지지 않았습니다."}
+                  <br />아래 [저장하고 영상 다시 만들기]를 누르면 지금 있는 대본·음성·이미지로 영상을 만듭니다.
+                </p>
+                {lastPublishError && (
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">
+                    마지막 오류: {lastPublishError}
+                  </p>
+                )}
+              </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
               <button className="btn-primary col-span-full" disabled={!!busy || !reel.video_path || quality.fact_blocked}
@@ -143,12 +180,41 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             {data.publishingJobs.filter((jb) => jb.phase === "실패").slice(0, 1).map((jb) => (
               <div key={jb.id} className="mt-3">
                 <ErrorBox msg={`발행 실패: ${jb.last_error ?? "알 수 없는 오류"}`} />
+                {jb.updated_at && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    {jb.updated_at.slice(0, 16).replace("T", " ")} 에 난 오류입니다 — 지금 상태가 아닐 수 있습니다.
+                  </p>
+                )}
                 <button className="btn-danger mt-2 w-full" disabled={!!busy}
                   onClick={() => run("retry", () => api(`/api/reels/${id}/retry`, { method: "POST", body: "{}" }), "재발행을 시작했습니다.")}>
                   ♻️ 재발행 시도
                 </button>
               </div>
             ))}
+          </Card>
+
+          {/* Instagram 자동 발행은 영상 공개 주소가 있어야 한다.
+              그 전까지는 휴대폰으로 옮겨 직접 올리는 편이 빠르다 — 그 길을 막지 않는다. */}
+          <Card title="📱 휴대폰으로 직접 올리기">
+            <ol className="text-sm text-gray-700 space-y-1 mb-3 list-decimal pl-5">
+              <li>아래에서 영상 폴더를 열고 <b>reel.mp4</b> 를 휴대폰으로 옮깁니다</li>
+              <li>Instagram 앱에서 릴스로 올립니다</li>
+              <li>본문과 해시태그는 아래 단추로 복사해 붙여넣습니다</li>
+            </ol>
+            <div className="flex flex-wrap items-center gap-3">
+              {canOpenFolder() && (
+                <button className="btn-primary" onClick={openFolder}>📁 영상 폴더 열기</button>
+              )}
+              <button className="btn-secondary" disabled={!caption}
+                onClick={() => copyAnd("본문", caption)}>📋 본문 복사</button>
+              <button className="btn-secondary" disabled={!hashtags}
+                onClick={() => copyAnd("해시태그", hashtags)}>📋 해시태그 복사</button>
+            </div>
+            {reel.output_dir && (
+              <p className="text-xs text-gray-600 mt-3 break-all">
+                저장 위치: <code className="bg-gray-100 px-1 rounded">{reel.output_dir}</code>
+              </p>
+            )}
           </Card>
 
           {quality.total !== undefined && (
@@ -190,33 +256,55 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 <div key={f.field} className="flex justify-between gap-2">
                   <span className="text-gray-600 font-semibold shrink-0">{f.field}</span>
                   <span className="truncate text-right">{f.value}</span>
-                  <span className={`badge shrink-0 ${f.status === "확인" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
-                    {f.status === "확인" ? "확인" : "⚠ 확인 필요"}
-                  </span>
+                  <FieldStatusBadge status={f.status} />
                 </div>
               ))}
             </div>
+            {facts.some((f) => f.status === "미확인") && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-600 mb-2">
+                  ⚠ 확인 필요 항목은 직접 적어 넣으면 확인된 정보로 바뀝니다.
+                </p>
+                <button className="btn-secondary w-full" onClick={() => {
+                  document.getElementById("업체정보")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}>✏️ 업체 정보 직접 입력하기</button>
+              </div>
+            )}
           </Card>
         </div>
 
         {/* 편집 (§46) */}
         <div className="space-y-4">
           <Card title="🎬 장면 편집" right={
-            <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
-              {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-bold text-gray-700">🖼 이미지 다시:</span>
+              {([["character", "오락이만"], ["food", "음식만"], ["background", "배경만"], ["all", "전체"]] as const).map(([scope, label]) => (
+                <button key={scope} className="btn-secondary" disabled={!!busy}
+                  title={scope === "all" ? "무료 사용량을 가장 많이 씁니다 — 필요한 것만 다시 만드는 편이 좋습니다" : `${label} 장면의 그림만 다시 만듭니다 (대본·음성은 그대로)`}
+                  onClick={() => run(`img-${scope}`, () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ what: "image", scope }) }), `${label} 이미지를 다시 만들었습니다. 저장하면 영상에 반영됩니다.`)}>
+                  {busy === `img-${scope}` ? "생성 중…" : label}
+                </button>
+              ))}
+              <button className="btn-primary" disabled={!!busy} onClick={saveEdits}>
+                {busy === "save" ? "저장·재렌더링 중…" : "💾 저장하고 영상 다시 만들기"}
+              </button>
+            </div>
           }>
             <div className="space-y-3">
               {scenes.map((s, i) => (
                 <div key={s.scene + "-" + i} className="rounded-xl border border-gray-200 p-3">
-                  <div className="flex items-center gap-2 mb-2">
+                  {/* 좁아지면 눌러 찌그러뜨리지 말고 줄을 넘긴다.
+                      장면 이동·삭제 단추는 항상 오른쪽 끝에 같은 크기로 붙어 있어야 한다. */}
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="badge bg-gray-800 text-white">SCENE {i + 1}</span>
-                    <span className="text-xs text-gray-600">{s.start}s ~ {s.end}s</span>
-                    {s.character_action && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">🥟 {s.character_action}</span>}
-                    <div className="ml-auto flex gap-1">
-                      <button className="btn-ghost" onClick={() => move(i, -1)} title="위로">↑</button>
-                      <button className="btn-ghost" onClick={() => move(i, 1)} title="아래로">↓</button>
-                      <button className="btn-ghost text-red-500" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제">🗑</button>
+                    <span className="text-xs text-gray-600 tabular-nums whitespace-nowrap shrink-0">{s.start}s ~ {s.end}s</span>
+                    {s.character_action && (
+                      <span className="badge badge-wrap max-w-full bg-[#FDEDE5] text-[#B84A1B]">🥟 {s.character_action}</span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1 shrink-0">
+                      <button className="btn-icon" onClick={() => move(i, -1)} title="위로" aria-label={`SCENE ${i + 1} 위로 옮기기`}>↑</button>
+                      <button className="btn-icon" onClick={() => move(i, 1)} title="아래로" aria-label={`SCENE ${i + 1} 아래로 옮기기`}>↓</button>
+                      <button className="btn-icon text-red-600 hover:bg-red-50" onClick={() => setScenes(scenes.filter((_, x) => x !== i))} title="장면 삭제" aria-label={`SCENE ${i + 1} 삭제`}>🗑</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-[96px_1fr] gap-3">
@@ -265,6 +353,13 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
             <textarea className="input" rows={2} value={hashtags ?? ""} onChange={(e) => setHashtags(e.target.value)} />
           </Card>
         </div>
+      </div>
+
+      {/* §6 자동 수집이 막힌 정보를 사람이 적어 넣는 곳 — 칸이 12개라 폭을 다 쓴다 */}
+      <div id="업체정보" className="scroll-mt-4">
+        {/* 장면(scenes)은 건드리지 않는다 — null 로 되돌리면 화면 전체가 "불러오는 중…" 으로
+            돌아가면서 방금 저장했다는 안내와 스크롤 위치가 사라진다 */}
+        <RestaurantForm value={data.restaurant} onSaved={() => reload()} />
       </div>
     </div>
   );

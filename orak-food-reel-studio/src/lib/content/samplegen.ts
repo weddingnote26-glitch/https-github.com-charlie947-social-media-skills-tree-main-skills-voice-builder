@@ -167,7 +167,8 @@ export function buildSampleScript(ctx: ScriptGenContext): ReelScript {
 
 function toSubtitle(narr: string): string {
   // 한 줄 8~15자, 최대 2줄
-  const clean = narr.replace(/\s+/g, " ").trim();
+  // 값이 비어 있어도 제작을 멈추지 않는다 — 자막 한 줄 때문에 릴스 전체를 버릴 이유가 없다
+  const clean = String(narr ?? "").replace(/\s+/g, " ").trim();
   if (clean.length <= 15) return clean;
   const words = clean.split(" ");
   let line1 = "";
@@ -186,34 +187,40 @@ function foodOnlyPrompt(desc: string, area: string): string {
 }
 
 function factSourceFor(role: string, info: RestaurantInfo): string {
-  if (/가격|가성비/.test(role)) return info.field_status["menus"] === "확인" ? info.source_url || "입력 정보" : "미확인";
-  if (/위치|해결|장소/.test(role)) return info.field_status["address"] === "확인" ? info.source_url || "입력 정보" : "미확인";
-  return info.source_url || "입력 정보";
+  // 조사 결과에 확인 여부가 아예 없을 수도 있다 — 그럴 땐 "미확인" 으로 본다.
+  // 확인되지 않은 값을 사실처럼 넣지 않는 것이 원칙이므로, 모르면 미확인이 맞다.
+  const status = info?.field_status ?? {};
+  const source = info?.source_url || "입력 정보";
+  if (/가격|가성비/.test(role)) return status["menus"] === "확인" ? source : "미확인";
+  if (/위치|해결|장소/.test(role)) return status["address"] === "확인" ? source : "미확인";
+  return source;
 }
 
 export function buildSampleCaption(info: RestaurantInfo, contentType: string): string {
-  const menu = info.menus[0]?.name || "대표 메뉴";
-  const price = info.menus[0]?.verified && info.menus[0]?.price ? `가격은 ${info.menus[0].price} 정도입니다.` : "";
+  const type = String(contentType ?? "").trim() || "동네";
+  const area = String(info?.area ?? "").trim() || "신림";
+  const menu = info.menus?.[0]?.name || "대표 메뉴";
+  const price = info.menus?.[0]?.verified && info.menus[0]?.price ? `가격은 ${info.menus[0].price} 정도입니다.` : "";
   return [
-    `${info.area}에서 한 끼 든든하게 먹기 좋은 곳입니다.`,
+    `${area}에서 한 끼 든든하게 먹기 좋은 곳입니다.`,
     ``,
     `대표 메뉴는 ${menu}입니다. ${price}`.trim(),
-    `양도 괜찮고, 근처에서 ${contentType.replace(" 맛집", "")} 식사할 곳 찾는 분이라면 한 번 참고해보셔도 좋겠습니다.`,
+    `양도 괜찮고, 근처에서 ${type.replace(" 맛집", "")} 식사할 곳 찾는 분이라면 한 번 참고해보셔도 좋겠습니다.`,
     ``,
     `📍${info.name}`,
-    info.address ? `📍${info.address}` : `📍서울 ${info.area}`,
+    info.address ? `📍${info.address}` : `📍서울 ${area}`,
     ``,
     `다음에 갈 곳으로 저장해두세요 :)`,
   ].join("\n");
 }
 
 export function buildHashtags(info: RestaurantInfo): string[] {
-  const area = info.area.replace(/\s/g, "");
+  const area = (String(info?.area ?? "").trim() || "신림").replace(/\s/g, "");
   const tags = new Set<string>([
     `#${area}맛집`, "#관악구맛집", "#서울맛집", "#오락푸드",
   ]);
   if (area.includes("신림")) tags.add("#신림동맛집");
-  if (info.menus[0]?.name) tags.add(`#${info.menus[0].name.replace(/\s/g, "")}`);
+  if (info.menus?.[0]?.name) tags.add(`#${info.menus[0].name.replace(/\s/g, "")}`);
   tags.add("#만두탐정오락이");
   return [...tags].slice(0, 12);
 }

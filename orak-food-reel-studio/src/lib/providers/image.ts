@@ -9,6 +9,8 @@ import { runFFmpeg } from "../ffmpeg";
 import { logWarn } from "../log";
 import { pickImageModel } from "./image-model";
 import { DIRS } from "../paths";
+import { CloudflareImage, resolveCloudflareAuth, isCloudflareQuota } from "./cloudflare-image";
+import { friendlyCloudflareError } from "./cloudflare-errors";
 
 export { pickImageModel, modelOwner, clearStaleImageModel } from "./image-model";
 
@@ -218,11 +220,19 @@ export function getPlaceholderImageProvider(): ImageProvider {
 
 /** 할당량 초과처럼 "더 시도해도 소용없는" 오류인지 */
 export function isQuotaError(e: unknown): boolean {
+  // Cloudflare 는 429 가 곧 "오늘 무료 사용량 끝" 이다 — 문구를 볼 필요가 없다
+  if (isCloudflareQuota(e)) return true;
   const msg = e instanceof Error ? e.message : String(e);
   return /429/.test(msg) && /quota|billing|exceeded|한도/i.test(msg);
 }
 
 export function friendlyImageError(e: unknown): string {
+  // 오류가 없는데 불릴 수 있다(고른 공급자가 처음부터 Sample 인 경우).
+  // 그대로 String(undefined) 하면 화면에 "undefined" 라고 찍힌다 — 실제로 그랬다.
+  if (e === undefined || e === null || e === "") {
+    return "이미지 공급자가 Sample 로 되어 있어 임시 이미지를 넣었습니다. 설정 → 이미지 생성에서 공급자와 키를 확인해 주세요.";
+  }
+  if (e instanceof ApiError && e.service === "cloudflare-image") return friendlyCloudflareError(e);
   const msg = e instanceof Error ? e.message : String(e);
   if (isQuotaError(msg ? new Error(msg) : e)) {
     // 어디서 무엇을 확인해야 하는지까지 알려준다 — "한도 초과"만으로는 다음 행동이 안 보인다
@@ -232,6 +242,9 @@ export function friendlyImageError(e: unknown): string {
     }
     if (provider === "gemini") {
       return "Gemini 이미지 사용 한도를 초과했습니다. aistudio.google.com → Billing 에서 해당 프로젝트를 유료 등급으로 전환하세요.";
+    }
+    if (provider === "cloudflare") {
+      return "Cloudflare 무료 사용량을 오늘치 다 썼습니다. 내일 다시 채워집니다 — 대체 공급자가 켜져 있으면 자동으로 넘어갑니다.";
     }
     return "이미지 API 사용 한도를 초과했습니다. 결제 설정을 확인하거나 잠시 후 다시 시도하세요.";
   }
@@ -246,7 +259,28 @@ export function friendlyImageError(e: unknown): string {
 export function getImageProvider(): ImageProvider {
   const env = getEnv();
   const provider = getSettings().imageProvider || env.IMAGE_PROVIDER;
-  if (isSampleMode() || provider === "sample" || !resolveSecret("IMAGE_API_KEY")) return new SampleImage();
+  if (isSampleMode() || provider === "sample") return new SampleImage();
+  // Cloudflare 는 IMAGE_API_KEY 가 아니라 계정 ID + 토큰을 쓴다
+  if (provider === "cloudflare") {
+    const auth = resolveCloudflareAuth();
+    return auth.accountId && auth.token ? new CloudflareImage() : new SampleImage();
+  }
+  if (!resolveSecret("IMAGE_API_KEY")) return new SampleImage();
   if (provider === "gemini") return new GeminiImage();
   return new OpenAIImage();
+}
+
+/**
+ * §43 대체 순서 — 지금 고른 공급자가 실패했을 때 시도할 다음 공급자들.
+ * 설정이 되어 있는 것만 순서대로 (Cloudflare → Gemini → OpenAI → Sample).
+ */
+export function fallbackProviders(current: string): ImageProvider[] {
+  const out: ImageProvider[] = [];
+  const cf = resolveCloudflareAuth();
+  const key = resolveSecret("IMAGE_API_KEY");
+  if (current !== "cloudflare" && cf.accountId && cf.token) out.push(new CloudflareImage());
+  if (current !== "gemini" && key.startsWith("AIza")) out.push(new GeminiImage());
+  if (current !== "openai" && key.startsWith("sk-")) out.push(new OpenAIImage());
+  out.push(new SampleImage());
+  return out;
 }

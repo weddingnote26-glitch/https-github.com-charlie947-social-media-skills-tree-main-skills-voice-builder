@@ -39,10 +39,26 @@ describe("§32 발행 상태기계 (샘플 퍼블리셔)", () => {
     ).run("reel_pub2", "차단 테스트", "검수", "/tmp/reel.mp4", "본문", "[]", "{}",
       JSON.stringify([{ field: "가격", value: "?", status: "미확인", source: "" }]),
       JSON.stringify({ fact_blocked: true, fact_block_reasons: ["가격 미확인"] }));
-    publishNow("reel_pub2");
+    // 잡을 만든 뒤 실패시키지 말고, 누른 그 자리에서 막는다 (§33)
+    expect(() => publishNow("reel_pub2")).toThrow(/팩트체크/);
     await tick();
-    const job = db().prepare("SELECT phase, last_error FROM publishing_jobs WHERE reel_id='reel_pub2'").get() as { phase: string; last_error: string };
-    expect(job.phase).toBe("실패");
-    expect(job.last_error).toContain("팩트체크");
+    const job = db().prepare("SELECT COUNT(*) AS c FROM publishing_jobs WHERE reel_id='reel_pub2'").get() as { c: number };
+    expect(job.c, "막혔으면 발행 잡 자체가 생기지 않아야 한다").toBe(0);
+  });
+
+  it("영상이 없으면 [지금 발행] 이 막힌다", async () => {
+    // 실제로 겪은 일: 영상이 없는데도 발행 잡이 만들어져 "발행완료 인데 영상 없음" 이 됐다
+    db().prepare(
+      "INSERT INTO reels (id, title, status, video_path, caption, hashtags_json, script_json, factcheck_json, quality_json) VALUES (?,?,?,?,?,?,?,?,?)"
+    ).run("reel_pub3", "영상 없음", "검수", null, "본문", "[]", "{}",
+      JSON.stringify([{ field: "매장명", value: "x", status: "확인", source: "" }]),
+      JSON.stringify({ fact_blocked: false }));
+
+    expect(() => publishNow("reel_pub3")).toThrow(/영상이 없어서/);
+    await tick();
+    const job = db().prepare("SELECT COUNT(*) AS c FROM publishing_jobs WHERE reel_id='reel_pub3'").get() as { c: number };
+    expect(job.c).toBe(0);
+    const reel = db().prepare("SELECT status FROM reels WHERE id='reel_pub3'").get() as { status: string };
+    expect(reel.status, "막혔으면 예약으로 바뀌지도 않아야 한다").toBe("검수");
   });
 });

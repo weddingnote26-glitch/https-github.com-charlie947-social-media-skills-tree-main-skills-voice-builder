@@ -63,6 +63,23 @@ export function autoSchedule(reelId: string): void {
 
 /** 지금 발행 — 예약 없이 즉시 발행 잡 생성 */
 export function publishNow(reelId: string): { jobId: string } {
+  /**
+   * 영상이 없는 릴스를 발행하려 하면 여기서 막는다.
+   *
+   * 예약(scheduleReel)에는 이 검사가 있었는데 [지금 발행]에는 없었다. 그래서
+   * 영상이 안 만들어진 릴스도 발행 잡으로 넘어갔고, 샘플 발행기가 성공 처리해
+   * "발행완료 인데 영상이 없는" 상태가 만들어졌다 — 실제로 그 화면을 받았다.
+   */
+  const reel = getReel(reelId);
+  if (!reel) throw new Error("릴스를 찾을 수 없습니다");
+  if (!reel.video_path) {
+    throw new Error("아직 영상이 없어서 발행할 수 없습니다. 먼저 [저장하고 영상 다시 만들기]로 영상을 만들어 주세요.");
+  }
+  // §33 팩트체크 차단 콘텐츠는 예약과 마찬가지로 발행하지 않는다
+  const q = j<{ fact_blocked?: boolean; fact_block_reasons?: string[] }>(reel.quality_json, {});
+  if (q.fact_blocked) {
+    throw new Error("팩트체크에서 막힌 내용이 있어 발행할 수 없습니다: " + (q.fact_block_reasons ?? []).join(" / "));
+  }
   const jobId = newId("pub");
   db().prepare("INSERT INTO publishing_jobs (id, reel_id, phase) VALUES (?,?,'대기')").run(jobId, reelId);
   updateReel(reelId, { status: "예약" });
@@ -124,8 +141,8 @@ async function advancePublishJob(job: {
 
   if (job.phase === "대기") {
     // 공개 HTTPS URL 확보 (§32)
-    if (publisher.name !== "sample" && !env.PUBLIC_MEDIA_BASE_URL) {
-      throw new Error("PUBLIC_MEDIA_BASE_URL이 설정되지 않았습니다. 설정 → Instagram에서 공개 미디어 주소를 입력하세요.");
+    if (publisher.name !== "sample" && !resolvePublicMediaBase()) {
+      throw new Error("완성 영상의 공개 주소가 없습니다. 설정 → Instagram → [영상 공개 주소] 칸에 넣어 주세요. Instagram 서버가 그 주소로 영상을 내려받습니다.");
     }
     const videoUrl = publicUrlFor(reel.video_path!);
     const coverUrl = reel.thumb_path ? publicUrlFor(reel.thumb_path) : undefined;
@@ -190,12 +207,17 @@ export function retryPublish(reelId: string): { jobId: string } {
   return publishNow(reelId);
 }
 
+/** 설정 화면 값 우선, 없으면 .env — 다른 설정들과 같은 규칙 */
+export function resolvePublicMediaBase(): string {
+  const fromSettings = getSettings().publicMediaBaseUrl.trim();
+  return (fromSettings || getEnv().PUBLIC_MEDIA_BASE_URL || "").replace(/\/$/, "");
+}
+
 export function publicUrlFor(absPath: string): string {
-  const env = getEnv();
   const norm = absPath.replace(/\\/g, "/");
   const idx = norm.lastIndexOf("/output/");
   const rel = idx >= 0 ? norm.slice(idx) : `/output/${norm.split("/").slice(-2).join("/")}`;
-  const base = (env.PUBLIC_MEDIA_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const base = resolvePublicMediaBase() || "http://localhost:3000";
   return base + rel;
 }
 

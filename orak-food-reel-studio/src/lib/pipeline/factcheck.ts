@@ -10,6 +10,11 @@ export function runFactCheck(script: ReelScript, info: RestaurantInfo): {
   items: FactCheckItem[]; blocked: boolean; blockReasons: string[];
 } {
   const st = info.field_status;
+  /**
+   * 사람이 직접 넣은 값은 확인된 값으로 본다.
+   * 자동 수집이 실패해도 사장님이 매장에서 보고 적으면 그게 가장 정확한 출처다.
+   */
+  const ok = (k: string) => st[k] === "확인" || st[k] === "사용자 입력";
   const items: FactCheckItem[] = [
     { field: "매장명", value: info.name, status: st["name"] ?? "미확인", source: info.source_url || "입력 정보" },
     { field: "주소", value: info.address || "-", status: st["address"] ?? "미확인", source: info.source_url },
@@ -24,12 +29,12 @@ export function runFactCheck(script: ReelScript, info: RestaurantInfo): {
   const allText = script.scenes.map((s) => s.narration + " " + s.subtitle).join(" ") + " " + script.caption;
 
   // 미확인 가격이 숫자로 대본에 등장하는지
-  if (st["menus"] !== "확인") {
+  if (!ok("menus")) {
     const priceMention = /[0-9][0-9,.]*\s*(원|천\s*원|만\s*원)/.exec(allText);
     if (priceMention) blockReasons.push(`가격이 미확인인데 대본에 "${priceMention[0]}"이 들어 있습니다.`);
   }
   // 미확인 영업시간
-  if (st["hours"] !== "확인" && /(오전|오후|\d{1,2}시)[^.]{0,10}(영업|엽니다|문|마감|라스트오더)/.test(allText)) {
+  if (!ok("hours") && /(오전|오후|\d{1,2}시)[^.]{0,10}(영업|엽니다|문|마감|라스트오더)/.test(allText)) {
     blockReasons.push("영업시간이 미확인인데 대본에 시간 정보가 들어 있습니다.");
   }
   // 과장 건강 효능 (§11)

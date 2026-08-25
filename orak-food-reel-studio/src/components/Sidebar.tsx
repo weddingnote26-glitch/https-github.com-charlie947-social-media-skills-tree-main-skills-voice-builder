@@ -52,6 +52,12 @@ export default function Sidebar() {
       <div className="hidden md:block mt-auto px-3 pt-4 text-xs text-gray-600 shrink-0">
         @orak_food · 신림/관악구
         <br />주 6회 (월~토) 운영
+        {/* 빌드 번호는 어느 화면이 고장 나도 보여야 한다.
+            설정 화면에만 두었더니, 정작 설정이 안 열릴 때 확인할 방법이 없었다. */}
+        <br />
+        <span className="text-gray-500" title="지금 돌고 있는 프로그램 버전">
+          빌드 {process.env.ORAK_BUILD ?? "알 수 없음"}
+        </span>
       </div>
     </aside>
   );

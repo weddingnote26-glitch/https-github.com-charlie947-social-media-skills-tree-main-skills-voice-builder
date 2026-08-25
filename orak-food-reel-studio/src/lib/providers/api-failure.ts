@@ -75,8 +75,12 @@ export function metaError(raw: string): MetaError {
  * 토큰 만료, 권한 누락, 그리고 잘못된 계정 ID. 고쳐야 할 곳이 서로 달라서
  * 구분하지 않으면 맞는 값을 넣어 두고도 계속 헤매게 된다.
  */
-function describeMetaFailure(status: number, raw: string): string {
+function describeMetaFailure(status: number, raw: string, login: "instagram" | "facebook"): string {
   const { message, code, subcode } = metaError(raw);
+  // 로그인 방식마다 권한 이름이 다르다 — 없는 권한 이름을 찾게 하면 안 된다
+  const SCOPES = login === "instagram"
+    ? "instagram_business_basic, instagram_business_content_publish"
+    : "instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement";
   const tail = message ? ` — ${message.slice(0, 200)}` : "";
 
   // 요청 한도 (code 4·17·32·613)
@@ -98,6 +102,13 @@ function describeMetaFailure(status: number, raw: string): string {
     return "액세스 토큰이 무효화되었습니다(비밀번호 변경 또는 로그아웃). " +
       `${META_TOOL} 에서 토큰을 새로 만들어 넣어 주세요.${tail}`;
   }
+  // "Cannot parse access token" — 토큰은 멀쩡한데 로그인 방식이 다른 주소로 갔을 때 나온다.
+  // Instagram 로그인 토큰(IGAA…)은 graph.instagram.com, 페이스북 로그인 토큰(EAA…)은
+  // graph.facebook.com 만 알아듣는다. 여기까지 왔다면 프로그램이 주소를 잘못 고른 것이다.
+  if (/cannot parse access token/i.test(message)) {
+    return "토큰을 알아보지 못했습니다. 토큰이 중간에 잘리지 않고 전체가 복사됐는지 확인해 주세요. " +
+      "(Instagram 로그인 토큰은 IGAA…, 페이스북 로그인 토큰은 EAA… 로 시작합니다)" + tail;
+  }
   // 토큰 자체가 안 읽힘
   if (code === 190 || code === 102 || /access token/i.test(message)) {
     return "액세스 토큰이 올바르지 않습니다. 토큰이 중간에 잘리지 않고 전체가 복사됐는지 확인하고, " +
@@ -106,15 +117,16 @@ function describeMetaFailure(status: number, raw: string): string {
   // ID 를 못 찾음 — 페이스북 페이지 ID 를 넣는 실수가 가장 흔하다.
   // Meta 는 "없는 ID" 와 "권한 부족" 을 같은 문구로 돌려주므로 둘 다 짚어 준다.
   if (code === 100 && (subcode === 33 || /does not exist|cannot be loaded|Unsupported/i.test(message))) {
-    return "Instagram User ID 를 확인할 수 없습니다. ① 페이스북 페이지 ID 가 아니라 " +
-      "Instagram 비즈니스 계정 ID 인지, ② 토큰에 instagram_basic 권한이 있는지 확인해 주세요. " +
-      `${META_TOOL} 에서 me/accounts?fields=name,instagram_business_account 를 조회하면 올바른 ID 가 보입니다.${tail}`;
+    return login === "instagram"
+      ? "Instagram User ID 를 확인할 수 없습니다. [연결 테스트]를 누르면 이 토큰에 맞는 올바른 ID 를 " +
+        `찾아서 알려 드립니다.${tail}`
+      : "Instagram User ID 를 확인할 수 없습니다. ① 페이스북 페이지 ID 가 아니라 " +
+        "Instagram 비즈니스 계정 ID 인지, ② 토큰에 instagram_basic 권한이 있는지 확인해 주세요. " +
+        `${META_TOOL} 에서 me/accounts?fields=name,instagram_business_account 를 조회하면 올바른 ID 가 보입니다.${tail}`;
   }
   // 권한 누락 — 토큰은 맞으므로 "새로 발급"만 시키면 헛수고가 된다
   if (code === 10 || code === 200 || code === 3 || /permission/i.test(message)) {
-    return "토큰은 인식되지만 권한이 부족합니다. 토큰을 만들 때 " +
-      "instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement 를 모두 켜고 " +
-      "다시 만들어 주세요.";
+    return `토큰은 인식되지만 권한이 부족합니다. 토큰을 만들 때 ${SCOPES} 를 모두 켜고 다시 만들어 주세요.`;
   }
   if (code === 100) {
     return `요청 값이 올바르지 않습니다. Instagram User ID 를 다시 확인해 주세요.${tail}`;
@@ -122,8 +134,13 @@ function describeMetaFailure(status: number, raw: string): string {
   return `응답 ${status}${tail || " — 토큰과 Instagram User ID 를 확인해 주세요."}`;
 }
 
-export function describeKeyFailure(service: KeyService, status: number, raw: string): string {
-  if (service === "instagram") return describeMetaFailure(status, raw);
+export function describeKeyFailure(
+  service: KeyService,
+  status: number,
+  raw: string,
+  opts?: { igLogin?: "instagram" | "facebook" },
+): string {
+  if (service === "instagram") return describeMetaFailure(status, raw, opts?.igLogin ?? "facebook");
 
   const reason = extractReason(raw);
   const tail = reason ? ` — ${reason.slice(0, 160)}` : "";

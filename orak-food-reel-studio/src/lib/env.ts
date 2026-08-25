@@ -7,9 +7,14 @@ export const EnvSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional().default(""),
   ELEVENLABS_VOICE_ID: z.string().optional().default(""),
   ELEVENLABS_MODEL: z.string().optional().default("eleven_multilingual_v2"),
-  IMAGE_PROVIDER: z.enum(["gemini", "openai", "sample"]).optional().default("sample"),
+  IMAGE_PROVIDER: z.enum(["gemini", "openai", "cloudflare", "sample"]).optional().default("sample"),
   IMAGE_API_KEY: z.string().optional().default(""),
   IMAGE_MODEL: z.string().optional().default(""),
+  // Cloudflare Workers AI (무료 사용량으로 이미지 생성)
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional().default(""),
+  CLOUDFLARE_API_TOKEN: z.string().optional().default(""),
+  CLOUDFLARE_IMAGE_MODEL: z.string().optional().default(""),
+  CLOUDFLARE_CHARACTER_MODEL: z.string().optional().default(""),
   INSTAGRAM_ACCESS_TOKEN: z.string().optional().default(""),
   INSTAGRAM_USER_ID: z.string().optional().default(""),
   PUBLIC_MEDIA_BASE_URL: z.string().optional().default(""),
@@ -40,11 +45,17 @@ export type ServiceKey = "llm" | "image" | "tts" | "instagram";
 export async function serviceReady(env: Env = getEnv()): Promise<Record<ServiceKey, boolean>> {
   const { resolveSecret } = await import("./secrets");
   const { getSettings } = await import("./settings");
-  const provider = getSettings().imageProvider || env.IMAGE_PROVIDER;
+  const { resolveIgAuth } = await import("./providers/instagram");
+  const settings = getSettings();
+  const provider = settings.imageProvider || env.IMAGE_PROVIDER;
+  // Instagram 도 설정 화면 저장값이 .env 보다 우선한다.
+  // .env 만 보면 설정 화면에서 다 넣어 두고도 "준비 안 됨"으로 나온다.
+  const ig = resolveIgAuth();
+  const publicBase = (settings.publicMediaBaseUrl || env.PUBLIC_MEDIA_BASE_URL || "").trim();
   return {
     llm: !!resolveSecret("ANTHROPIC_API_KEY"),
     image: provider !== "sample" && !!resolveSecret("IMAGE_API_KEY"),
     tts: !!resolveSecret("ELEVENLABS_API_KEY"),
-    instagram: !!env.INSTAGRAM_ACCESS_TOKEN && !!env.INSTAGRAM_USER_ID && !!env.PUBLIC_MEDIA_BASE_URL,
+    instagram: !!ig.token && !!ig.userId && !!publicBase,
   };
 }

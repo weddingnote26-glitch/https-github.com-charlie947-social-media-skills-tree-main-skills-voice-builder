@@ -6,7 +6,7 @@ export function newId(prefix: string): string {
 
 /** 한글 상호 → 영문/숫자 폴더명 슬러그 (한글은 로마자화 대신 안전하게 유지 후 정리) */
 export function slugify(name: string): string {
-  const base = name
+  const base = String(name ?? "")
     .normalize("NFKC")
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")

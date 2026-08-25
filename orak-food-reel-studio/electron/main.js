@@ -9,9 +9,10 @@
  *
  * 기능은 전부 기존 웹 앱 그대로다. 여기서는 아무것도 바꾸지 않는다.
  */
-const { app, BrowserWindow, shell, dialog, Menu } = require("electron");
+const { app, BrowserWindow, shell, dialog, Menu, ipcMain } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
+const { resolveInside } = require("./safe-path");
 const net = require("node:net");
 const { fork } = require("node:child_process");
 
@@ -119,6 +120,23 @@ async function startServer() {
   return port;
 }
 
+/**
+ * 완성 영상 폴더 열기 — 휴대폰으로 옮겨 직접 올릴 때 쓴다.
+ *
+ * 화면이 보내온 이름은 믿지 않는다. 파일 이름만 남기고, 그 결과가 완성영상
+ * 폴더 안으로 떨어지는지 확인한 뒤에만 연다 (".." 을 섞어 다른 폴더를 열게
+ * 하는 시도를 막는다).
+ */
+ipcMain.handle("orak:open-output", async (_e, folderName) => {
+  const root = path.resolve(OUTPUT_DIR);
+  const safe = resolveInside(root, folderName);
+  if (!safe.ok) return safe;
+  // 아직 그 날짜 폴더가 없으면 상위 폴더라도 열어 준다
+  const open = fs.existsSync(safe.target) ? safe.target : root;
+  const err = await shell.openPath(open);
+  return err ? { ok: false, reason: err } : { ok: true, opened: open };
+});
+
 function createWindow(port) {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -135,12 +153,29 @@ function createWindow(port) {
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, "preload.js"),
-      devTools: isDev,
+      /* 배포판에서도 개발자 도구를 열 수 있게 둔다 (Ctrl+Shift+I / F12).
+         화면이 "불러오는 중…" 에서 멈췄을 때 원인이 브라우저 쪽에만 남는데,
+         도구가 잠겨 있으면 사용자도 개발자도 그걸 볼 방법이 없었다.
+         nodeIntegration=false · contextIsolation · sandbox 는 그대로다. */
+      devTools: true,
     },
   });
 
-  // 배포판에는 개발자 메뉴를 두지 않는다
+  // 배포판에는 개발자 메뉴를 두지 않는다 (도구는 단축키로만 연다)
   Menu.setApplicationMenu(isDev ? Menu.getApplicationMenu() : null);
+
+  // Ctrl+Shift+I · F12 로 개발자 도구, Ctrl+R 로 새로고침
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const key = (input.key || "").toLowerCase();
+    if (key === "f12" || (input.control && input.shift && key === "i")) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (input.control && key === "r") {
+      mainWindow.webContents.reload();
+      event.preventDefault();
+    }
+  });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("closed", () => { mainWindow = null; });

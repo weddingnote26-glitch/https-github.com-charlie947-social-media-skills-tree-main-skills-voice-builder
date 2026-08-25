@@ -12,7 +12,7 @@ import { cleanPastedSecret } from "./secrets-input";
  * 이제 설정 화면에서 넣은 키를 암호화해 DB에 저장하고, 그 값을 먼저 쓴다.
  * (.env 는 그대로 두면 예비값으로 계속 동작한다)
  */
-export type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY";
+export type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY" | "CLOUDFLARE_API_TOKEN";
 
 const KEY_PREFIX = "secret_";
 

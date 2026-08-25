@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
+import ClientErrorLog from "@/components/ClientErrorLog";
 
 export const metadata: Metadata = {
   title: "오락푸드 AI 릴스 스튜디오",
@@ -12,6 +13,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body className="min-h-screen">
+        {/* 화면에서 난 오류도 logs/app-날짜.log 에 남긴다 */}
+        <ClientErrorLog />
         <ToastProvider>
           <div className="flex min-h-screen flex-col md:flex-row">
             <Sidebar />

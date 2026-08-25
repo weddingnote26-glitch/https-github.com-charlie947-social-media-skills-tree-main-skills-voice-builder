@@ -1,5 +1,6 @@
 import { db, j } from "./db";
 import { z } from "zod";
+import { logWarn } from "./log";
 
 /** 관리자 화면에서 바꾸는 값 — 하드코딩 금지 항목들 (§34, §16, §27 등) */
 export const AppSettingsSchema = z.object({
@@ -30,8 +31,35 @@ export const AppSettingsSchema = z.object({
   }).default({ voiceId: "", model: "eleven_multilingual_v2", speed: 1.06, stability: 0.5, similarity: 0.75 }),
 
   // 이미지 공급자
-  imageProvider: z.enum(["gemini", "openai", "sample"]).default("sample"),
+  imageProvider: z.enum(["gemini", "openai", "cloudflare", "sample"]).default("sample"),
   imageModel: z.string().default(""),
+
+  // Cloudflare Workers AI (토큰은 여기 두지 않는다 — 암호화 저장소로 간다)
+  cloudflare: z.object({
+    accountId: z.string().default(""),
+    imageModel: z.string().default(""),      // 비우면 flux-1-schnell
+    characterModel: z.string().default(""),  // 비우면 참조 이미지를 받는 SDXL-lightning
+  }).default({ accountId: "", imageModel: "", characterModel: "" }),
+
+  // 이미지 정책 (§43·§45)
+  imagePolicy: z.object({
+    fallback: z.boolean().default(true),  // 실패 시 다른 공급자 자동 사용
+    reuseCache: z.boolean().default(true),// 같은 장면이면 기존 이미지 재사용
+    /**
+     * 비용 정책. 어느 값이든 오락이 캐릭터 품질은 낮추지 않는다 —
+     * 배경·음식에서만 아낀다.
+     */
+    costPolicy: z.enum(["cost_optimized", "balanced", "best"]).default("cost_optimized"),
+    /** 릴스 1편에 쓸 이미지 API 호출 상한. 넘으면 멈추고 지금까지 결과는 지킨다 */
+    budgetCalls: z.number().int().min(0).max(200).default(20),
+    /** 상한에 닿으면 자동으로 멈출지 (끄면 경고만 남기고 계속) */
+    budgetStop: z.boolean().default(true),
+    /** 캐릭터 장면 하나에 허용할 신규 생성 횟수 */
+    maxCharacterGen: z.number().int().min(1).max(4).default(2),
+  }).default({
+    fallback: true, reuseCache: true, costPolicy: "cost_optimized",
+    budgetCalls: 20, budgetStop: true, maxCharacterGen: 2,
+  }),
 
   // 자막 스타일 (§18~19)
   subtitle: z.object({
@@ -45,7 +73,12 @@ export const AppSettingsSchema = z.object({
     enabled: z.boolean().default(true),
     seed: z.number().int().default(20260823),
     referenceImages: z.array(z.string()).default([]), // /assets/character/ 내 파일명
-  }).default({ enabled: true, seed: 20260823, referenceImages: [] }),
+    /**
+     * 오락이 공식 에셋 폴더 (master / turnaround / actions).
+     * 비우면 프로그램에 담긴 기본 에셋을 쓴다. 원본은 읽기만 한다.
+     */
+    assetRoot: z.string().default(""),
+  }).default({ enabled: true, seed: 20260823, referenceImages: [], assetRoot: "" }),
 
   // BGM
   bgm: z.object({
@@ -55,6 +88,11 @@ export const AppSettingsSchema = z.object({
 
   // 저장 폴더(표시용 — 실제 경로는 프로젝트 내부 고정)
   outputNote: z.string().default(""),
+
+  // 완성 영상을 인터넷에서 내려받을 수 있는 공개 주소 (§32).
+  // Instagram 서버가 직접 영상을 받아 가므로 내 PC 주소(localhost)로는 발행되지 않는다.
+  // 비우면 .env 의 PUBLIC_MEDIA_BASE_URL 을 쓴다.
+  publicMediaBaseUrl: z.string().default(""),
 
   // 실행 모드 — auto 면 .env 의 APP_MODE 를 따른다
   appMode: z.enum(["auto", "sample", "live"]).default("auto"),
@@ -68,9 +106,52 @@ export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 const KEY = "app_settings";
 
+/**
+ * 저장된 설정에서 문제가 된 항목만 덜어낸다.
+ *
+ * 왜 필요한가: 새 판에서 저장한 값(예: imageProvider="cloudflare")을 옛 판이
+ * 읽으면 스키마 검사가 통째로 실패한다. 그러면 설정을 읽는 모든 곳이 죽어서
+ * 제작이 0% 에서 멈춘다 — 실제로 그 화면을 받았다.
+ *
+ * 설정값 하나가 낯설다고 프로그램 전체가 서면 안 된다.
+ * 모르는 항목만 버리고 기본값으로 되돌린 뒤 나머지는 그대로 쓴다.
+ */
+function dropPath(obj: unknown, segments: PropertyKey[]): unknown {
+  if (!segments.length || obj === null || typeof obj !== "object") return obj;
+  const copy: Record<string, unknown> = { ...(obj as Record<string, unknown>) };
+  const [head, ...rest] = segments;
+  const key = String(head);
+  if (!rest.length) delete copy[key];
+  else if (key in copy) copy[key] = dropPath(copy[key], rest);
+  return copy;
+}
+
+export function parseSettings(raw: unknown): AppSettings {
+  let obj = raw;
+  const dropped: string[] = [];
+  // 문제 항목을 하나씩 덜어내며 다시 검사한다 (중첩 항목이 여럿일 수 있어 몇 번 돈다)
+  for (let round = 0; round < 8; round++) {
+    const r = AppSettingsSchema.safeParse(obj);
+    if (r.success) {
+      if (dropped.length) {
+        logWarn("settings", `알 수 없는 설정값을 기본값으로 되돌렸습니다: ${dropped.join(", ")} — 프로그램을 최신으로 업데이트하면 그대로 쓸 수 있습니다`);
+      }
+      return r.data;
+    }
+    const paths = r.error.issues.map((i) => i.path).filter((pth) => pth.length > 0);
+    if (!paths.length) break;
+    for (const pth of paths) {
+      dropped.push(pth.join("."));
+      obj = dropPath(obj, pth as PropertyKey[]);
+    }
+  }
+  logWarn("settings", "설정을 읽지 못해 전부 기본값으로 시작합니다 (저장된 값은 지우지 않았습니다)");
+  return AppSettingsSchema.parse({});
+}
+
 export function getSettings(): AppSettings {
   const row = db().prepare("SELECT value_json FROM settings WHERE key=?").get(KEY) as { value_json: string } | undefined;
-  return AppSettingsSchema.parse(row ? j(row.value_json, {}) : {});
+  return parseSettings(row ? j(row.value_json, {}) : {});
 }
 
 export function saveSettings(patch: Partial<AppSettings>): AppSettings {

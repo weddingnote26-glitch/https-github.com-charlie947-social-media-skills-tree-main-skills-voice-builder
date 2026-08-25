@@ -9,12 +9,37 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import fsp from "node:fs/promises";
 import { createRequire } from "node:module";
+import { removeDirRobust, lockAdvice } from "./clean-dir.mjs";
 
 const require_ = createRequire(import.meta.url);
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, ".next", "standalone");
 const OUT = path.join(ROOT, "dist-app");
+
+const io_ = {
+  exists: (p) => fs.existsSync(p),
+  rm: (p) => fsp.rm(p, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 }),
+  rename: (a, b) => fsp.rename(a, b),
+  sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
+};
+
+/**
+ * 반드시 비워져야 하는 폴더를 치운다.
+ * .next 와 달리 여기서 실패한 채로 진행하면 지난 결과물을 다시 담아
+ * 폴더가 자기 안에 자기를 품는 중첩이 생긴다 → 못 비우면 멈춘다.
+ */
+async function mustClear(dir, label) {
+  const res = await removeDirRobust(dir, io_, { stamp: String(Date.now()) });
+  if (res.how === "renamed") {
+    console.log(`  ${label}: 사용 중이라 ${path.basename(res.aside)} 로 치워 뒀습니다`);
+  } else if (!res.ok) {
+    console.log(r(lockAdvice(dir).replace("그대로 진행합니다 — 대부분 문제없이 끝나지만, 빌드가 실패하면 아래를 확인하세요.", "설치본을 만들려면 이 폴더가 비어 있어야 합니다.")));
+    console.log(r(`  ❌ ${label} 폴더를 비우지 못해 설치 파일을 만들 수 없습니다.`));
+    process.exit(1);
+  }
+}
 
 const g = (s) => `\x1b[32m${s}\x1b[0m`;
 const r = (s) => `\x1b[31m${s}\x1b[0m`;
@@ -22,6 +47,9 @@ const r = (s) => `\x1b[31m${s}\x1b[0m`;
 /** 설치본에 절대 들어가면 안 되는 것 */
 const FORBIDDEN = [
   ".env", ".env.local", ".env.production",
+  // 소스 폴더 전용 .bat — 설치본 안에서 누르면 scripts/ 가 없어 그대로 죽는다.
+  // 실제로 사용자가 설치본 안의 설치파일만들기.bat 을 눌러 오류를 겪었다.
+  "설치파일만들기.bat", "업데이트.bat", "start.bat", "폴더열기.bat",
   path.join("data", ".secret"),
   path.join("data", "orak-studio.db"),
 ];
@@ -33,7 +61,9 @@ const SKIP = new Set([
   "dist-app", "dist-bin", "dist-installer",
   ".env", ".env.local", ".env.production", ".env.example",
   "tsconfig.tsbuildinfo", "vitest.config.ts", "tsconfig.json",
-  "package-lock.json", "start.bat", "업데이트.bat",
+  // .bat 은 소스 폴더에서만 뜻이 있다. 설치본 안에 들어가면 scripts/ 가 없어
+  // 누르는 순간 node 가 "Cannot find module ...\\resources\\app\\scripts\\..." 로 죽는다.
+  "package-lock.json", "start.bat", "업데이트.bat", "설치파일만들기.bat", "폴더열기.bat",
 ]);
 
 /**
@@ -73,7 +103,8 @@ function writeForwarder(linkPath, destPath) {
 function copyDir(from, to, depth = 0) {
   fs.mkdirSync(to, { recursive: true });
   for (const e of fs.readdirSync(from, { withFileTypes: true })) {
-    if (depth === 0 && SKIP.has(e.name)) continue;
+    // 잠겨서 치워 둔 폴더(.next.old-…, dist-app.old-…)도 담지 않는다
+    if (depth === 0 && (SKIP.has(e.name) || /\.old-\d+$/.test(e.name))) continue;
     const s = path.join(from, e.name);
     const d = path.join(to, e.name);
     if (e.isSymbolicLink()) {
@@ -101,7 +132,7 @@ console.log("\n  설치본에 넣을 파일을 고릅니다");
 for (const stale of ["dist-app", "dist-bin", "dist-installer"]) {
   const p = path.join(ROOT, stale);
   if (fs.existsSync(p)) {
-    fs.rmSync(p, { recursive: true, force: true });
+    await mustClear(p, stale);
     console.log(`  지난 결과 정리: ${stale}`);
   }
 }
@@ -111,7 +142,7 @@ if (!fs.existsSync(path.join(SRC, "server.js"))) {
   process.exit(1);
 }
 
-fs.rmSync(OUT, { recursive: true, force: true });
+await mustClear(OUT, "dist-app");
 copyDir(SRC, OUT);
 
 // standalone 은 .next/static 과 public 을 복사해 주지 않는다 — 없으면 화면이 깨진다
@@ -128,7 +159,7 @@ for (const rel of [path.join("assets", "character"), path.join("assets", "fonts"
 
 // FFmpeg 를 함께 담는다 (설치본이 다운로드에 기대지 않게)
 const BIN = path.join(ROOT, "dist-bin");
-fs.rmSync(BIN, { recursive: true, force: true });
+await mustClear(BIN, "dist-bin");
 fs.mkdirSync(BIN, { recursive: true });
 let bundled = 0;
 for (const [pkg, name] of [["ffmpeg-static", "ffmpeg"], ["ffprobe-static", "ffprobe"]]) {
@@ -165,7 +196,7 @@ function scan(dir, depth = 0) {
 scan(OUT);
 
 if (leaked.length) {
-  console.log(r("\n  ❌ 비밀값이 설치본에 들어갔습니다. 중단합니다."));
+  console.log(r("\n  ❌ 설치본에 들어가면 안 되는 것이 들어갔습니다. 중단합니다."));
   for (const l of [...new Set(leaked)]) console.log("     " + l);
   process.exit(1);
 }

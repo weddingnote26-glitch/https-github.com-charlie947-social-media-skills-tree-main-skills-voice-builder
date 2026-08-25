@@ -1,17 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, api, useApi, ErrorBox } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, LoadGate, isDesktopApp } from "@/components/ui";
+import { DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL } from "@/lib/providers/cloudflare-models";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
 import { useToast } from "@/components/Toast";
 import { describeSettingsChange } from "@/lib/settings-diff";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
-type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY";
+type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY" | "CLOUDFLARE_API_TOKEN";
 interface SecretStatus { set: boolean; source: string; hint: string }
 interface IgStatus {
   tokenSet: boolean; tokenSource: string; tokenHint: string;
   userIdSet: boolean; userIdSource: string; userId: string;
+  loginKind: "instagram" | "facebook" | null;
 }
 interface SettingsResponse {
   settings: AppSettings;
@@ -22,7 +24,7 @@ interface SettingsResponse {
 }
 
 export default function SettingsPage() {
-  const { data, reload } = useApi<SettingsResponse>("/api/settings");
+  const { data, error: loadError, reload } = useApi<SettingsResponse>("/api/settings");
   const [s, setS] = useState<AppSettings | null>(null);
   const [igToken, setIgToken] = useState("");
   const [igUser, setIgUser] = useState("");
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   const [voiceRefresh, setVoiceRefresh] = useState(0);
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
-  if (!data || !s) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
+  if (!data || !s) return <LoadGate error={loadError} onRetry={reload} what="설정" />;
   const ig = data.instagram;
 
   const save = async (patch: Partial<AppSettings> & Partial<Record<SecretName, string>> & { igAccessToken?: string; igUserId?: string }) => {
@@ -210,13 +212,17 @@ export default function SettingsPage() {
                 setS({ ...s, imageProvider });
                 void save({ imageProvider, imageModel: s.imageModel });
               }}>
-              <option value="sample">Sample (API 불필요)</option>
-              <option value="gemini">Gemini / Imagen</option>
-              <option value="openai">OpenAI 이미지</option>
+              <option value="gemini">Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="cloudflare">Cloudflare FLUX</option>
+              <option value="sample">Sample</option>
             </select></div>
           <div><label className="label text-sm">모델 (비우면 기본값)</label>
-            <input className="input" disabled={s.imageProvider === "sample"}
-              placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)" : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)" : "Sample 모드는 모델이 없습니다"}
+            <input className="input" disabled={s.imageProvider === "sample" || s.imageProvider === "cloudflare"}
+              placeholder={s.imageProvider === "openai" ? "gpt-image-1 (비우면 이 값)"
+                : s.imageProvider === "gemini" ? "imagen-3.0-generate-002 (비우면 이 값)"
+                : s.imageProvider === "cloudflare" ? "Cloudflare 모델은 아래 칸에서 넣습니다"
+                : "Sample 모드는 모델이 없습니다"}
               value={s.imageModel} onChange={(e) => setS({ ...s, imageModel: e.target.value })} /></div>
         </div>
         <p className="text-xs text-gray-600 mb-3">모델은 잘 모르면 비워 두세요. 공급자를 바꾸면 예전 모델 이름은 자동으로 지워집니다.</p>
@@ -228,27 +234,129 @@ export default function SettingsPage() {
             오락이가 나오는 릴스를 만들 거라면 조직 인증을 마치고 gpt-image-1을 쓰는 편이 좋습니다.
           </p>
         )}
-        <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
+        {s.imageProvider === "cloudflare" && (
+          <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs text-gray-600 mb-3">
+              <b>무료 사용량</b>으로 이미지를 만듭니다. dash.cloudflare.com 에 가입한 뒤,
+              첫 화면 오른쪽의 <b>Account ID</b>(32자리)와 [내 프로필 → API Tokens]에서
+              <b> Workers AI 권한</b>으로 만든 토큰을 넣으세요.
+            </p>
+            <div className="field-grid mb-3">
+              <div><label className="label text-sm">Cloudflare Account ID</label>
+                <input className="input" placeholder="32자리 영문·숫자" value={s.cloudflare.accountId}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, accountId: e.target.value.trim() } })} /></div>
+              {/* 기본 모델 이름은 도움말 줄에 적는다. 자리표시자에 넣으면 칸 폭에 잘려
+                  "비우면 이 값" 이라는 그 값이 무엇인지 읽을 수 없었다. */}
+              <div><label className="label text-sm">기본 이미지 모델 (음식·매장·배경)</label>
+                <input className="input" placeholder="비우면 기본값을 씁니다"
+                  value={s.cloudflare.imageModel}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, imageModel: e.target.value.trim() } })} />
+                <p className="text-xs text-gray-600 mt-1.5 break-all">기본값: {DEFAULT_IMAGE_MODEL}</p></div>
+              <div><label className="label text-sm">캐릭터 이미지 모델 (오락이 장면)</label>
+                <input className="input" placeholder="비우면 기본값을 씁니다"
+                  value={s.cloudflare.characterModel}
+                  onChange={(e) => setS({ ...s, cloudflare: { ...s.cloudflare, characterModel: e.target.value.trim() } })} />
+                <p className="text-xs text-gray-600 mt-1.5 break-all">기본값: {DEFAULT_CHARACTER_MODEL}</p></div>
+            </div>
+            <p className="text-xs text-gray-600 mb-3">
+              오락이 장면은 <b>기준 이미지를 받을 수 있는 모델</b>이어야 얼굴이 유지됩니다 (FLUX 는 기준 이미지를 못 받습니다).
+              계정에서 쓸 수 있는 모델은 [연결 테스트]가 알려 줍니다.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <button className="btn-primary" onClick={() => save({ cloudflare: s.cloudflare })}>저장</button>
+            </div>
+            <KeyField name="CLOUDFLARE_API_TOKEN" label="Cloudflare API Token"
+              help="dash.cloudflare.com → 내 프로필 → API Tokens → [Create Token] → Workers AI 권한. 저장하면 암호화됩니다." />
+          </div>
+        )}
+        {s.imageProvider !== "cloudflare" && <KeyField name="IMAGE_API_KEY" label="이미지 API 키"
           help={s.imageProvider === "openai"
             ? "platform.openai.com → API keys 에서 만든 sk- 로 시작하는 값. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."
-            : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />
+            : "Gemini는 aistudio.google.com → Get API key, OpenAI는 platform.openai.com → API keys. 공급자를 바꿨으면 위에서 [저장]을 먼저 누르세요."} />}
+        {/* §43 실패 대응 · §45 사용량 절약 — 끄고 켤 수 있어야 한다 */}
+        <div className="space-y-2 mb-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+            <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.fallback}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, fallback: e.target.checked } })} />
+            이미지 생성 실패 시 다른 공급자 자동 사용 (Cloudflare → Gemini → OpenAI → Sample)
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+            <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.reuseCache}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, reuseCache: e.target.checked } })} />
+            기존 이미지 재사용 (같은 장면은 다시 만들지 않아 사용량을 아낍니다)
+          </label>
+        </div>
+
+        {/* 어디에 돈을 쓰고 어디서 아낄지. 어떤 선택에서도 오락이 품질은 낮추지 않는다 */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="label text-sm mb-2">이미지 비용 설정</div>
+          <div className="field-grid mb-2">
+            {([
+              ["cost_optimized", "비용 절약형 — 권장", "배경·음식은 아끼고 오락이는 최고 품질 그대로"],
+              ["balanced", "균형형", "음식을 조금 더 곱게, 배경은 아낍니다"],
+              ["best", "최고 품질형", "전부 최고 품질 — 무료 사용량을 가장 많이 씁니다"],
+            ] as const).map(([v, label, desc]) => (
+              <button key={v} onClick={() => save({ imagePolicy: { ...s.imagePolicy, costPolicy: v } })}
+                className={`rounded-xl border-2 p-4 text-left ${s.imagePolicy.costPolicy === v ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
+                <div className="font-extrabold">{label}</div>
+                <div className="text-sm text-gray-600">{desc}</div>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="label text-sm m-0">릴스 1편당 이미지 호출 상한</label>
+            <select className="input w-full sm:w-40 min-w-0" value={s.imagePolicy.budgetCalls}
+              onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, budgetCalls: parseInt(e.target.value) } })}>
+              {[10, 15, 20, 30, 50, 0].map((n) => <option key={n} value={n}>{n === 0 ? "제한 없음" : `${n}회`}</option>)}
+            </select>
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={s.imagePolicy.budgetStop}
+                onChange={(e) => save({ imagePolicy: { ...s.imagePolicy, budgetStop: e.target.checked } })} />
+              상한에 닿으면 자동으로 멈춤 (만든 것은 그대로 남습니다)
+            </label>
+          </div>
+        </div>
+        <div className="mt-3">
+          <label className="label text-sm" htmlFor="oraki-asset-root">오락이 에셋 폴더 (선택)</label>
+          <input id="oraki-asset-root" className="input" placeholder="예: C:\\Users\\USER\\Desktop\\오락_당근_콘텐츠\\character\\oraki\\v1"
+            value={s.characterLock.assetRoot}
+            onChange={(e) => setS({ ...s, characterLock: { ...s.characterLock, assetRoot: e.target.value } })}
+            onBlur={() => save({ characterLock: s.characterLock })} />
+          <p className="text-xs text-gray-600 mt-1">
+            master / turnaround / actions 폴더가 있는 오락이 공식 에셋 폴더를 가리키면 그 기준으로 캐릭터를 만듭니다.
+            <b> 원본은 읽기만 하고 절대 고치지 않습니다.</b> 비워 두면 프로그램에 담긴 기본 에셋을 씁니다.
+            폴더가 없는 PC에서는 자동으로 기본 에셋으로 동작합니다.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 
       <Card title="📸 Instagram — Meta 공식 API">
         <ol className="text-sm text-gray-600 space-y-1 mb-4 list-decimal pl-5">
           <li>Instagram을 <b>Professional(비즈니스/크리에이터) 계정</b>으로 전환</li>
-          <li>Facebook 페이지와 연결 후 <a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
-          <li>권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code> 포함 Access Token 발급</li>
-          <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다)</li>
-          <li>완성 영상을 인터넷에서 내려받을 수 있는 <b>공개 주소</b>가 필요합니다 — Instagram 서버가 영상을 내려받을 수 있어야 합니다 (예: Cloudflare Tunnel 주소)</li>
+          <li><a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
+          {/* 로그인 방식이 두 가지고 권한 이름이 서로 다르다 — 없는 권한을 찾아 헤매지 않도록 둘 다 적는다 */}
+          <li>
+            Access Token 발급 — 두 가지 방법 중 하나입니다
+            <ul className="list-disc pl-5 mt-1 space-y-0.5">
+              <li><b>Instagram 로그인</b> (페이스북 페이지 없이, 토큰이 <code className="bg-gray-100 px-1 rounded">IGAA…</code>)
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_business_content_publish</code></li>
+              <li><b>페이스북 로그인</b> (페이지에 연결, 토큰이 <code className="bg-gray-100 px-1 rounded">EAA…</code>)
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code></li>
+            </ul>
+          </li>
+          <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다). ID 를 모르면 토큰만 저장하고 <b>[연결 테스트]</b>를 누르세요 — 찾아서 알려 드립니다</li>
+          <li>아래 <b>[영상 공개 주소]</b> 칸에 인터넷에서 열리는 주소를 넣습니다 — Instagram 서버가 그 주소로 완성 영상을 내려받습니다 (예: Cloudflare Tunnel 주소)</li>
         </ol>
         <div className="field-grid mb-3">
           <div>
             <label className="label text-sm">Access Token</label>
             {/* 저장한 토큰은 다시 보여주지 않는다 — 칸이 비어 있어도 저장된 값으로 테스트한다 */}
             {ig?.tokenSet
-              ? <div className="text-xs text-emerald-700 font-semibold mb-1.5">✅ 저장됨 ({ig.tokenSource}) · {ig.tokenHint}</div>
+              ? <div className="text-xs text-emerald-700 font-semibold mb-1.5">
+                  ✅ 저장됨 ({ig.tokenSource}) · {ig.tokenHint}
+                  {ig.loginKind && ` · ${ig.loginKind === "instagram" ? "Instagram 로그인" : "페이스북 로그인"}`}
+                </div>
               : <div className="text-xs text-gray-500 font-semibold mb-1.5">아직 저장된 토큰이 없습니다</div>}
             <input type="password" className="input"
               placeholder={ig?.tokenSet ? "바꾸려면 새 토큰을 붙여넣으세요" : "붙여넣기 (저장 시 암호화)"}
@@ -274,6 +382,23 @@ export default function SettingsPage() {
               onClick={() => save({ igAccessToken: "", igUserId: "" } as never)}>지우기</button>
           )}
           <TestBtn service="instagram" />
+        </div>
+
+        {/* Instagram 서버가 이 주소로 영상을 받으러 온다 — 없으면 발행 단계에서 멈춘다.
+            예전에는 "설정 → Instagram에서 입력하세요" 라고만 하고 넣을 칸이 없었다. */}
+        <div className="mt-5 pt-5 border-t border-gray-200">
+          <label className="label text-sm" htmlFor="ig-public-url">영상 공개 주소 (발행할 때 필요)</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <input id="ig-public-url" className="input flex-1 min-w-0" placeholder="https://reels.내주소.com"
+              value={s.publicMediaBaseUrl}
+              onChange={(e) => setS({ ...s, publicMediaBaseUrl: e.target.value })} />
+            <button className="btn-primary" onClick={() => save({ publicMediaBaseUrl: s.publicMediaBaseUrl })}>저장</button>
+          </div>
+          <p className="text-xs text-gray-600 mt-1">
+            Instagram 서버가 <b>이 주소로 완성 영상을 내려받습니다.</b> 인터넷에서 열리는 주소여야 하며,
+            내 PC 주소(<code className="bg-gray-100 px-1 rounded">localhost</code>)로는 발행되지 않습니다.
+            영상 제작·미리보기만 할 때는 비워 두어도 됩니다.
+          </p>
         </div>
       </Card>
 
@@ -341,6 +466,21 @@ export default function SettingsPage() {
           </button>
         </div>
         <button className="btn-primary" onClick={() => save({ approvalMode: s.approvalMode })}>저장</button>
+      </Card>
+
+      {/* 업데이트했는데 옛 화면이 보이던 일이 반복됐다 — 지금 도는 것이
+          언제 만든 것인지 눈으로 확인할 수 있게 적어 둔다 */}
+      <Card title="ℹ️ 프로그램 정보">
+        <div className="text-sm text-gray-700">
+          <b>빌드</b> <code className="bg-gray-100 px-1.5 py-0.5 rounded">{process.env.ORAK_BUILD ?? "알 수 없음"}</code>
+          {" · "}
+          <b>실행 방식</b> {isDesktopApp() ? "설치한 프로그램 (바탕화면 아이콘)" : "폴더 실행 (start.bat)"}
+        </div>
+        <p className="text-xs text-gray-600 mt-2">
+          업데이트했는데 화면이 그대로면 이 날짜를 확인해 주세요.
+          {" "}<b>업데이트.bat</b> 은 폴더 실행만 바꿉니다 — 바탕화면 아이콘까지 바꾸려면
+          {" "}<b>설치파일만들기.bat</b> 으로 다시 만들어 설치해야 합니다.
+        </p>
       </Card>
 
       <Card title="📁 저장 폴더">

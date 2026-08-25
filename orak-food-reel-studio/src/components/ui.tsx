@@ -84,10 +84,43 @@ export function Stars({ n }: { n: number }) {
 
 /* ---------- API helpers ---------- */
 
+interface OrakBridge {
+  isDesktopApp?: boolean;
+  openOutputFolder?: (folderName: string) => Promise<{ ok: boolean; reason?: string; opened?: string }>;
+}
+function bridge(): OrakBridge | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { orak?: OrakBridge }).orak;
+}
+
 /** 설치형 앱인지 (Electron 껍데기가 preload 로 알려 준다) */
 export function isDesktopApp(): boolean {
-  if (typeof window === "undefined") return false;
-  return !!(window as unknown as { orak?: { isDesktopApp?: boolean } }).orak?.isDesktopApp;
+  return !!bridge()?.isDesktopApp;
+}
+
+/** 완성 영상 폴더를 탐색기로 연다. 설치형 앱에서만 된다 */
+export function canOpenFolder(): boolean {
+  return typeof bridge()?.openOutputFolder === "function";
+}
+
+export async function openOutputFolder(folderName: string): Promise<{ ok: boolean; reason?: string }> {
+  const fn = bridge()?.openOutputFolder;
+  if (!fn) return { ok: false, reason: "설치한 프로그램에서만 폴더를 열 수 있습니다" };
+  try {
+    return await fn(folderName);
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** 글을 클립보드에 담는다 (Instagram 에 붙여넣기용) */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function api<T = unknown>(url: string, init?: RequestInit): Promise<T> {
@@ -147,6 +180,51 @@ export function mediaUrl(absPath: string | null | undefined): string | null {
   const ai = norm.lastIndexOf("/assets/");
   if (ai >= 0) return "/api/media" + norm.slice(ai);
   return null;
+}
+
+/**
+ * 화면이 아직 내용을 못 받았을 때 무엇을 보여 줄지 한 자리에서 정한다.
+ *
+ * 예전에는 어느 화면이든 `if (!data) return <div>불러오는 중…</div>` 이었다.
+ * 그래서 서버가 오류를 돌려줘도 화면은 영원히 "불러오는 중…" 이었고,
+ * 사용자도 개발자도 원인을 볼 수 없었다. 오류는 오류대로 보여 준다.
+ */
+export function LoadGate({ error, onRetry, what = "내용" }: {
+  error: string | null; onRetry?: () => void; what?: string;
+}) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (error) return;
+    const t = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  if (error) {
+    return (
+      <div className="py-16 px-4">
+        <div className="mx-auto max-w-xl rounded-2xl border-2 border-red-200 bg-red-50 p-6">
+          <div className="font-extrabold text-red-800 mb-2">⚠ {what}을(를) 불러오지 못했습니다</div>
+          <p className="text-sm text-red-700 break-words mb-4">{error}</p>
+          {onRetry && <button className="btn-primary" onClick={onRetry}>다시 시도</button>}
+          <p className="text-xs text-gray-600 mt-4">
+            계속 같은 오류가 나오면 이 문장을 그대로 복사해 알려 주세요.
+            자세한 기록은 <b>logs</b> 폴더의 <b>app-날짜.log</b> 파일에 남습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="text-gray-600 py-20 text-center">
+      <div>불러오는 중…</div>
+      {slow && (
+        <div className="mt-4 text-sm">
+          <div className="text-amber-700 font-bold mb-2">응답이 오래 걸리고 있습니다.</div>
+          {onRetry && <button className="btn-secondary" onClick={onRetry}>다시 시도</button>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ErrorBox({ msg }: { msg: string | null }) {
