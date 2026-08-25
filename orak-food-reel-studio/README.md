@@ -89,6 +89,9 @@ APP_MODE=sample         ← 키를 다 넣었으면 live 로 변경
 `설치파일만들기.bat` 더블클릭 → 만들어진 `...Setup-x64.exe` 설치 → 바탕화면 아이콘 실행.
 자세한 내용은 **`INSTALL.md`**.
 
+설치형 앱도 **`start.bat` 과 같은 3000번 포트**를 씁니다 (`.env` 의 `APP_PORT` 로 바꿀 수 있습니다).
+그래서 Cloudflare Tunnel 명령을 한 번 만들어 두면 다시 켜도 그대로 쓸 수 있습니다 — 10-1 참고.
+
 ### 방법 B — 폴더에서 그대로
 
 1. **`start.bat` 더블클릭**
@@ -244,9 +247,34 @@ AI 음성 생성이 실패하면(잔액 부족 등) 영상은 **무음으로라�
 3. https://developers.facebook.com → **앱 만들기** (Business 유형)
 4. 앱에 **Instagram Graph API** 추가 → `instagram_content_publish` 권한 포함 **Access Token** 발급
 5. 프로그램 ⚙️ 설정 → Instagram → 토큰과 User ID 입력(**암호화 저장**) → [연결 테스트]
-6. **영상 공개 주소**: Instagram 서버가 완성 영상을 내려받을 수 있어야 합니다.
-   - 가장 쉬운 방법: [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) 로 `http://localhost:3000` 을 공개 → 그 주소를 `.env` 의 `PUBLIC_MEDIA_BASE_URL` 에 입력
-   - 영상은 자동으로 `공개주소/output/.../reel.mp4` 로 제공됩니다
+6. **영상 공개 주소**: Instagram 서버가 완성 영상을 내려받을 수 있어야 합니다. 아래 10-1 을 보세요.
+
+## 10-1. 영상 공개 주소 만들기 (Cloudflare Tunnel)
+
+Instagram 서버는 **인터넷에서 열리는 주소**로 완성 영상을 받으러 옵니다.
+내 PC 주소(`localhost`)로는 발행되지 않으므로, 발행할 때만 잠깐 인터넷에 열어 줍니다.
+
+1. [cloudflared 내려받기](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) → Windows 64-bit
+2. 프로그램을 켜 둔 채, ⚙️ **설정 → Instagram → [지금 이 프로그램 주소]** 칸을 봅니다.
+   여기에 **터널 명령이 포트까지 맞춰** 적혀 있습니다. [📋 명령 복사] 를 누르세요.
+   ```
+   cloudflared tunnel --url http://localhost:3000
+   ```
+3. 명령 프롬프트에 붙여넣고 실행 → 나오는 `https://….trycloudflare.com` 주소를
+   설정의 **[영상 공개 주소]** 칸에 넣고 [저장]
+4. 영상은 자동으로 `공개주소/output/.../reel.mp4` 로 제공됩니다
+
+**알아 두실 점**
+
+- 이 프로그램은 **3000번 포트로 고정**되어 있습니다. 3000번이 이미 쓰이고 있으면
+  옆 번호로 밀리는데, 그때는 설정 화면이 **밀린 포트로 명령을 바꿔서** 보여 주고
+  이유도 함께 알려 줍니다. 화면에 적힌 명령을 그대로 쓰시면 됩니다.
+- `trycloudflare.com` 주소는 **터널을 새로 켤 때마다 바뀝니다.** 계속 쓰시려면
+  Cloudflare에 도메인을 연결한 고정 터널(예: `https://reels.내도메인.com`)을 만드세요.
+- 터널이 열려 있는 동안은 **그 주소를 아는 사람이 이 프로그램에 들어올 수 있습니다.**
+  이 프로그램에는 로그인이 없습니다. **발행이 끝나면 검은 창을 닫아 터널을 끊으세요.**
+- 터널 없이 쓰셔도 됩니다 — 릴스 화면 ③ 미리보기·발행의
+  **📱 휴대폰으로 직접 올리기** 로 MP4 를 옮겨 Instagram 앱에서 올리면 됩니다.
 
 ## 11. 릴스 제작 방법
 

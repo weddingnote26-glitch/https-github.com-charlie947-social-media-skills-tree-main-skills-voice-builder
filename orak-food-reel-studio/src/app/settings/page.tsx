@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, api, useApi, ErrorBox, LoadGate, isDesktopApp } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, LoadGate, isDesktopApp, copyText } from "@/components/ui";
+import { describeAppAddress, type AppAddress } from "@/lib/app-address";
 import { DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL } from "@/lib/providers/cloudflare-models";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
@@ -35,6 +36,10 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<Record<string, string>>({});
   const [keyInput, setKeyInput] = useState<Partial<Record<SecretName, string>>>({});
   const toast = useToast();
+  /* 지금 이 프로그램이 어느 주소·포트로 열려 있는지. 터널 명령에 포트를 적어야 하는데
+     사람이 그걸 외우고 있을 이유가 없다. 서버에 묻지 않고 브라우저 주소에서 바로 읽는다. */
+  const [addr, setAddr] = useState<AppAddress | null>(null);
+  useEffect(() => { setAddr(describeAppAddress(window.location.href)); }, []);
   // ElevenLabs 키를 저장하면 목소리 목록을 다시 불러오게 하는 신호
   const [voiceRefresh, setVoiceRefresh] = useState(0);
 
@@ -342,13 +347,13 @@ export default function SettingsPage() {
             Access Token 발급 — 두 가지 방법 중 하나입니다
             <ul className="list-disc pl-5 mt-1 space-y-0.5">
               <li><b>Instagram 로그인</b> (페이스북 페이지 없이, 토큰이 <code className="bg-gray-100 px-1 rounded">IGAA…</code>)
-                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_business_content_publish</code></li>
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded break-all">instagram_business_content_publish</code></li>
               <li><b>페이스북 로그인</b> (페이지에 연결, 토큰이 <code className="bg-gray-100 px-1 rounded">EAA…</code>)
-                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code></li>
+                {" "}→ 권한 <code className="bg-gray-100 px-1 rounded break-all">instagram_content_publish</code></li>
             </ul>
           </li>
           <li>아래에 토큰과 IG User ID 입력 (토큰은 <b>암호화되어</b> 저장됩니다). ID 를 모르면 토큰만 저장하고 <b>[연결 테스트]</b>를 누르세요 — 찾아서 알려 드립니다</li>
-          <li>아래 <b>[영상 공개 주소]</b> 칸에 인터넷에서 열리는 주소를 넣습니다 — Instagram 서버가 그 주소로 완성 영상을 내려받습니다 (예: Cloudflare Tunnel 주소)</li>
+          <li>아래 <b>[영상 공개 주소]</b> 칸에 인터넷에서 열리는 주소를 넣습니다 — Instagram 서버가 그 주소로 완성 영상을 내려받습니다. 바로 위 <b>[지금 이 프로그램 주소]</b> 칸에 터널 명령이 포트까지 맞춰 적혀 있으니 그대로 복사해 쓰시면 됩니다</li>
         </ol>
         <div className="field-grid mb-3">
           {/* §11 두 방식은 주소도 권한도 다르다. 섞이지 않게 사용자가 못 박아 둘 수 있게 한다. */}
@@ -372,8 +377,8 @@ export default function SettingsPage() {
             </div>
             <p className="text-xs text-gray-600 mt-2 break-keep">
               두 방식은 <b>권한 이름과 API 주소가 서로 다릅니다.</b> 섞어 쓰면 토큰을 알아보지 못합니다.
-              <br />· Instagram Login — <code className="bg-gray-100 px-1 rounded">instagram_business_basic</code>, <code className="bg-gray-100 px-1 rounded">instagram_business_content_publish</code>
-              <br />· Facebook Login — <code className="bg-gray-100 px-1 rounded">instagram_basic</code>, <code className="bg-gray-100 px-1 rounded">instagram_content_publish</code>
+              <br />· Instagram Login — <code className="bg-gray-100 px-1 rounded break-all">instagram_business_basic</code>, <code className="bg-gray-100 px-1 rounded break-all">instagram_business_content_publish</code>
+              <br />· Facebook Login — <code className="bg-gray-100 px-1 rounded break-all">instagram_basic</code>, <code className="bg-gray-100 px-1 rounded break-all">instagram_content_publish</code>
             </p>
             {ig?.mismatch && (
               <div className="mt-2 rounded-xl bg-red-50 border-2 border-red-300 p-3 text-sm text-red-800 break-keep">
@@ -420,6 +425,53 @@ export default function SettingsPage() {
         {/* Instagram 서버가 이 주소로 영상을 받으러 온다 — 없으면 발행 단계에서 멈춘다.
             예전에는 "설정 → Instagram에서 입력하세요" 라고만 하고 넣을 칸이 없었다. */}
         <div className="mt-5 pt-5 border-t border-gray-200">
+          {/* 터널 명령에 넣을 포트를 화면이 직접 알려 준다 — 예전에는 3000 이라고 짐작해서 적었다가
+              설치형 앱이 다른 포트로 떠 있으면 터널이 빈 자리를 가리켜 발행이 조용히 실패했다. */}
+          {addr && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-gray-700">지금 이 프로그램 주소</span>
+                <code className="bg-white border border-gray-300 rounded px-2 py-0.5 text-sm break-all">{addr.current}</code>
+                <button type="button" className="btn-ghost text-sm"
+                  onClick={async () => { if (await copyText(addr.current)) toast.success("주소를 복사했습니다"); else toast.error("복사하지 못했습니다", "주소를 직접 끌어서 복사해 주세요."); }}>
+                  📋 복사
+                </button>
+              </div>
+
+              {addr.tunnelCommand ? (
+                <div className="mt-2.5 space-y-1.5">
+                  <p className="text-xs text-gray-600">
+                    이 주소는 <b>내 PC 안에서만</b> 열립니다. Instagram 서버가 영상을 받아 가려면
+                    아래 명령으로 인터넷에 잠깐 열어 주세요 (cloudflared 설치 필요).
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="bg-white border border-gray-300 rounded px-2 py-1 text-sm break-all flex-1 min-w-[240px]">{addr.tunnelCommand}</code>
+                    <button type="button" className="btn-secondary text-sm"
+                      onClick={async () => { if (await copyText(addr.tunnelCommand!)) toast.success("명령을 복사했습니다", ["명령 프롬프트에 붙여넣고 실행하세요"]); else toast.error("복사하지 못했습니다", "명령을 직접 끌어서 복사해 주세요."); }}>
+                      📋 명령 복사
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    명령을 실행하면 나오는 <code className="bg-gray-100 px-1 rounded">https://….trycloudflare.com</code> 주소를
+                    아래 칸에 넣고 저장하세요. <b>검은 창을 닫으면 그 주소는 사라집니다.</b>
+                  </p>
+                  {addr.portNotice && (
+                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">⚠ {addr.portNotice}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-gray-600 flex-1 min-w-[220px]">
+                    지금 <b>인터넷 주소</b>로 이 화면을 보고 계십니다. 이 주소를 그대로 아래 칸에 넣으시면 됩니다.
+                  </p>
+                  <button type="button" className="btn-secondary text-sm"
+                    onClick={() => { setS({ ...s, publicMediaBaseUrl: addr.current }); toast.info("아래 칸에 넣었습니다", ["[저장]을 눌러야 실제로 저장됩니다"]); }}>
+                    ↓ 이 주소 넣기
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <label className="label text-sm" htmlFor="ig-public-url">영상 공개 주소 (발행할 때 필요)</label>
           <div className="flex flex-wrap items-center gap-3">
             <input id="ig-public-url" className="input flex-1 min-w-0" placeholder="https://reels.내주소.com"

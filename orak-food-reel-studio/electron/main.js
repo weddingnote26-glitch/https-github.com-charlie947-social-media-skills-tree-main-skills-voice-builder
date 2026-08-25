@@ -15,6 +15,7 @@ const fs = require("node:fs");
 const { resolveInside } = require("./safe-path");
 const net = require("node:net");
 const { fork } = require("node:child_process");
+const { pickPort } = require("./port");
 
 const APP_NAME = "오락푸드 AI릴스 자동제작 스튜디오";
 const isDev = !app.isPackaged;
@@ -48,17 +49,7 @@ function bundledBin(name) {
   return fs.existsSync(p) ? p : null;
 }
 
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
+/** 서버가 실제로 응답할 때까지 기다린다 — 창을 먼저 띄우면 빈 화면이 뜬다 */
 function waitForServer(port, timeoutMs = 120000) {
   const started = Date.now();
   return new Promise((resolve, reject) => {
@@ -79,7 +70,7 @@ let serverProcess = null;
 let mainWindow = null;
 
 async function startServer() {
-  const port = await freePort();
+  const { port, wanted } = await pickPort([USER_HOME, serverRoot(), path.join(__dirname, "..")]);
   const root = serverRoot();
   const entry = path.join(root, "server.js");   // next build --output standalone 결과
   if (!fs.existsSync(entry)) {
@@ -117,6 +108,12 @@ async function startServer() {
   serverProcess.stderr?.on("data", append);
 
   await waitForServer(port);
+  // 터널을 쓰는 사람이 로그만 보고도 어느 포트인지 알 수 있게 남긴다
+  append(`[orak] 화면 주소 http://localhost:${port}/\n`);
+  if (port !== wanted) {
+    append(`[orak] ${wanted} 번 포트가 이미 쓰이고 있어 ${port} 번으로 열었습니다 — `
+      + `Cloudflare Tunnel 을 쓰신다면 --url http://localhost:${port} 로 맞춰 주세요\n`);
+  }
   return port;
 }
 
