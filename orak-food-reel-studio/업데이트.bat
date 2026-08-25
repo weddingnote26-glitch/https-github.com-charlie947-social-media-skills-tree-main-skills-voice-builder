@@ -77,25 +77,36 @@ set "BRANCH="
 for /f "usebackq delims=" %%B in (`git rev-parse --abbrev-ref HEAD`) do set "BRANCH=%%B"
 if /i "%BRANCH%"=="%WANT%" goto BRANCH_OK
 
-echo  [!] 지금 폴더가 다른 갈래를 보고 있습니다.
+rem 다른 갈래를 보고 있어도 옮기지 않는다.
+rem 이 폴더에는 블로그 프로젝트도 같이 있어서, 갈래를 옮기면 그쪽이
+rem 예전 상태로 되돌아간다. 옮기는 대신 릴스 작업만 끌어와 합친다.
+echo  [!] 지금 폴더는 다른 갈래를 보고 있습니다.
 echo        지금 보는 것 : %BRANCH%
-echo        받아야 할 것 : %WANT%
-echo      이대로 두면 새 작업이 하나도 오지 않아서 %WANT% 로 옮깁니다.
+echo        릴스 작업    : %WANT%
+echo      갈래는 그대로 두고, 릴스 스튜디오 작업만 합쳐 옵니다.
+echo      ^(블로그 폴더는 건드리지 않습니다^)
 echo.
 git fetch origin %WANT%
-git checkout %WANT%
-if not errorlevel 1 goto BRANCH_MOVED
+if errorlevel 1 (
+  echo  [X] 인터넷에서 받아오지 못했습니다. 연결과 회사 방화벽을 확인해 주세요.
+  popd
+  pause
+  exit /b 1
+)
+git merge --no-edit origin/%WANT%
+if not errorlevel 1 goto BRANCH_MERGED
 
 echo.
-echo  [X] 갈래를 옮기지 못했습니다. 이 폴더에서 고친 파일이 있을 수 있습니다.
-echo      화면 내용을 그대로 복사해 Claude 에게 보여주세요.
+echo  [X] 합치는 중 충돌이 났습니다. 이 폴더에서 고친 파일이 있을 수 있습니다.
+echo      아래 명령으로 되돌린 뒤 다시 실행해 보세요.
+echo        git merge --abort
+echo      그래도 안 되면 화면 내용을 그대로 복사해 Claude 에게 보여주세요.
 popd
 pause
 exit /b 1
 
-:BRANCH_MOVED
-set "BRANCH=%WANT%"
-echo  [i] %WANT% 로 옮겼습니다.
+:BRANCH_MERGED
+echo  [i] 릴스 스튜디오 작업을 %BRANCH% 에 합쳤습니다.
 echo.
 
 :BRANCH_OK
