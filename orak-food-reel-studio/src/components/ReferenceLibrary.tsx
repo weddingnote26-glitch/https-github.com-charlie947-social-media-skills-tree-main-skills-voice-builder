@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { api, useApi, mediaUrl } from "./ui";
+import { api, useApi, mediaUrl, LoadGate } from "./ui";
 import ConfirmDialog, { type ConfirmOptions } from "./ConfirmDialog";
 import { useToast } from "./Toast";
 
@@ -16,7 +16,7 @@ const folderLabel = (name: string) => (name === "" ? "기본 폴더" : name);
  * 그리고 어떤 이미지를 캐릭터 기준으로 쓸지 선택.
  */
 export default function ReferenceLibrary() {
-  const { data, reload } = useApi<Library>("/api/character/library");
+  const { data, error: loadError, reload } = useApi<Library>("/api/character/library");
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -29,7 +29,7 @@ export default function ReferenceLibrary() {
   const [newFolder, setNewFolder] = useState("");
   const [moveTo, setMoveTo] = useState("");
 
-  if (!data) return <div className="text-sm text-gray-600 py-6">보관함을 불러오는 중…</div>;
+  if (!data) return <LoadGate error={loadError} onRetry={reload} what="기준 이미지 보관함" />;
 
   const folders = data.folders;
   const shown = data.images.filter((i) => i.folder === folder);

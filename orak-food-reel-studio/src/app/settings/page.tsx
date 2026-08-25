@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, api, useApi, ErrorBox, isDesktopApp } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, LoadGate, isDesktopApp } from "@/components/ui";
 import { DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL } from "@/lib/providers/cloudflare-models";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
@@ -24,7 +24,7 @@ interface SettingsResponse {
 }
 
 export default function SettingsPage() {
-  const { data, reload } = useApi<SettingsResponse>("/api/settings");
+  const { data, error: loadError, reload } = useApi<SettingsResponse>("/api/settings");
   const [s, setS] = useState<AppSettings | null>(null);
   const [igToken, setIgToken] = useState("");
   const [igUser, setIgUser] = useState("");
@@ -37,7 +37,7 @@ export default function SettingsPage() {
   const [voiceRefresh, setVoiceRefresh] = useState(0);
 
   useEffect(() => { if (data && !s) setS(data.settings); }, [data, s]);
-  if (!data || !s) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
+  if (!data || !s) return <LoadGate error={loadError} onRetry={reload} what="설정" />;
   const ig = data.instagram;
 
   const save = async (patch: Partial<AppSettings> & Partial<Record<SecretName, string>> & { igAccessToken?: string; igUserId?: string }) => {

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, api, useApi, ErrorBox } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, LoadGate } from "@/components/ui";
 import ReferenceLibrary from "@/components/ReferenceLibrary";
 
 interface CharData {
@@ -14,14 +14,14 @@ interface CharData {
 }
 
 export default function CharacterPage() {
-  const { data, reload } = useApi<CharData>("/api/character");
+  const { data, error: loadError, reload } = useApi<CharData>("/api/character");
   const [err, setErr] = useState<string | null>(null);
   const setLock = async (patch: Record<string, unknown>) => {
     try { await api("/api/character", { method: "PATCH", body: JSON.stringify(patch) }); reload(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
   };
 
-  if (!data) return <div className="text-gray-600 py-20 text-center">불러오는 중…</div>;
+  if (!data) return <LoadGate error={loadError} onRetry={reload} what="오락이 정보" />;
   const c = data.character;
 
   return (
