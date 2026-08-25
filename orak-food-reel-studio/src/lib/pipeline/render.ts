@@ -5,6 +5,7 @@ import type { Scene } from "../schema";
 import { DIRS } from "../paths";
 import { getSettings } from "../settings";
 import { logInfo } from "../log";
+import type { CharacterPlacement } from "./character-overlay";
 
 /**
  * §20~22 영상 제작 — 1080×1920 / 9:16 / MP4 / H.264 / AAC.
@@ -48,6 +49,11 @@ export function buildRenderArgs(opts: {
   outPath: string;
   bgmPath?: string;
   bgmVolumeDb?: number;
+  /**
+   * 만두탐정 오락이를 영상에 직접 얹는다.
+   * 이미지 AI 가 캐릭터를 빼먹거나 다른 얼굴로 그려도, 여기서 얹은 것은 반드시 나온다.
+   */
+  characters?: CharacterPlacement[];
 }): RenderPlan {
   const { scenes } = opts;
   const totalSec = scenes[scenes.length - 1].end;
@@ -73,6 +79,11 @@ export function buildRenderArgs(opts: {
     bgmIdx = voiceIdx + 1;
     args.push("-stream_loop", "-1", "-i", opts.bgmPath);
   }
+  /* 캐릭터 그림도 입력으로 넣는다. 같은 파일을 여러 번 넣어도 PNG 한 장이라 부담이 적고,
+     필터 안에서 출력을 나눠 쓰는 것보다 그래프가 단순해 실수가 적다. */
+  const chars = opts.characters ?? [];
+  const charStartIdx = (bgmIdx >= 0 ? bgmIdx : voiceIdx) + 1;
+  for (const c of chars) args.push("-i", c.imagePath);
 
   // 장면별 Ken Burns
   const parts: string[] = [];
@@ -91,8 +102,24 @@ export function buildRenderArgs(opts: {
   });
   const vLabels = scenes.map((_, i) => `[v${i}]`).join("");
   parts.push(`${vLabels}concat=n=${scenes.length}:v=1:a=0[vcat]`);
+
+  /* 오락이 합성 — 자막보다 먼저 얹는다. 자막·간판이 캐릭터 위에 와야 글이 읽힌다.
+     장면 시간에만 보이게 enable 로 켜고 끈다. */
+  let stage = "vcat";
+  chars.forEach((c, k) => {
+    const inIdx = charStartIdx + k;
+    const flip = c.flip ? ",hflip" : "";
+    parts.push(`[${inIdx}:v]scale=-1:${c.height}:flags=lanczos${flip},format=rgba[ch${k}]`);
+    const next = `cv${k}`;
+    parts.push(
+      `[${stage}][ch${k}]overlay=${c.x}:${c.y}:` +
+      `enable='between(t,${c.start.toFixed(2)},${c.end.toFixed(2)})'[${next}]`
+    );
+    stage = next;
+  });
+
   parts.push(
-    `[vcat]subtitles=filename='${escapeFilterPath(opts.assPath)}':fontsdir='${escapeFilterPath(DIRS.fonts)}',format=yuv420p[vout]`
+    `[${stage}]subtitles=filename='${escapeFilterPath(opts.assPath)}':fontsdir='${escapeFilterPath(DIRS.fonts)}',format=yuv420p[vout]`
   );
 
   // 오디오: 나레이션 + (선택) BGM 자동 더킹 (§22)

@@ -16,6 +16,7 @@ import { runFFmpeg, runFFprobe } from "../src/lib/ffmpeg";
 import { buildScenePrompt, scenePromptIssues } from "../src/lib/content/scene-prompt";
 import { countCharacter, presenceBlockReason } from "../src/lib/content/character-presence";
 import { orakiAssets } from "../src/lib/character/asset-root";
+import { planCharacterOverlays, cutoutFor } from "../src/lib/pipeline/character-overlay";
 
 const OUT = process.env.ORAKI_VERIFY_OUT ?? path.join(process.cwd(), "테스트 결과");
 
@@ -103,6 +104,12 @@ async function main() {
   const dur = parseFloat(probe.format?.duration ?? "0");
   check("길이가 있다", dur > 3, `${dur.toFixed(1)}초`);
 
+  // ── 5-2) 오락이가 실제로 영상에 합성됐나 ──
+  check("합성용 컷아웃(배경 투명)이 있다", !!cutoutFor("front"), cutoutFor("front") ?? "없음");
+  const plan = planCharacterOverlays(scenes);
+  check("합성 계획이 세워졌다", plan.length > 0, `${plan.length}개 장면`);
+  check("합성 장면 수가 캐릭터 장면 수와 같다", plan.length === shown, `${plan.length} vs ${shown}`);
+
   // ── 6) 프레임 추출 — 눈으로 볼 수 있게 남긴다 ──
   const frames: string[] = [];
   for (let i = 0; i < scenes.length; i++) {
@@ -114,6 +121,32 @@ async function main() {
     if (fs.existsSync(out)) frames.push(out);
   }
   check("장면 프레임을 뽑았다", frames.length === scenes.length, `${frames.length}/${scenes.length}장`);
+
+  /* 합성된 캐릭터가 실제 픽셀로 찍혔는지 본다.
+     캐릭터 자리와 반대편 같은 높이를 잘라 색이 다른지 비교한다 —
+     "계획만 세우고 영상에는 없는" 경우를 걸러내기 위해서다. */
+  if (plan.length) {
+    const c = plan[0];
+    const at = Math.min(dur - 0.2, c.start + (c.end - c.start) / 2);
+    const box = path.join(OUT, "oraki-character-box.png");
+    const bg = path.join(OUT, "oraki-background-box.png");
+    const cw = Math.round(c.height * 0.5), ch2 = Math.round(c.height * 0.5);
+    const cx = Math.round(c.x + c.height * 0.25), cy = Math.round(c.y + c.height * 0.3);
+    await runFFmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", at.toFixed(2), "-i", video,
+      "-frames:v", "1", "-vf", `crop=${cw}:${ch2}:${cx}:${cy}`, box], 60_000);
+    await runFFmpeg(["-hide_banner", "-loglevel", "error", "-y", "-ss", at.toFixed(2), "-i", video,
+      "-frames:v", "1", "-vf", `crop=${cw}:${ch2}:${Math.max(0, 1080 - cx - cw)}:${cy}`, bg], 60_000);
+    const stat = async (f: string) => {
+      const out = await runFFprobe(["-v", "error", "-select_streams", "v", "-show_entries",
+        "frame_tags=lavfi.signalstats.YAVG", "-f", "lavfi",
+        `movie=${f.replace(/\\/g, "/").replace(/:/g, "\\:")},signalstats`, "-of", "csv=p=0"]);
+      return parseFloat(out.trim().split("\n")[0] || "0");
+    };
+    const yChar = await stat(box);
+    const yBg = await stat(bg);
+    check("캐릭터 자리에 실제로 무언가 합성됐다 (배경과 밝기가 다르다)",
+      Math.abs(yChar - yBg) > 3, `캐릭터쪽 ${yChar.toFixed(1)} vs 반대쪽 ${yBg.toFixed(1)}`);
+  }
   console.log(`   프레임 위치: ${OUT}`);
 
   console.log(`\n${failed === 0 ? "모두 통과" : `실패 ${failed}건`}`);

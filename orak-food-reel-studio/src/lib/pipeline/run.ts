@@ -14,6 +14,7 @@ import { generateVoice } from "./tts";
 import { writeSubtitles } from "./subtitles";
 import { buildOverlays } from "./overlay";
 import { ensureCharacterPresence } from "../content/character-presence";
+import { planCharacterOverlays } from "./character-overlay";
 import { renderReel } from "./render";
 import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
@@ -260,9 +261,15 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     mark("render", { status: "진행중", progress: 0, indeterminate: true, message: "FFmpeg 렌더링 중" });
     const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
     const videoPath = path.join(outDir, "reel.mp4");
+    /* 오락이를 영상에 직접 얹는다. 이미지 AI 가 캐릭터를 빼먹어도 여기서 넣은 것은 반드시 나온다. */
+    const charOverlays = script.content_mode === "ORAKI_DETECTIVE"
+      ? planCharacterOverlays(script.scenes) : [];
+    if (charOverlays.length) {
+      logInfo("render", `오락이 합성 — ${charOverlays.length}개 장면에 캐릭터를 얹습니다`);
+    }
     const rendered = await renderReel({
       scenes: script.scenes, imageByScene, voicePath: voice.voicePath,
-      assPath: subs.assPath, outPath: videoPath,
+      assPath: subs.assPath, outPath: videoPath, characters: charOverlays,
     });
     mark("render", { status: "완료", progress: 100, indeterminate: false, message: `${rendered.totalSec.toFixed(1)}s` });
 
@@ -492,6 +499,12 @@ export async function rerender(reelId: string): Promise<void> {
   const reel = getReel(reelId);
   if (!reel || !reel.script || !reel.output_dir) throw new Error("릴스를 찾을 수 없습니다");
   const script = reel.script;
+  /* 사용자가 장면 편집에서 고친 값(캐릭터 등장 여부 포함)을 대본에 반영한다.
+     이걸 빠뜨리면 "다시 만들기" 에서 오락이가 사라진다. */
+  for (const sc of script.scenes) {
+    const dbScene = reel.scenes.find((x) => x.scene === sc.scene);
+    if (dbScene) Object.assign(sc, dbScene);
+  }
   /* 음성이 없어도 다시 만들 수 있다 — 무음으로 간다.
      "음성 파일이 없습니다" 로 여기서 멈추면, 음성이 실패한 릴스는 영영 영상을 못 만든다. */
   const voiceCandidate = reel.voice_path ?? path.join(reel.output_dir, "voice.mp3");
@@ -499,6 +512,11 @@ export async function rerender(reelId: string): Promise<void> {
   const assPath = path.join(reel.output_dir, "subtitle.ass");
   const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
   const videoPath = path.join(reel.output_dir, "reel.mp4");
-  const rendered = await renderReel({ scenes: script.scenes, imageByScene, voicePath, assPath, outPath: videoPath });
+  const charOverlays = reel.content_mode === "ORAKI_DETECTIVE"
+    ? planCharacterOverlays(script.scenes) : [];
+  const rendered = await renderReel({
+    scenes: script.scenes, imageByScene, voicePath, assPath, outPath: videoPath,
+    characters: charOverlays,
+  });
   updateReel(reelId, { video_path: videoPath, duration_sec: rendered.totalSec, status: "검수" });
 }

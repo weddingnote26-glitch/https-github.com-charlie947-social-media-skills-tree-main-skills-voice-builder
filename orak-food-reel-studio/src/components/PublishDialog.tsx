@@ -10,6 +10,24 @@ export interface Preflight {
   alreadyPosted: { mediaId: string; permalink: string | null; at: string } | null;
 }
 
+/**
+ * 막힌 항목마다 "어디서 푸는지" 를 알려 준다.
+ *
+ * 실제로 겪은 일: [게시하기] 가 회색인데 이유가 창 위쪽으로 스크롤되어 보이지 않아
+ * "기능이 막혔다" 고 느끼셨다. 막는 검사 자체는 안전장치라 없애지 않고,
+ * 대신 무엇을 하면 풀리는지 단추 바로 옆에 적는다.
+ */
+const HOW_TO_FIX: Record<string, string> = {
+  token: "설정 → Instagram 에서 Access Token 을 넣고 [연결 테스트]",
+  userId: "설정 → Instagram 에서 User ID 를 넣거나 [연결 테스트]로 찾기",
+  review: "이 릴스의 [🔎 완성 콘텐츠 미리보기·검수]에서 다섯 항목 체크",
+  publicUrl: "설정 → Instagram → [영상 공개 주소]에 인터넷 주소 넣기",
+  publicFetch: "Cloudflare Tunnel 창이 켜져 있는지 확인 (설정 화면에 명령이 있습니다)",
+  videoFile: "② 장면 편집에서 [💾 저장하고 영상 제작하기]",
+  factcheck: "① 업체 정보 입력에서 확인 필요 항목 채우기",
+  duplicate: "다시 올리시려면 위 [다시 게시]를 체크",
+};
+
 /** 같은 요청을 두 번 보내지 않도록 창을 열 때 열쇠를 하나 만든다 */
 function newRequestKey(): string {
   const a = new Uint8Array(16);
@@ -66,6 +84,10 @@ export default function PublishDialog({ reelId, videoPath, onClose, onPublished 
 
   const video = mediaUrl(videoPath);
   const canGo = !!pre && (pre.canPublish || (republish && pre.blockers.every((b) => b.startsWith("중복 게시")))) && agree && !busy;
+  /* 화면에 보여 줄 "막는 이유". [다시 게시] 를 체크했으면 중복 항목은 이미 푼 것이므로 뺀다. */
+  const blockingLines = (pre?.lines ?? []).filter(
+    (l) => l.blocking && !l.ok && !(republish && l.key === "duplicate"),
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
@@ -148,11 +170,37 @@ export default function PublishDialog({ reelId, videoPath, onClose, onPublished 
           )}
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex flex-wrap gap-2 justify-end">
-          <button className="btn-secondary" onClick={onClose} disabled={busy}>취소</button>
-          <button className="btn-primary" disabled={!canGo} onClick={() => void publish()}>
-            {busy ? "게시 중…" : "게시하기"}
-          </button>
+        <div className="p-6 border-t border-gray-200 space-y-3">
+          {/* 왜 못 누르는지 단추 바로 옆에 적는다 — 이유가 스크롤 위로 숨으면 "고장" 처럼 보인다 */}
+          {pre && !busy && blockingLines.length > 0 && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+              <p className="text-sm font-bold text-red-800">
+                지금은 게시할 수 없습니다 — {blockingLines.length}가지를 먼저 해결해 주세요
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {blockingLines.map((l) => (
+                  <li key={l.key} className="text-sm text-red-800">
+                    <b>{l.label}</b> — {l.detail}
+                    {HOW_TO_FIX[l.key] && (
+                      <div className="text-xs text-red-700 mt-0.5">→ {HOW_TO_FIX[l.key]}</div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {pre && !busy && blockingLines.length === 0 && !agree && (
+            <p className="text-sm text-gray-700">
+              위 <b>확인했습니다. 지금 공개합니다.</b> 에 체크하시면 [게시하기] 가 켜집니다.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button className="btn-secondary" onClick={onClose} disabled={busy}>취소</button>
+            <button className="btn-primary" disabled={!canGo} onClick={() => void publish()}>
+              {busy ? "게시 중…" : "게시하기"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
