@@ -136,6 +136,33 @@ Write-Host ''
 
 git push -u origin $branch
 
+# 다른 PC에서 먼저 올린 게 있으면 거부됩니다.
+# 그때는 받아온 뒤 한 번 더 시도합니다. (사람이 두 번 실행하지 않아도 되게)
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ''
+    Write-Host '        다른 PC에서 먼저 올린 내용이 있습니다.' -ForegroundColor Yellow
+    Write-Host '        먼저 받아온 뒤 다시 올려 보겠습니다 …'
+    Write-Host ''
+    git pull --no-rebase origin $branch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host '        [멈춤] 양쪽에서 같은 파일을 고쳤습니다.' -ForegroundColor Red
+        Write-Host '               자동으로 합칠 수 없습니다.'
+        Write-Host ''
+        Write-Host '               위에 CONFLICT 라고 나온 파일 이름을 그대로'
+        Write-Host '               Claude 에게 보여주시면 정리해 드립니다.'
+        Write-Host ''
+        Write-Host '               직접 고치려 하지 마세요. 작업은 안전합니다.'
+        Write-Host ''
+        Read-Host '  Enter 를 누르면 창이 닫힙니다'
+        exit 1
+    }
+    Write-Host ''
+    Write-Host '        받아왔습니다. 다시 올립니다 …'
+    Write-Host ''
+    git push -u origin $branch
+}
+
 if ($LASTEXITCODE -eq 0) {
     Write-Host ''
     Write-Host '════════════════════════════════════════════════════════════'
