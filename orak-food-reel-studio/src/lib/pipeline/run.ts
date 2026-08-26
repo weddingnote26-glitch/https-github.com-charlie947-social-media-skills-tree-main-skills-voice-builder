@@ -178,7 +178,11 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     mark("factcheck", {
       indeterminate: false,
       status: "완료", progress: 100,
-      message: fact.blocked ? `⚠ 확인 필요 ${fact.blockReasons.length}건` : `확인 ${fact.items.filter((i) => i.status === "확인").length}/${fact.items.length}`,
+      /* 사장님이 직접 적어 넣은 값("사용자 입력")도 확인된 정보다.
+         이걸 안 세서, 업체 정보를 다 채워 넣고도 "확인 0/7" 로 보였다. */
+      message: fact.blocked
+        ? `⚠ 확인 필요 ${fact.blockReasons.length}건`
+        : `확인 ${fact.items.filter((i) => i.status === "확인" || i.status === "사용자 입력").length}/${fact.items.length}`,
     });
 
     // 4) 이미지 (§12, 실패한 장면만 재시도 §43)

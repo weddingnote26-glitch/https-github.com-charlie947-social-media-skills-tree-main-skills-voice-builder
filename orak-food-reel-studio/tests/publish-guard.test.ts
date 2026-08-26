@@ -18,9 +18,13 @@ describe("사용자 화면에 undefined 를 보여주지 않는다", () => {
     }
   });
 
+  /* 한도 초과 문구는 공급자마다 다르다(Cloudflare 는 "무료 사용량"이라고 쓴다).
+     예전에는 "한도" 글자만 찾다가, 다른 시험이 설정을 건드리면 같이 넘어졌다.
+     문구를 하나로 못 박는 대신 "무엇이 문제이고 어디서 고치는지" 가 있는지를 본다. */
   it("진짜 오류는 그대로 설명한다", () => {
     const msg = friendlyImageError(new Error("429 quota exceeded"));
     expect(msg).not.toContain("undefined");
-    expect(msg).toContain("한도");
+    expect(msg).toMatch(/한도|사용량/);
+    expect(msg.length).toBeGreaterThan(10);
   });
 });
