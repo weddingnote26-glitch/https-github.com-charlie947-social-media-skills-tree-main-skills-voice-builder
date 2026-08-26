@@ -55,10 +55,10 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,Noto Sans KR ExtraBold,${st.fontSize},${primary},${primary},${outline},&H96000000,-1,0,0,0,100,100,0,0,1,7,2,2,60,60,${marginV},1
 Style: Badge,Noto Sans KR ExtraBold,88,&H00FFFFFF,&H00FFFFFF,${assColor("#E86A3A").slice(0, -1)},&HB4000000,-1,0,0,0,100,100,2,0,1,9,3,5,60,60,0,1
-Style: SignTitle,Noto Sans KR ExtraBold,104,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,8,3,8,70,70,150,1
-Style: SignSub,Noto Sans KR Medium,52,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,0,0,0,0,100,100,0,0,1,5,2,8,70,70,150,1
-Style: PanelTitle,Noto Sans KR ExtraBold,64,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,7,2,7,70,70,430,1
-Style: PanelBody,Noto Sans KR ExtraBold,56,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,-1,0,0,0,100,100,0,0,1,6,2,7,70,70,430,1
+Style: SignTitle,Noto Sans KR ExtraBold,104,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,8,3,8,70,70,120,1
+Style: SignSub,Noto Sans KR Medium,52,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,0,0,0,0,100,100,0,0,1,5,2,8,70,70,250,1
+Style: PanelTitle,Noto Sans KR ExtraBold,64,&H00FFFFFF,&H00FFFFFF,${assColor("#B84A1B").slice(0, -1)},&HC8000000,-1,0,0,0,100,100,0,0,1,7,2,7,70,70,150,1
+Style: PanelBody,Noto Sans KR ExtraBold,56,&H00FFFFFF,&H00FFFFFF,&H00141414,&HC8000000,-1,0,0,0,100,100,0,0,1,6,2,7,70,70,250,1
 Style: Brand,Noto Sans KR Medium,40,&H00FFFFFF,&H00FFFFFF,${outline},&H96000000,0,0,0,0,100,100,4,0,1,4,1,2,60,60,120,1
 
 [Events]

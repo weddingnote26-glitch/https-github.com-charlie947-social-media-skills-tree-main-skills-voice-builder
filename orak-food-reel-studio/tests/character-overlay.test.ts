@@ -95,3 +95,28 @@ describe("합성이 실제 ffmpeg 명령에 들어간다", () => {
     expect(withNone.args).toEqual(without.args);
   });
 });
+
+describe("판과 캐릭터가 겹치지 않는다 (프레임에서 모자와 겹쳐 보였던 문제)", () => {
+  it("판이 있는 장면은 캐릭터를 낮춰 세운다", () => {
+    const scenes = [mk(1, "hero")];
+    const [free] = planCharacterOverlays(scenes);
+    const [withPanel] = planCharacterOverlays(scenes, new Set([1]));
+    expect(withPanel.height).toBeLessThan(free.height);
+  });
+
+  it("낮춘 캐릭터의 머리 끝이 판 아래에 온다", () => {
+    // 판은 화면 위 150px 에서 시작해 본문까지 약 630px 까지 쓴다
+    const [p] = planCharacterOverlays([mk(1, "hero")], new Set([1]));
+    expect(p.y).toBeGreaterThan(630);
+  });
+
+  it("판이 없는 장면은 그대로 크게 선다", () => {
+    const [p] = planCharacterOverlays([mk(1, "hero"), mk(2, "hero")], new Set([2]));
+    expect(p.height).toBe(Math.round(1920 * 0.52));
+  });
+
+  it("판이 있어도 자막 자리는 여전히 침범하지 않는다", () => {
+    const [p] = planCharacterOverlays([mk(1, "hero")], new Set([1]));
+    expect(p.y + p.height).toBeLessThanOrEqual(1920 - Math.round(1920 * 0.30) + 1);
+  });
+});

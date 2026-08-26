@@ -230,6 +230,10 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       script.scenes = voice.scenes as ReelScript["scenes"];
       script.duration = Math.round(voice.totalSec);
       voicePath = voice.voicePath;
+      /* 음성 길이에 맞춰 장면 시간이 바뀌었다 — 이걸 저장해 두지 않으면
+         [다시 만들기] 가 옛 시간(대본이 요청한 길이)으로 렌더해 나레이션 끝이 잘린다.
+         실제로 29.5초 음성이 25초 영상으로 다시 만들어져 4.5초가 사라졌다. */
+      saveScenes(reelId, script.scenes);
       mark("voice", { status: "완료", progress: 100, indeterminate: false, message: `${voice.totalSec}s` });
     } catch (e) {
       voiceNotice = redactError(e);
@@ -266,8 +270,9 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
     const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
     const videoPath = path.join(outDir, "reel.mp4");
     /* 오락이를 영상에 직접 얹는다. 이미지 AI 가 캐릭터를 빼먹어도 여기서 넣은 것은 반드시 나온다. */
+    const panelScenes = new Set(overlays.map((o) => o.scene));
     const charOverlays = script.content_mode === "ORAKI_DETECTIVE"
-      ? planCharacterOverlays(script.scenes) : [];
+      ? planCharacterOverlays(script.scenes, panelScenes) : [];
     if (charOverlays.length) {
       logInfo("render", `오락이 합성 — ${charOverlays.length}개 장면에 캐릭터를 얹습니다`);
     }
@@ -516,8 +521,18 @@ export async function rerender(reelId: string): Promise<void> {
   const assPath = path.join(reel.output_dir, "subtitle.ass");
   const imageByScene = new Map(script.scenes.map((s) => [s.scene, s.image_path!] as const));
   const videoPath = path.join(reel.output_dir, "reel.mp4");
+  /* 다시 만들 때도 판이 어디에 얹히는지 알아야 캐릭터를 그만큼 낮출 수 있다.
+     업체가 휴지통에 갔거나 지워졌어도 영상은 다시 만들 수 있어야 하므로 조용히 넘어간다. */
+  let rerenderPanels: Set<number> = new Set();
+  try {
+    if (reel.restaurant_id) {
+      rerenderPanels = new Set(
+        buildOverlays(script.scenes, restaurantInfoOf(reel.restaurant_id), {}).map((o) => o.scene),
+      );
+    }
+  } catch { /* 업체를 못 찾으면 판 없이 간다 */ }
   const charOverlays = reel.content_mode === "ORAKI_DETECTIVE"
-    ? planCharacterOverlays(script.scenes) : [];
+    ? planCharacterOverlays(script.scenes, rerenderPanels) : [];
   const rendered = await renderReel({
     scenes: script.scenes, imageByScene, voicePath, assPath, outPath: videoPath,
     characters: charOverlays,

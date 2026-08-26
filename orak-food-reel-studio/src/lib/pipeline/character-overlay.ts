@@ -43,6 +43,15 @@ export interface CharacterPlacement {
   end: number;
 }
 
+/**
+ * 판(간판·메뉴판·정보판)이 얹히는 장면에서 캐릭터가 올라올 수 있는 최대 비율.
+ *
+ * 실제로 겪은 일: 마지막 장면에서 이용 정보 판이 오락이 모자와 겹쳐 보였다.
+ * 판은 화면 위쪽, 자막은 아래쪽에 있으므로 캐릭터는 그 사이에 서야 한다.
+ * 가로로 자리를 다투게 하는 것보다 위아래로 나누는 편이 확실하다.
+ */
+const PANEL_MAX_RATIO = 0.34;
+
 /** 장면 역할별 화면 높이 비율 — hero 는 크게, corner 는 작게 */
 const HEIGHT_RATIO: Record<string, number> = {
   hero: 0.52,     // 오프닝·마무리 — 참고 영상처럼 크게 선다
@@ -83,7 +92,11 @@ export function poseFor(scene: Scene): "front" | "side" | "back" {
  * 장면 목록을 받아 어디에 얼마나 크게 얹을지 정한다.
  * 캐릭터가 없는 장면(character_presence === "none")은 건너뛴다.
  */
-export function planCharacterOverlays(scenes: Scene[]): CharacterPlacement[] {
+export function planCharacterOverlays(
+  scenes: Scene[],
+  /** 한글 판이 얹히는 장면 번호 — 그 장면에서는 캐릭터를 판 아래로 낮춘다 */
+  panelScenes: ReadonlySet<number> = new Set(),
+): CharacterPlacement[] {
   const out: CharacterPlacement[] = [];
   let idx = 0;
   for (const s of scenes) {
@@ -93,7 +106,9 @@ export function planCharacterOverlays(scenes: Scene[]): CharacterPlacement[] {
     const img = cutoutFor(poseFor(s));
     if (!img) continue;    // 컷아웃이 없으면 아예 얹지 않는다
 
-    const ratio = HEIGHT_RATIO[presence] ?? 0.34;
+    /* 판이 있는 장면은 캐릭터를 낮춰 세운다 — 판·캐릭터·자막이 위에서 아래로 나뉜다 */
+    const cap = panelScenes.has(s.scene) ? PANEL_MAX_RATIO : 1;
+    const ratio = Math.min(HEIGHT_RATIO[presence] ?? 0.34, cap);
     const height = Math.round(H * ratio);
     /* 컷아웃은 여백을 잘라 낸 세로로 긴 그림이다. 폭은 대략 높이의 0.9 로 본다
        (실제 크기는 ffmpeg 가 scale=-1 로 비율을 지켜 준다 — 여기 값은 좌우 여백 계산용). */
