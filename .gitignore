@@ -27,3 +27,24 @@ venv/
 *.tmp
 *.bak
 ~$*
+
+# ── 오락 숏폼 스튜디오 (B) ────────────────────────────────
+# 실행 중 만들어지는 것은 저장소에 올리지 않습니다.
+orak-shortform-studio/**/credentials.dat
+orak-shortform-studio/**/*.db
+orak-shortform-studio/**/*.sqlite3
+orak-shortform-studio/Logs/
+orak-shortform-studio/_시험출력/
+orak-shortform-studio/.venv/
+
+# 마스터 이미지 — 저장소를 비공개로 바꾼 뒤에 아래 두 줄을 지우세요.
+# 지금은 공개(public) 상태라 실수로 올라가는 것을 막아두었습니다.
+# 자세한 순서: orak-shortform-studio/assets/master/여기에_넣어주세요.txt
+orak-shortform-studio/assets/master/*.png
+orak-shortform-studio/assets/master/*.jpg
+
+# 폰트·BGM은 각자 받아서 넣습니다 (라이선스·용량)
+orak-shortform-studio/assets/fonts/*.ttf
+orak-shortform-studio/assets/fonts/*.otf
+orak-shortform-studio/assets/bgm/*.mp3
+orak-shortform-studio/assets/bgm/*.m4a

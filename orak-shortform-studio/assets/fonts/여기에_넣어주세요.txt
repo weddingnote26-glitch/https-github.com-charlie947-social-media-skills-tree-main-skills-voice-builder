@@ -1,0 +1,13 @@
+자막 폰트를 넣는 자리입니다
+================================================
+
+  넣을 파일 : NotoSansKR-Bold.ttf  (그리고 필요하면 Medium, Black)
+  받는 곳   : fonts.google.com/noto/specimen/Noto+Sans+KR
+
+  이 폰트는 SIL Open Font License 라서 프로그램에 함께 넣어 배포해도 됩니다.
+
+  ⚠️ 맑은 고딕(malgun.ttf)은 쓰지 마세요.
+     윈도우에 기본으로 있지만 다른 PC에 함께 배포할 권리가 없습니다.
+
+  파일 이름을 바꾸시려면
+  assets/subtitle_style.json 의 「폰트」 칸도 같이 고치셔야 합니다.

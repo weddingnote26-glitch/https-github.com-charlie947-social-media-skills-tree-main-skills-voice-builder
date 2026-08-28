@@ -1,0 +1,108 @@
+{
+  "_읽어주세요": [
+    "오락이 외형을 Scene 마다 똑같이 유지하기 위한 설정 파일입니다.",
+    "코드가 아니라 이 파일을 고치면 됩니다. 프로그램을 다시 빌드할 필요가 없습니다.",
+    "값이 \"__사장님_확인_필요__\" 로 된 곳은 마스터 이미지를 보고 채워 주셔야 합니다.",
+    "Claude 는 바탕화면의 마스터 파일을 볼 수 없어서 비워 두었습니다."
+  ],
+  "버전": 1,
+  "작성일": "2026-08-28",
+
+  "마스터이미지": {
+    "_설명": "assets/master/ 안에 이 이름 그대로 넣어 주세요. 3장 모두 씁니다.",
+    "_왜3장인가": "Gemini 3.1 Flash 는 캐릭터 참조를 최대 4장 받습니다. 한 장만 넣는 것보다 일관성이 확연히 좋아집니다.",
+    "폴더": "assets/master",
+    "주": {
+      "파일": "01_주마스터_놀람.png",
+      "고른이유": "두 눈이 완전히 뜨여 있고 정면. 모자·코트·리본·단추·신발이 다 보임",
+      "해상도": "941x1672"
+    },
+    "보조1": {
+      "파일": "02_보조_윙크.png",
+      "고른이유": "코트 디테일이 가장 선명. 다른 각도"
+    },
+    "보조2": {
+      "파일": "03_보조_수첩.png",
+      "고른이유": "온화한 표정 + 눈 뜬 상태. 소품 드는 방식 참고"
+    }
+  },
+
+  "제외한_후보": [
+    { "특징": "돋보기로 한쪽 눈 확대", "이유": "돋보기가 눈을 왜곡시켜 눈 크기가 이상해집니다" },
+    { "특징": "젓가락으로 먹기", "이유": "입이 가려져 입 모양을 학습하지 못합니다" },
+    { "특징": "눈감고 웃기", "이유": "눈 디자인을 학습하지 못합니다" },
+    { "특징": "눈감고 흐뭇한 미소", "이유": "눈 디자인을 학습하지 못합니다" }
+  ],
+
+  "고정": {
+    "_설명": "Scene 마다 이 문구를 그대로 반복해 넣습니다. Scene 마다 다르게 표현하면 캐릭터가 흔들립니다.",
+    "항목_한국어": [
+      "얼굴 — 만두 모양",
+      "눈",
+      "입",
+      "만두 형태",
+      "몸 비율",
+      "대표 색상",
+      "기본 의상 — 모자 · 코트 · 리본 · 단추 · 신발",
+      "탐정 콘셉트"
+    ],
+    "identity_lock_en": "Use the provided ORAKI MASTER reference images as the exact character identity reference. Do not redesign the character. Preserve exactly: the dumpling-shaped face and body, the eye shape and size, the mouth shape, the body proportions, the facial proportions, and the full detective outfit — hat, coat, ribbon, buttons and shoes. Only the expression, pose, action, camera angle, background and props may change.",
+    "_색상_미기재": "대표 색상(모자·코트·리본·단추·신발 각각의 색)은 마스터 이미지를 봐야 정확합니다. 확인하신 뒤 아래 칸을 채우고 identity_lock_en 문장에도 넣어 주세요.",
+    "대표색상": {
+      "모자": "__사장님_확인_필요__",
+      "코트": "__사장님_확인_필요__",
+      "리본": "__사장님_확인_필요__",
+      "단추": "__사장님_확인_필요__",
+      "신발": "__사장님_확인_필요__",
+      "피부_만두": "__사장님_확인_필요__"
+    }
+  },
+
+  "변경가능": ["표정", "동작", "카메라 앵글", "배경", "소품"],
+
+  "구도": {
+    "_왜필요한가": [
+      "마스터 이미지들은 캐릭터가 화면 위 16%에서 아래 100%까지 꽉 찹니다. 발이 화면 바닥에 닿아 있습니다.",
+      "그대로 만들면 자막 대역(55~75%)에 캐릭터 픽셀의 35~42%가 걸려 자막이 옷 위에 얹힙니다.",
+      "그리고 릴스·쇼츠 앱 UI가 하단 약 20%를 가려 신발이 안 보입니다."
+    ],
+    "캐릭터_세로범위_퍼센트": [12, 78],
+    "하단_배경만_퍼센트": 35,
+    "발이_바닥에_닿지않게": true,
+    "composition_prompt_en": "Vertical 9:16 framing. Place the character between 12% and 78% of the frame height, with the feet clearly above the bottom edge — never touching it. Keep the bottom 35% of the frame as background only, free of the character and of any text, reserved for subtitles. Do not crop the character at the frame edge."
+  },
+
+  "negative_prompt_en": "different character, different face, human face, different clothes, different hat, different body proportions, extra arms, extra legs, extra fingers, duplicate character, distorted hands, deformed face, closed eyes, obscured mouth, real shop signage, korean store signboard text, brand logos, trademarked logos, real people, photographs of real persons, watermark, text artifacts, subtitles baked into the image",
+
+  "배경": {
+    "_왜필요한가": "마스터 7장이 전부 같은 베이지 단색 배경(#F3DEC6)입니다. 지시하지 않으면 생성 이미지도 베이지 단색으로 나옵니다. 맛집 영상인데 배경이 스튜디오처럼 비면 안 됩니다. 매번 하나 골라 명시하세요.",
+    "금지": [
+      "실제 상호명",
+      "간판 글씨",
+      "실존 인물",
+      "브랜드 로고",
+      "베이지 단색 (마스터 배경 그대로 따라 그리는 것)"
+    ],
+    "권장": [
+      "저녁 무렵 좁은 골목의 작은 식당 앞, 따뜻한 조명, 간판 글씨는 알아볼 수 없게 흐림",
+      "김이 오르는 국물 그릇이 놓인 나무 식탁, 얕은 심도",
+      "손님이 앉은 오래된 분식집 실내, 창으로 들어오는 늦은 오후 빛",
+      "시장 골목의 포장마차 앞, 밤, 전구 조명",
+      "정갈한 반찬이 깔린 백반집 상차림 위에서 내려다본 구도",
+      "낮은 담과 화분이 있는 동네 골목, 맑은 낮"
+    ]
+  },
+
+  "화면비중": {
+    "_설명": "한 편 전체에서 차지하는 비율입니다.",
+    "오락이": 40,
+    "음식_매장": 60
+  },
+
+  "AI생성이미지_표기": {
+    "_왜필요한가": "실제 사진이 없어 만들어 넣은 이미지를 실제 매장 사진으로 오인시키면 안 됩니다.",
+    "문구": "AI 생성 이미지",
+    "위치": "우하단",
+    "적용대상": "실제 사진이 없어 Gemini 로 만든 음식·매장 Scene"
+  }
+}

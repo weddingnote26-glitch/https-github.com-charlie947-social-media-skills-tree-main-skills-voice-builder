@@ -1,0 +1,32 @@
+# 오락 숏폼 AI 스튜디오 (B) — 파이썬 부품 목록
+#
+# 분리규칙 §3-7: 당근 카드뉴스(A) 와 venv 를 따로 씁니다. 합치지 마세요.
+#     python -m venv .venv
+#     .venv\Scripts\activate
+#     pip install -r requirements.txt
+#
+# ⚠️ Stage 1 에서는 아무것도 설치하지 않아도 됩니다.
+#    app/contracts/ 는 표준 라이브러리만 쓰기 때문에 그냥 불러올 수 있습니다.
+#    아래는 Stage 2 부터 하나씩 들어옵니다.
+
+# Stage 2 — 화면
+PySide6==6.8.1
+
+# Stage 3 — 키 금고 (윈도우 전용. 리눅스에서는 설치되지 않습니다)
+pywin32==308; sys_platform == "win32"
+
+# Stage 4~7 — API 호출
+httpx==0.28.1
+pydantic==2.10.6
+
+# Stage 5~6 — 이미지 규격 검사 (Kling 입력 제약: 300px 이상, 50MB 이하, 1:2.5~2.5:1)
+Pillow==11.1.0
+
+# Stage 6b·9 — 개발 중 FFmpeg. 배포본에는 공식 빌드를 동봉합니다 (§8)
+imageio-ffmpeg==0.6.0
+
+# 시험
+pytest==8.3.4
+
+# Stage 11 — 설치파일 (윈도우에서만)
+pyinstaller==6.11.1; sys_platform == "win32"
