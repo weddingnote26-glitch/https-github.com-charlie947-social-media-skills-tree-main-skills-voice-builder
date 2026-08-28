@@ -1,0 +1,10 @@
+{
+  "_안내": "이 파일을 config.json 으로 복사한 뒤 키를 채우세요. config.json 은 git 에 올라가지 않습니다.",
+  "_경고": "A(당근 카드뉴스)의 키와 다른 키를 쓰세요. 비용을 나눠서 봐야 합니다.",
+  "anthropic_api_key": "",
+  "kling_api_key": "",
+  "gemini_api_key": "",
+  "elevenlabs_api_key": "",
+  "monthly_budget_krw": 50000,
+  "data_dir": "%USERPROFILE%\\Documents\\ORAK_SHORTFORM_STUDIO"
+}

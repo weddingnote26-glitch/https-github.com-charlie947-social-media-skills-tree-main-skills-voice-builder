@@ -1,0 +1,26 @@
+# 비밀값 — 절대 커밋 금지
+config.json
+.env
+.env.*
+*.key
+
+# 파이썬 환경 (B 전용 venv, 공유 금지)
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# 개발 중 시험 출력 (운영 폴더가 아니라 여기에만)
+_시험출력/
+
+# 빌드 산출물
+dist/
+build/
+*.spec
+
+# 영상 산출물은 저장소에 올리지 않는다 (운영 데이터는 내 문서\ORAK_SHORTFORM_STUDIO\)
+final/
+*.mp4
+*.mkv
+*.webm
+*.mov
