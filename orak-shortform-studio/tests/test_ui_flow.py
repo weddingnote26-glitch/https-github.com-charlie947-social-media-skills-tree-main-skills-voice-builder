@@ -276,11 +276,45 @@ def test_캐릭터화면이_색을_제대로_보여준다() -> None:
             "다 채웠는데도 채우라는 안내가 남아 있습니다"
 
 
-def test_설정의_열쇠칸은_아직_잠겨있다() -> None:
-    """Stage 3 전에는 저장할 곳이 없으므로 잠가둡니다."""
+def test_열쇠칸은_금고를_열_수_있을_때만_열린다() -> None:
+    """Stage 3 에서 금고를 붙였습니다.
+
+    윈도우면 칸이 열리고, 아니면 잠긴 채로 **왜 안 되는지 알려줘야** 합니다.
+    안전한 척하며 평문으로 받아두는 길은 없습니다.
+    """
     s = _window().screens["설정"]
     assert len(s.key_inputs) == 4
-    assert all(not w.isEnabled() for w in s.key_inputs.values())
+
+    열림 = [w.isEnabled() for w in s.key_inputs.values()]
+    assert len(set(열림)) == 1, "일부만 열리면 안 됩니다"
+
+    if s.vault is None:
+        assert not any(열림), "금고가 없는데 칸이 열렸습니다"
+        assert s.vault_error, "왜 안 되는지 알려줘야 합니다"
+        assert "윈도우" in s.vault_error
+    else:
+        assert all(열림), "금고가 있는데 칸이 잠겼습니다"
+
+
+def test_열쇠를_넣으면_가려진_형태로만_보인다() -> None:
+    """§10-3 — 화면에는 sk-...★★★★ 만. 입력칸은 곧바로 비웁니다."""
+    import tempfile
+    from pathlib import Path
+
+    from app.core.secrets import CredentialStore, InsecureTestCipher
+    from app.ui.screens.settings import SettingsScreen
+
+    비밀 = "sk-ant-api03-SCREEN-TEST-abcdefghij"
+    금고 = CredentialStore(Path(tempfile.mkdtemp()) / "c.dat", InsecureTestCipher())
+    화면 = SettingsScreen(vault=금고)
+
+    화면.key_inputs["claude"].setText(비밀)
+    화면._save_key("claude")
+
+    assert 화면.key_inputs["claude"].text() == "", "입력칸에 원문이 남아 있습니다"
+    보이는것 = " ".join(_visible_texts(화면))
+    assert 비밀 not in 보이는것, "화면에 원문이 보입니다"
+    assert "sk-...★★★★" in 보이는것, "가려진 형태가 안 보입니다"
 
 
 def test_설정에_배경음악_저작권_안내가_있다() -> None:

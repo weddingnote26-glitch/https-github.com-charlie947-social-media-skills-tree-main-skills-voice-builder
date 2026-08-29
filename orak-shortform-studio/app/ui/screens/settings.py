@@ -1,7 +1,11 @@
 """설정 — 열쇠와 한도.
 
-⚠️ Stage 2 입니다. 입력칸은 보이지만 **아직 저장되지 않습니다.**
-실제 저장(윈도우 DPAPI 금고)은 Stage 3 에서 붙습니다. 그래서 칸을 잠가두었습니다.
+Stage 3 에서 열쇠 금고를 붙였습니다.
+
+- **윈도우**: 칸이 열립니다. 넣으면 DPAPI 로 잠가서 보관하고, 다시 켜도 읽힙니다.
+- **그 밖**: 칸이 잠깁니다. 안전한 척하지 않고 「윈도우에서만 됩니다」 라고 알립니다.
+
+화면에는 언제나 ``sk-...★★★★`` 형태만 보입니다. 원문은 어디에도 표시하지 않습니다 (§10-3).
 """
 
 from __future__ import annotations
@@ -9,18 +13,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PySide6.QtWidgets import QComboBox, QFormLayout, QLineEdit, QScrollArea, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFormLayout,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QWidget,
+)
 
+from app.core.paths import Paths
+from app.core.secrets import CredentialStore, VaultUnavailable, open_vault
 from app.ui import theme
 from app.ui.widgets import NoticeBox, card, field_label, hbox, label, vbox
 
 PRICING_PATH = Path(__file__).resolve().parents[3] / "assets" / "pricing.json"
 
 KEYS = [
-    ("대본 만들기 (Claude)", "카드뉴스 프로그램과 다른 키를 쓰세요"),
-    ("영상 만들기 (Kling)", "한 번만 보여주므로 발급할 때 복사해 두세요"),
-    ("이미지 만들기 (Gemini)", ""),
-    ("목소리 (ElevenLabs)", ""),
+    ("claude", "대본 만들기 (Claude)", "카드뉴스 프로그램과 다른 키를 쓰세요"),
+    ("kling", "영상 만들기 (Kling)", "한 번만 보여주므로 발급할 때 복사해 두세요"),
+    ("gemini", "이미지 만들기 (Gemini)", ""),
+    ("elevenlabs", "목소리 (ElevenLabs)", ""),
 ]
 
 
@@ -32,8 +45,20 @@ def _limits() -> dict:
 
 
 class SettingsScreen(QWidget):
-    def __init__(self) -> None:
+    def __init__(self, vault: CredentialStore | None = None) -> None:
+        """``vault`` 를 주면 그걸 씁니다. 안 주면 이 컴퓨터에서 열 수 있는지 봅니다.
+
+        시험은 잠금장치를 갈아끼운 금고를 넣어 리눅스에서도 흐름을 확인합니다.
+        """
         super().__init__()
+        self.vault = vault
+        self.vault_error = ""
+        if self.vault is None:
+            try:
+                self.vault = open_vault(Paths().credentials_path())
+            except VaultUnavailable as e:
+                self.vault_error = e.user_message
+
         lay = vbox(self, pad=theme.PAD_L)
         lay.addWidget(label("설정", name="ScreenTitle"))
         lay.addWidget(label("열쇠와 한도를 정하는 곳입니다.", name="ScreenSub"))
@@ -48,17 +73,39 @@ class SettingsScreen(QWidget):
         form = QFormLayout()
         form.setSpacing(12)
         self.key_inputs: dict[str, QLineEdit] = {}
-        for name, hint in KEYS:
+        self.key_states: dict[str, object] = {}
+        열림 = self.vault is not None
+        for key, name, hint in KEYS:
+            row = QWidget()
+            rl = hbox(row, pad=0, gap=10)
             line = QLineEdit()
             line.setEchoMode(QLineEdit.Password)
-            line.setPlaceholderText("Stage 3 에서 넣으실 수 있습니다")
-            line.setEnabled(False)
-            self.key_inputs[name] = line
-            form.addRow(field_label(name, width=theme.FIELD_LABEL_W_WIDE), line)
+            line.setEnabled(열림)
+            line.setPlaceholderText(
+                "여기에 붙여넣고 [저장] 을 누르세요" if 열림
+                else "이 컴퓨터에서는 넣을 수 없습니다")
+            rl.addWidget(line, 1)
+            save = QPushButton("저장")
+            save.setObjectName("Secondary")
+            save.setEnabled(열림)
+            save.clicked.connect(lambda _=False, k=key: self._save_key(k))
+            rl.addWidget(save)
+
+            state = label(self._key_state_text(key), name="Hint", wrap=False)
+            self.key_inputs[key] = line
+            self.key_states[key] = state
+
+            form.addRow(field_label(name, width=theme.FIELD_LABEL_W_WIDE), row)
+            form.addRow(field_label("", width=theme.FIELD_LABEL_W_WIDE), state)
             if hint:
                 form.addRow(field_label("", width=theme.FIELD_LABEL_W_WIDE),
                             label(hint, name="Hint"))
         l1.addLayout(form)
+        if self.vault_error:
+            l1.addWidget(NoticeBox(
+                self.vault_error + "\n"
+                "사장님 윈도우 PC 에서는 이 칸이 열립니다.",
+                tone="warn", title="여기서는 열쇠를 넣을 수 없습니다"))
         l1.addWidget(NoticeBox(
             "열쇠는 윈도우 금고에 잠가서 보관합니다. 화면에는 언제나 sk-…★★★★ 로만 보입니다.\n"
             "기록 파일·백업·깃허브 어디에도 원문이 남지 않습니다.",
@@ -126,3 +173,32 @@ class SettingsScreen(QWidget):
         sa.setWidgetResizable(True)
         sa.setWidget(body)
         lay.addWidget(sa, 1)
+
+    # ── 열쇠 저장 ─────────────────────────────────────────
+    def _key_state_text(self, key: str) -> str:
+        if self.vault is None:
+            return "아직 넣지 않았습니다"
+        try:
+            return f"지금 들어 있는 열쇠  {self.vault.hint(key)}"
+        except VaultUnavailable as e:
+            return e.user_message
+
+    def _save_key(self, key: str) -> None:
+        """넣은 값을 금고에 잠급니다. **입력칸은 곧바로 비웁니다.**
+
+        화면에 원문이 남아 있으면 어깨너머로 보입니다.
+        """
+        line = self.key_inputs[key]
+        value = line.text().strip()
+        state = self.key_states[key]
+        if not value:
+            state.setText("빈 칸입니다. 열쇠를 붙여넣어 주세요.")
+            return
+        try:
+            self.vault.put(key, value)
+        except Exception:
+            # 원인을 화면에 띄우지 않습니다 (§9).
+            state.setText("열쇠를 저장하지 못했습니다. 회사에 문의해 주세요.")
+            return
+        line.clear()
+        state.setText(self._key_state_text(key))

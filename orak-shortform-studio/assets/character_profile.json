@@ -6,7 +6,7 @@
     "틀린 곳이 있으면 메모장으로 열어 고쳐주세요.",
     "기준 이미지 3장은 아직 assets/master/ 에 없습니다. 넣는 순서는 그 폴더의 안내문에 있습니다."
   ],
-  "버전": 2,
+  "버전": 3,
   "작성일": "2026-08-28",
   "마스터이미지": {
     "_설명": "assets/master/ 안에 이 이름 그대로 넣어 주세요. 3장 모두 씁니다.",
@@ -14,17 +14,21 @@
     "폴더": "assets/master",
     "주": {
       "파일": "01_주마스터_놀람.png",
-      "고른이유": "두 눈이 완전히 뜨여 있고 정면. 모자·코트·리본·단추·신발이 다 보임",
-      "해상도": "941x1672"
+      "고른이유": "놀란 표정. 두 눈이 완전히 뜨여 있고 정면. 모자·코트·리본·단추·신발이 다 보임",
+      "해상도": "941x1672",
+      "관찰": "입이 동그란 O자. 한 손에 돋보기, 다른 손은 펴서 듦"
     },
     "보조1": {
       "파일": "02_보조_윙크.png",
-      "고른이유": "코트 디테일이 가장 선명. 다른 각도"
+      "고른이유": "윙크 + 엄지척. 코트 앞섶과 단추가 가장 선명. 옷 구조 참고용",
+      "관찰": "한쪽 눈만 감음. 다른 손에 돋보기"
     },
     "보조2": {
       "파일": "03_보조_수첩.png",
-      "고른이유": "온화한 표정 + 눈 뜬 상태. 소품 드는 방식 참고"
-    }
+      "고른이유": "온화한 미소 + 두 눈 뜬 상태. 소품 드는 방식 참고",
+      "관찰": "수첩과 연필을 양손에 듦. 돋보기는 허리춤에"
+    },
+    "_확인일": "2026-08-28 · 사장님이 보내주신 3장을 보고 설명을 그림에 맞게 다듬었습니다."
   },
   "제외한_후보": [
     {
@@ -56,11 +60,11 @@
       "기본 의상 — 모자 · 코트 · 리본 · 단추 · 신발",
       "탐정 콘셉트"
     ],
-    "identity_lock_en": "Use the provided ORAKI MASTER reference images as the exact character identity reference. Do not redesign the character. Preserve exactly: the single-dumpling body with warm cream ivory dough skin and a pinched pleat at the top of the head; the large round eyes with white sclera, dark brown irises and a white highlight; short rounded dark brown eyebrows set high and separate from the eyes; rosy peach cheek blush on both cheeks; the short round arms and legs and the overall body proportions; and the full detective outfit — a dark brown tartan plaid deerstalker cap with a small bow knot on top, a matching dark brown tartan shoulder cape worn over a cream body, a plain solid brown ribbon knot at the neck, two brown buttons on the cream front, and glossy dark chocolate brown rounded shoes. Only the expression, pose, action, camera angle, background and props may change.",
+    "identity_lock_en": "Use the provided ORAKI MASTER reference images as the exact character identity reference. Do not redesign the character. Preserve exactly: the single-dumpling body with warm cream ivory dough skin and a pinched pleat at the top of the head; the large round eyes with white sclera, dark brown irises and a white highlight; short rounded dark brown eyebrows set high and separate from the eyes; rosy peach cheek blush on both cheeks; the short round arms and legs and the overall body proportions; and the full detective outfit — a dark brown tartan plaid deerstalker cap with a small bow knot on top, a matching dark brown tartan jacket with lapels and an attached shoulder cape worn over a cream body, a plain solid brown ribbon knot at the neck, two brown buttons on the cream front, and glossy dark chocolate brown rounded shoes. Only the expression, pose, action, camera angle, background and props may change.",
     "_색상_미기재": "2026-08-28 사장님이 보내주신 오락이 그림을 보고 채웠습니다. 화면에 보이는 것을 눈으로 읽은 값이라 색 이름은 확실하지만 정확한 색상값(hex)은 아닙니다. 원본 파일을 assets/master/ 에 넣어주시면 정확한 값을 뽑아 다시 채우겠습니다. 지금 값이 틀렸다 싶으면 이 파일을 메모장으로 열어 고치시면 됩니다.",
     "대표색상": {
       "모자": "짙은 갈색 체크(타탄) · 사냥모자 모양 · 꼭대기에 작은 리본 매듭",
-      "코트": "모자와 같은 짙은 갈색 체크 · 어깨를 덮는 케이프형 · 안감은 크림색",
+      "코트": "짙은 갈색 체크(타탄) · 깃과 앞섶이 있는 재킷형이며 어깨 위로 케이프가 덧대짐 · 안감은 크림색",
       "리본": "목 앞의 갈색 리본 매듭 · 체크 없는 단색 갈색",
       "단추": "크림색 몸통 앞에 달린 갈색 단추 2개",
       "신발": "진한 초콜릿 갈색 · 광택 있는 둥근 구두",
@@ -83,7 +87,14 @@
       "볼 — 양쪽에 발그레한 주황빛 볼터치",
       "입 — 열린 미소. 안쪽은 분홍",
       "몸 — 만두 하나가 그대로 몸통. 팔다리가 짧고 동그람"
-    ]
+    ],
+    "소품": {
+      "_설명": "장면마다 바꿔도 되지만, 오락이임을 알아보게 하는 물건들입니다.",
+      "돋보기": "갈색 손잡이 · 놋쇠빛 테 · 3장 모두에 등장",
+      "수첩": "위쪽에 스프링이 달린 작은 메모지",
+      "연필": "짧은 갈색 연필",
+      "_주의": "돋보기를 눈앞에 대어 눈을 확대하지 마세요. 눈 크기가 왜곡돼 캐릭터가 흔들립니다."
+    }
   },
   "변경가능": [
     "표정",
