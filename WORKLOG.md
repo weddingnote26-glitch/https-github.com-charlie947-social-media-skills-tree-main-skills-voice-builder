@@ -18,11 +18,12 @@
 | **3** | 폴더 · SQLite · 열쇠 금고(DPAPI) | ✅ 시험 45개 |
 | **4** | 대본 만들기 (claude-opus-5) | ✅ 시험 30개 |
 | **6b** | 사진 움직이기 (FFmpeg) | ✅ 시험 18개 · **진짜 영상 나옴** |
+| **8** | 자막(ASS) + 광고 표시 | ✅ 시험 23개 · **진짜 구워서 확인** |
 | 5 | 이미지 (Gemini) | ⛔ **요청 형식·요금 미확인 — 막힘** |
 | 6 | 영상 (Kling) | ⛔ **계정 확인 필요 — 막힘** |
 | 7~12 | 음성 · 자막 · 합성 · 설치파일 | 아직 |
 
-**시험 141개 전부 통과.**
+**시험 164개 전부 통과.**
 
 ```
 cd orak-shortform-studio
@@ -31,6 +32,7 @@ python tests/test_ui_flow.py     26
 python tests/test_storage.py     45
 python tests/test_script.py      30
 python tests/test_kenburns.py    18
+python tests/test_subtitles.py   23
 python -m app.main               창 띄우기
 ```
 
@@ -44,6 +46,9 @@ python -m app.main               창 띄우기
 3. **Stage 2 옛 시험 2개**가 필수 칸 검사가 생기면서 깨졌습니다. 새 동작이 맞아
    시험 쪽을 고쳤습니다.
 4. **하단 문구가 「Stage 2」 로 낡아** 있었습니다. 갈아끼울 수 있게 바꿨습니다.
+5. **자막 배경 띠 여백이 설정 파일을 무시**하고 6px 로 박혀 있었습니다.
+   고쳐서 키웠더니 ASS 의 불투명 상자가 **줄마다 따로 그려져** 계단처럼
+   어긋나는 게 드러났습니다. → 띠를 직접 그려 한 덩어리로 바꿨습니다.
 
 ### ⛔ 사장님 답을 기다리는 것
 
@@ -72,6 +77,9 @@ python -m app.main               창 띄우기
    `.gitignore` 차단 두 줄 지우기 (순서 중요 · 안내문은 그 폴더에)
 2. **대본 열쇠** — console.anthropic.com 에서 **카드뉴스와 다른 키** 발급 →
    설정 → 「대본 만들기 (Claude)」 → [저장]. 콘솔에서 지출 한도도 거세요
+3. **자막 글꼴** — fonts.google.com/noto/specimen/Noto+Sans+KR 에서 받아
+   `assets/fonts/NotoSansKR-Bold.ttf` 로 넣어주세요 (OFL · 재배포 가능).
+   맑은 고딕은 재배포 권리가 없어 못 씁니다.
 
 ### 윈도우 PC 설치
 
