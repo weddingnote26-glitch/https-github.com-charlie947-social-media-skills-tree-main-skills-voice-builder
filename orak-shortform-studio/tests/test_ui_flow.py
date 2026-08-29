@@ -39,6 +39,11 @@ def _window() -> MainWindow:
     return w
 
 
+def _fill(screen) -> None:
+    for k in ("store_name", "area", "address", "menu", "price", "features", "reason"):
+        screen.fields[k].setText("값")
+
+
 def _visible_texts(root: QWidget) -> list[str]:
     """화면에 실제로 글자로 나오는 것들을 모읍니다."""
     out: list[str] = []
@@ -79,6 +84,8 @@ def test_입력에서_완료까지_눌러서_갈_수_있다() -> None:
     s: NewVideoScreen = w.screens["새 영상 만들기"]
 
     assert s.step == s.STEP_INPUT
+    # Stage 4 에서 필수 칸 검사가 생겼습니다. 다 채워야 넘어갑니다.
+    _fill(s)
     s.fields["store_name"].setText("할머니 손칼국수")
     s.fields["area"].setText("신림")
 
@@ -95,8 +102,13 @@ def test_입력에서_완료까지_눌러서_갈_수_있다() -> None:
 
 
 def test_AI버튼은_두번_눌러도_한번만_동작한다() -> None:
-    """§9 — 중복 클릭을 막으세요. 돈이 두 번 나가면 안 됩니다."""
+    """§9 — 중복 클릭을 막으세요. 돈이 두 번 나가면 안 됩니다.
+
+    필수 칸이 비어 있으면 버튼이 곧바로 풀리므로(돈이 안 나가니까),
+    실제로 돈이 나갈 수 있는 상태 — 다 채운 상태 — 로 봅니다.
+    """
     s = NewVideoScreen()
+    _fill(s)
     눌린횟수 = []
     s.make_script_button.clicked.connect(lambda: 눌린횟수.append(1))
 
@@ -138,6 +150,146 @@ def test_참고URL을_추가할_수_있다() -> None:
 
 
 # ─────────────────────────────────────────────────────────────
+# 대본 생성 연결 (Stage 4)
+# ─────────────────────────────────────────────────────────────
+
+
+def _fake_provider():
+    """진짜 대본을 만든 것처럼 굴지만 API 는 부르지 않습니다."""
+    import json
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from test_script import GOOD, PRICING, FakeClient  # noqa: E402
+
+    from app.providers.llm_claude import ClaudeScriptProvider
+
+    return ClaudeScriptProvider(client=FakeClient(GOOD), pricing=PRICING)
+
+
+def test_필수칸이_비면_알려주고_넘어가지_않는다() -> None:
+    s = NewVideoScreen()
+    s.make_script_button.click()
+    _app.processEvents()
+    assert s.step == s.STEP_INPUT, "빈 칸인데 넘어갔습니다"
+    assert s.input_error.isVisibleTo(s)
+    assert "매장명" in s.input_error.text()
+    assert s.make_script_button.isEnabled(), "버튼이 잠긴 채로 남았습니다"
+
+
+def test_열쇠가_있으면_진짜_대본이_뜬다() -> None:
+    """Stage 4 완료 기준 — 입력하면 장면 5개가 화면에 나옵니다."""
+    s = NewVideoScreen(script_provider=_fake_provider())
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+
+    assert s.step == s.STEP_SCRIPT
+    assert s.script is not None
+    assert len(s.script.scenes) == 5
+    assert len(s.scene_editors) == 5, "장면마다 고칠 칸이 있어야 합니다"
+    assert not s.sample_notice.isVisibleTo(s.stack.widget(s.STEP_SCRIPT)), \
+        "진짜 대본인데 「예시입니다」 가 떠 있습니다"
+
+
+def test_열쇠가_없으면_예시라고_말한다() -> None:
+    s = NewVideoScreen()
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+    assert s.script is None
+    texts = " ".join(_visible_texts(s.stack.widget(s.STEP_SCRIPT)))
+    assert "예시입니다" in texts
+
+
+def test_담당자가_고친_대본도_검사한다() -> None:
+    """만들 때만 검사하고 사람이 고친 건 안 하면 구멍이 생깁니다."""
+    s = NewVideoScreen(script_provider=_fake_provider())
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+    assert s.check_edits() == [], "처음엔 문제가 없어야 합니다"
+    assert s.produce_button.isEnabled()
+
+    idx, nar, txt = s.scene_editors[0]
+    nar.setPlainText("가" * 60)              # 3초 장면에 60자
+    _app.processEvents()
+
+    problems = s.check_edits()
+    assert problems, "고쳐서 규칙을 어겼는데 못 잡았습니다"
+    assert not s.produce_button.isEnabled(), "규칙을 어겼는데 만들기가 눌립니다"
+    assert s.rule_notice.isVisibleTo(s.stack.widget(s.STEP_SCRIPT))
+    assert "너무 깁니다" in s.rule_notice.text()
+
+
+def test_고친_것을_되돌리면_다시_만들_수_있다() -> None:
+    s = NewVideoScreen(script_provider=_fake_provider())
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+    idx, nar, txt = s.scene_editors[0]
+    원래 = nar.toPlainText()
+    nar.setPlainText("가" * 60)
+    assert not s.produce_button.isEnabled()
+    nar.setPlainText(원래)
+    _app.processEvents()
+    assert s.produce_button.isEnabled(), "되돌렸는데 여전히 잠겨 있습니다"
+
+
+def test_과장표현을_넣으면_막는다() -> None:
+    s = NewVideoScreen(script_provider=_fake_provider())
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+    idx, nar, txt = s.scene_editors[0]
+    nar.setPlainText("여기가 신림 최고입니다")
+    _app.processEvents()
+    assert not s.produce_button.isEnabled()
+    assert "최고" in s.rule_notice.text()
+
+
+def test_대본_실패는_한국어로_알린다() -> None:
+    """§9 — 개발자 오류를 담당자에게 보여주지 않습니다."""
+    from app.contracts.errors import ProviderError, Retry
+
+    class 실패하는공급자:
+        def generate(self, store):
+            raise ProviderError(
+                retry=Retry.NEVER_AUTH,
+                user_message="사용 키에 문제가 있습니다. 회사에 문의해 주세요.",
+                log_detail="401 x-api-key invalid", provider="claude",
+                vendor_code="401")
+
+        def estimate(self, store, n):
+            from app.contracts.models import CostEstimate
+            return CostEstimate(krw=0, is_complete=False)
+
+    s = NewVideoScreen(script_provider=실패하는공급자())
+    _fill(s)
+    s.make_script_button.click()
+    _app.processEvents()
+
+    assert s.step == s.STEP_INPUT, "실패했는데 다음 화면으로 넘어갔습니다"
+    assert "회사에 문의해 주세요" in s.input_error.text()
+    assert "401" not in s.input_error.text()
+    assert "x-api-key" not in s.input_error.text()
+    assert s.make_script_button.isEnabled(), "다시 누를 수 있어야 합니다"
+
+
+def test_참고주소는_저장만_되고_열리지_않는다() -> None:
+    """§0-4 — 프로그램이 대신 읽지 않습니다."""
+    s = NewVideoScreen()
+    s.url_input.setText("https://example.com/store")
+    s._add_url()
+    _fill(s)
+    store = s.store_info()
+    assert len(store.reference_urls) == 1
+    assert store.reference_urls[0].url == "https://example.com/store"
+    금지 = {"fetch", "open", "read", "download"}
+    assert not (set(dir(store.reference_urls[0])) & 금지)
+
+
+# ─────────────────────────────────────────────────────────────
 # 비용 표시줄 (§11 — 항상 보임)
 # ─────────────────────────────────────────────────────────────
 
@@ -147,6 +299,15 @@ def test_비용표시줄이_항상_보인다() -> None:
     for i in range(len(MENU)):
         w.menu_buttons[i].click()
         assert w.cost_bar.isVisibleTo(w), f"{MENU[i]} 에서 비용 표시줄이 사라졌습니다"
+
+
+def test_하단_문구가_낡지_않았는지_본다() -> None:
+    """단계가 올라갔는데 「Stage 2」 같은 옛 문구가 남으면 안 됩니다."""
+    bar = _window().cost_bar
+    문구 = bar._stage.text()
+    assert "Stage 2" not in 문구, f"낡은 문구가 남아 있습니다: {문구!r}"
+    bar.set_stage_note("바꿔봄")
+    assert bar._stage.text() == "바꿔봄"
 
 
 def test_한도를_넘으면_문구가_바뀐다() -> None:

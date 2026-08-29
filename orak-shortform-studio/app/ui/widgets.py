@@ -309,9 +309,10 @@ class CostBar(QWidget):
         lay.addWidget(self._note)
         lay.addStretch(1)
 
-        self._stage = QLabel("Stage 2 — 화면만 만든 상태입니다")
+        self._stage = QLabel("")
         self._stage.setObjectName("CostNote")
         lay.addWidget(self._stage)
+        self.set_stage_note("영상 만들기는 아직 준비 중입니다")
 
         self.set_usage(0, 50000)
 
@@ -329,3 +330,10 @@ class CostBar(QWidget):
         )
         self._note.setText(note)
         self._note.setStyleSheet(f"font-size: {theme.FS_SMALL}px; color: {color};")
+
+    def set_stage_note(self, text: str) -> None:
+        """오른쪽 아래 한 줄. 지금 어디까지 됐는지 알려줍니다.
+
+        단계가 올라갈 때마다 여기만 고치면 됩니다.
+        """
+        self._stage.setText(text)
