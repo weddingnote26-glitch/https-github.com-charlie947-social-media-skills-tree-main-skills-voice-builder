@@ -5,6 +5,92 @@
 
 ---
 
+## 2026-08-29 (토) — 오락 숏폼 · Stage 3 · 4 · 6b
+
+> **이어서 하실 때:** **"WORKLOG 읽고 오락 숏폼 이어서 해줘"**
+> 브랜치 `claude/entertainment-short-form-studio-0wew50` · 폴더 `orak-shortform-studio/`
+
+### 어디까지 했나
+
+| Stage | 내용 | 상태 |
+|---|---|---|
+| 0·1·2 | 점검 · 설계 · 화면 | ✅ |
+| **3** | 폴더 · SQLite · 열쇠 금고(DPAPI) | ✅ 시험 45개 |
+| **4** | 대본 만들기 (claude-opus-5) | ✅ 시험 30개 |
+| **6b** | 사진 움직이기 (FFmpeg) | ✅ 시험 18개 · **진짜 영상 나옴** |
+| 5 | 이미지 (Gemini) | ⛔ **요청 형식·요금 미확인 — 막힘** |
+| 6 | 영상 (Kling) | ⛔ **계정 확인 필요 — 막힘** |
+| 7~12 | 음성 · 자막 · 합성 · 설치파일 | 아직 |
+
+**시험 141개 전부 통과.**
+
+```
+cd orak-shortform-studio
+python tests/test_contracts.py   22
+python tests/test_ui_flow.py     26
+python tests/test_storage.py     45
+python tests/test_script.py      30
+python tests/test_kenburns.py    18
+python -m app.main               창 띄우기
+```
+
+### 시험이 잡은 진짜 결함 (기록해 둡니다)
+
+1. **참고 URL·메모가 마스킹을 안 거쳤습니다.** 담당자가 토큰이 든 주소를
+   붙여넣으면 DB 에 평문으로 남았습니다. MVP 판정 18번 위반이었습니다.
+   → 담당자가 넣는 모든 자유 입력이 마스킹을 거치게 고쳤습니다.
+2. **`has_filter` 가 없는 필터를 있다고 답했습니다.** `ffmpeg -h filter=없는것` 은
+   종료코드 0 을 냅니다. 출력을 봐야 했습니다.
+3. **Stage 2 옛 시험 2개**가 필수 칸 검사가 생기면서 깨졌습니다. 새 동작이 맞아
+   시험 쪽을 고쳤습니다.
+4. **하단 문구가 「Stage 2」 로 낡아** 있었습니다. 갈아끼울 수 있게 바꿨습니다.
+
+### ⛔ 사장님 답을 기다리는 것
+
+**충돌 2가지 (2026-08-29 새 지시서 vs 기존 지시서·분리규칙)**
+
+| | 지금 | 새 지시서 |
+|---|---|---|
+| 데이터 폴더 | `내 문서\ORAK_SHORTFORM_STUDIO\` (§10-1 · 분리규칙 §2) | `%LOCALAPPDATA%\OrakShortformStudio\` |
+| SQLite 표 | 5개 (§10-2) — Stage 4 가 쓰는 중 | 4개 |
+
+`%LOCALAPPDATA%` 는 숨김 폴더라 담당자가 영상을 못 찾습니다.
+절충안: 영상·프로젝트는 내 문서, DB·캐시·임시는 LOCALAPPDATA.
+
+**Stage 별로 필요한 것**
+
+| 질문 | 언제 |
+|---|---|
+| Gemini 이미지 요청 형식 · 장당 요금 | Stage 5 전 |
+| Kling 계정 4가지 (발급·잔액·동시처리·2.6 권한) | Stage 6 전 |
+| ElevenLabs 한국어 모델 | Stage 7 전 |
+| BGM 조달처 | Stage 9 전 |
+
+### 사장님이 해주셔야 하는 것
+
+1. **마스터 이미지 3장** — 저장소를 **비공개로 바꾼 뒤** `assets/master/` 에 넣고
+   `.gitignore` 차단 두 줄 지우기 (순서 중요 · 안내문은 그 폴더에)
+2. **대본 열쇠** — console.anthropic.com 에서 **카드뉴스와 다른 키** 발급 →
+   설정 → 「대본 만들기 (Claude)」 → [저장]. 콘솔에서 지출 한도도 거세요
+
+### 윈도우 PC 설치
+
+```powershell
+cd $HOME\Documents
+git clone https://github.com/weddingnote26-glitch/https-github.com-charlie947-social-media-skills-tree-main-skills-voice-builder.git 블로그작업
+cd 블로그작업
+git checkout claude/entertainment-short-form-studio-0wew50
+cd orak-shortform-studio
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install PySide6==6.8.1 pywin32 Pillow anthropic imageio-ffmpeg
+python -m app.main
+```
+
+당근 카드뉴스(A) 와 venv 를 따로 씁니다 (분리규칙 §3-7).
+
+---
+
 ## 2026-08-28 (금) — 오락 숏폼 AI 스튜디오 (신규 · Stage 0~2)
 
 > **이어서 하실 때:** Claude 에게 **"WORKLOG 읽고 오락 숏폼 Stage 3 이어서 해줘"** 라고 하세요.

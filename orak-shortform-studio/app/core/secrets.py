@@ -20,7 +20,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Optional, Protocol, runtime_checkable
 
 from app.contracts.errors import SecretStr
 from app.core import masking
@@ -35,6 +35,38 @@ class VaultUnavailable(Exception):
     def __init__(self, user_message: str) -> None:
         super().__init__(user_message)
         self.user_message = user_message
+
+
+# ─────────────────────────────────────────────────────────────
+# 금고 인터페이스
+# ─────────────────────────────────────────────────────────────
+
+
+@runtime_checkable
+class SecretStore(Protocol):
+    """열쇠를 넣고 꺼내고 지우는 곳.
+
+    윈도우에서는 DPAPI 로 잠그고, 시험에서는 메모리에만 둡니다.
+    화면과 공급자는 이 인터페이스만 보므로 어느 쪽이든 상관하지 않습니다.
+    """
+
+    def get(self, key: str) -> Optional[SecretStr]: ...
+
+    def put(self, key: str, value: "SecretStr | str") -> None: ...
+
+    def delete(self, key: str) -> bool:
+        """열쇠 하나를 지웁니다. 있었으면 True.
+
+        **금고 파일 자체는 지우지 않습니다.** 그 안의 항목 하나만 빼고 다시 씁니다
+        (분리규칙 §3-3 — 파일을 지우는 코드를 쓰지 않습니다).
+        """
+        ...
+
+    def has(self, key: str) -> bool: ...
+
+    def names(self) -> list[str]: ...
+
+    def hint(self, key: str) -> str: ...
 
 
 # ─────────────────────────────────────────────────────────────
@@ -170,6 +202,19 @@ class CredentialStore:
         raw = self._cache.get(key)
         return SecretStr(raw) if raw else None
 
+    def delete(self, key: str) -> bool:
+        """열쇠 하나를 뺍니다. 있었으면 True.
+
+        **금고 파일은 지우지 않습니다.** 그 항목만 빼고 다시 씁니다.
+        담당자가 「이 열쇠 지우기」 를 눌렀을 때 씁니다.
+        """
+        self._load()
+        if key not in self._cache:
+            return False
+        del self._cache[key]
+        self._save()
+        return True
+
     def has(self, key: str) -> bool:
         self._load()
         return key in self._cache
@@ -211,3 +256,39 @@ def open_vault(path: Path, *, cipher: Optional[Cipher] = None) -> CredentialStor
             )
         cipher = DpapiCipher()
     return CredentialStore(path, cipher)
+
+
+class MemorySecretStore:
+    """**시험 전용.** 메모리에만 둡니다. 파일을 만들지 않습니다.
+
+    ``SecretStore`` 계약을 지키므로 화면과 공급자에 그대로 끼울 수 있습니다.
+    윈도우가 아닌 곳에서 「저장 → 다시 켜기 → 읽기」 를 흉내 낼 때 씁니다.
+    """
+
+    def __init__(self, masker: Optional[masking.Masker] = None) -> None:
+        self._d: dict[str, str] = {}
+        self._masker = masker or masking.default_masker()
+
+    def get(self, key: str) -> Optional[SecretStr]:
+        raw = self._d.get(key)
+        return SecretStr(raw) if raw else None
+
+    def put(self, key: str, value: SecretStr | str) -> None:
+        raw = value.reveal() if isinstance(value, SecretStr) else value
+        if not raw or not raw.strip():
+            raise ValueError("빈 값은 저장할 수 없습니다")
+        self._d[key] = raw
+        self._masker.register(raw)
+
+    def delete(self, key: str) -> bool:
+        return self._d.pop(key, None) is not None
+
+    def has(self, key: str) -> bool:
+        return key in self._d
+
+    def names(self) -> list[str]:
+        return sorted(self._d)
+
+    def hint(self, key: str) -> str:
+        s = self.get(key)
+        return s.hint() if s else "아직 넣지 않았습니다"

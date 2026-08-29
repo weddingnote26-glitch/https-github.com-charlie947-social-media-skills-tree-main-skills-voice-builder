@@ -26,6 +26,8 @@ from app.core.paths import Paths, WriteNotAllowed, safe_folder_name  # noqa: E40
 from app.core.secrets import (  # noqa: E402
     CredentialStore,
     InsecureTestCipher,
+    MemorySecretStore,
+    SecretStore,
     VaultUnavailable,
     open_vault,
 )
@@ -485,6 +487,140 @@ def test_설정파일_자체에도_열쇠가_없다() -> None:
         text = f.read_text(encoding="utf-8")
         assert masking.default_masker().is_clean(text), f"{f.name} 에 열쇠가 있습니다"
         json.loads(text)
+
+
+# ═════════════════════════════════════════════════════════════
+# 금고 인터페이스 · 지우기 · 비윈도우 안전
+# ═════════════════════════════════════════════════════════════
+
+
+def test_두_금고가_같은_계약을_지킨다() -> None:
+    """화면과 공급자는 인터페이스만 봅니다. 어느 쪽을 끼워도 돌아야 합니다."""
+    for store in (_vault(_paths().credentials_path()), MemorySecretStore()):
+        assert isinstance(store, SecretStore), type(store).__name__
+
+
+def test_열쇠를_지울_수_있다() -> None:
+    for store in (_vault(_paths().credentials_path()), MemorySecretStore()):
+        store.put("claude", REAL_KEY)
+        assert store.has("claude")
+        assert store.delete("claude") is True
+        assert store.has("claude") is False
+        assert store.get("claude") is None
+        assert store.delete("claude") is False, "없는 열쇠를 지우면 False 여야 합니다"
+
+
+def test_지워도_금고파일은_남는다() -> None:
+    """분리규칙 §3-3 — 파일을 지우는 코드를 쓰지 않습니다."""
+    path = _paths().credentials_path()
+    v = _vault(path)
+    v.put("claude", REAL_KEY)
+    v.put("kling", "kling-token-abcdefghijkl")
+    assert v.delete("claude") is True
+    assert path.exists(), "항목 하나 지웠다고 파일을 지우면 안 됩니다"
+
+    다시켬 = _vault(path, masker=Masker())
+    assert 다시켬.names() == ["kling"], "지운 건 사라지고 남은 건 살아 있어야 합니다"
+
+
+def test_지운_뒤_파일에도_안_남는다() -> None:
+    path = _paths().credentials_path()
+    v = _vault(path)
+    v.put("claude", REAL_KEY)
+    v.delete("claude")
+    assert REAL_KEY.encode() not in path.read_bytes()
+
+
+def test_비윈도우에서_import만으로_죽지_않는다() -> None:
+    """pywin32 가 없는 곳에서도 프로그램 전체가 불러와져야 합니다.
+
+    ``win32crypt`` 를 파일 맨 위에서 import 하면 리눅스·맥에서 즉시 죽습니다.
+    ``DpapiCipher.__init__`` 안에서만 import 합니다.
+    """
+    import importlib
+
+    for name in ("app.core.secrets", "app.core.db", "app.core.paths",
+                 "app.core.masking", "app.ui.screens.settings", "app.main"):
+        importlib.import_module(name)      # 죽으면 여기서 실패합니다
+
+    src = Path(__file__).resolve().parent.parent / "app" / "core" / "secrets.py"
+    for line in src.read_text(encoding="utf-8").splitlines():
+        if line.startswith("import ") or line.startswith("from "):
+            assert "win32" not in line, f"맨 위에서 import 하면 안 됩니다: {line}"
+
+
+def test_로그파일에_열쇠가_안_남는다() -> None:
+    """실제로 로그 파일을 써 보고 뒤져봅니다 (§10-3 · MVP 판정 18번)."""
+    import logging
+
+    m = Masker()
+    m.register(REAL_KEY)
+    paths = _paths()
+    log_path = paths.log_file()
+    paths.assert_writable(log_path)
+
+    logger = logging.getLogger("orak.test.log")
+    logger.handlers.clear()
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+
+    class 마스킹필터(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            record.msg = m.scrub(record.getMessage())
+            record.args = ()
+            return True
+
+    handler.addFilter(마스킹필터())
+    logger.addHandler(handler)
+
+    logger.info("인증 실패 key=%s", REAL_KEY)
+    logger.error(f"Authorization: Bearer {REAL_KEY}")
+    logger.debug(str({"api_key": REAL_KEY}))
+    try:
+        raise ValueError(f"boom {REAL_KEY}")
+    except ValueError as exc:
+        logger.warning(m.scrub(exc))
+    handler.close()
+    logger.handlers.clear()
+
+    written = log_path.read_text(encoding="utf-8")
+    assert written.strip(), "로그가 안 써졌습니다"
+    assert REAL_KEY not in written, "로그 파일에 열쇠가 남았습니다"
+    assert "sk-ant" not in written, "열쇠 앞부분이 남았습니다"
+    assert MASK in written, "가려진 흔적이 있어야 합니다"
+
+
+def test_DB에_열쇠가_평문으로_없는지_직접_뒤진다() -> None:
+    """MVP 판정 18번 — 「직접 grep 으로 확인」 을 시험이 대신 합니다."""
+    m = Masker()
+    m.register(REAL_KEY)
+    paths = _paths()
+    db = Database(paths.db_path(), masker=m)
+    pid = db.create_project(store_name="x", folder_path="/x")
+    db.add_url(pid, f"https://example.com/?k={REAL_KEY}")
+    sid = db.add_scene(pid, idx=1, start_sec=0, end_sec=3,
+                       render_mode=RenderMode.KLING)
+    db.set_scene_status(sid, SceneStatus.FAILED, error_msg=f"key={REAL_KEY}")
+    db.close()
+
+    _vault(paths.credentials_path()).put("claude", REAL_KEY)
+
+    for f in paths.data_root().rglob("*"):
+        if not f.is_file():
+            continue
+        raw = f.read_bytes()
+        if f.name == "credentials.dat":
+            assert REAL_KEY.encode() not in raw, "금고 파일에 평문이 있습니다"
+        else:
+            assert REAL_KEY.encode() not in raw, f"{f.name} 에 평문 열쇠가 있습니다"
+
+
+def test_새_폴더도_만들어진다() -> None:
+    p = _paths()
+    for name in ("Cache", "Exports", "Temp"):
+        assert (p.data_root() / name).is_dir(), f"{name} 폴더가 없습니다"
+    for d in (p.cache_dir(), p.exports_dir(), p.temp_dir()):
+        assert p.is_writable(d)
 
 
 if __name__ == "__main__":

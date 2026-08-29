@@ -136,6 +136,18 @@ class Database:
     def close(self) -> None:
         self._conn.close()
 
+    def _clean(self, text: str) -> str:
+        """담당자가 넣은 글에서 열쇠처럼 생긴 것을 지웁니다.
+
+        **왜 필요한가** — 담당자가 참고 주소에 토큰이 든 링크를 붙여넣거나
+        메모에 열쇠를 적어둘 수 있습니다. 그러면 DB 에 평문으로 남습니다.
+        「설정 표에만 안 넣으면 된다」 고 생각했다가 시험에서 걸렸습니다.
+
+        마스킹은 평범한 한국어를 건드리지 않습니다(시험으로 확인).
+        그래서 모든 자유 입력에 걸어도 안전합니다.
+        """
+        return self._masker.scrub(text) if text else text
+
     @contextmanager
     def _tx(self) -> Iterator[sqlite3.Cursor]:
         cur = self._conn.cursor()
@@ -154,14 +166,15 @@ class Database:
                        features: str = "", reason: str = "", memo: str = "",
                        is_paid_promotion: bool = False) -> int:
         with self._tx() as cur:
+            c = self._clean
             cur.execute(
                 """INSERT INTO projects
                    (created_at, store_name, area, address, menu, price, features,
                     reason, memo, is_paid_promotion, status, folder_path)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (time.time(), store_name, area, address, menu, price, features,
-                 reason, memo, int(is_paid_promotion), ProjectStatus.DRAFT.value,
-                 folder_path),
+                (time.time(), c(store_name), c(area), c(address), c(menu), c(price),
+                 c(features), c(reason), c(memo), int(is_paid_promotion),
+                 ProjectStatus.DRAFT.value, folder_path),
             )
             return int(cur.lastrowid)
 
@@ -183,9 +196,10 @@ class Database:
     # ── 참고 주소 (저장만 · 열지 않음) ────────────────────
     def add_url(self, project_id: int, url: str, note: str = "") -> int:
         with self._tx() as cur:
+            # 주소에 토큰이 섞여 있을 수 있습니다. 반드시 거릅니다.
             cur.execute(
                 "INSERT INTO project_urls (project_id, url, note) VALUES (?,?,?)",
-                (project_id, url, note))
+                (project_id, self._clean(url), self._clean(note)))
             return int(cur.lastrowid)
 
     def urls(self, project_id: int) -> list[dict[str, Any]]:
@@ -205,8 +219,10 @@ class Database:
                    (project_id, idx, start_sec, end_sec, narration, screen_text,
                     image_prompt, video_prompt, render_mode, source_photo_path, status)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                (project_id, idx, start_sec, end_sec, narration, screen_text,
-                 image_prompt, video_prompt, render_mode.value, source_photo_path,
+                (project_id, idx, start_sec, end_sec,
+                 self._clean(narration), self._clean(screen_text),
+                 self._clean(image_prompt), self._clean(video_prompt),
+                 render_mode.value, source_photo_path,
                  SceneStatus.PENDING.value),
             )
             return int(cur.lastrowid)

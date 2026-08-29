@@ -26,7 +26,11 @@ from pathlib import Path
 APP_DIR_NAME = "ORAK_SHORTFORM_STUDIO"
 
 SCENE_SUBDIRS = ("source", "script", "images", "videos", "audio", "subtitle", "final")
-TOP_SUBDIRS = ("Projects", "Settings", "Assets", "Logs")
+TOP_SUBDIRS = ("Projects", "Settings", "Assets", "Logs",
+               "Cache", "Exports", "Temp")
+"""Projects·Settings·Assets·Logs 는 지시서 §10-1.
+Cache·Exports·Temp 는 나중에 쓸 자리를 미리 열어둔 것입니다.
+비어 있어도 문제없습니다."""
 
 # 절대 쓰면 안 되는 곳. 분리규칙 §2·§3-2.
 # **와일드카드로 찾지 않습니다.** 두 프로그램 폴더가 모두 「오락_」 으로 시작해서
@@ -138,6 +142,15 @@ class Paths:
 
     def logs_dir(self) -> Path:
         return self._data_root / "Logs"
+
+    def cache_dir(self) -> Path:
+        return self._data_root / "Cache"
+
+    def exports_dir(self) -> Path:
+        return self._data_root / "Exports"
+
+    def temp_dir(self) -> Path:
+        return self._data_root / "Temp"
 
     def db_path(self) -> Path:
         return self._data_root / "Settings" / "studio.db"

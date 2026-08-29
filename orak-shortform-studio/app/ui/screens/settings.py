@@ -74,6 +74,7 @@ class SettingsScreen(QWidget):
         form.setSpacing(12)
         self.key_inputs: dict[str, QLineEdit] = {}
         self.key_states: dict[str, object] = {}
+        self.key_deletes: dict[str, QPushButton] = {}
         열림 = self.vault is not None
         for key, name, hint in KEYS:
             row = QWidget()
@@ -90,6 +91,13 @@ class SettingsScreen(QWidget):
             save.setEnabled(열림)
             save.clicked.connect(lambda _=False, k=key: self._save_key(k))
             rl.addWidget(save)
+
+            remove = QPushButton("지우기")
+            remove.setObjectName("Secondary")
+            remove.setEnabled(열림 and self._has(key))
+            remove.clicked.connect(lambda _=False, k=key: self._delete_key(k))
+            rl.addWidget(remove)
+            self.key_deletes[key] = remove
 
             state = label(self._key_state_text(key), name="Hint", wrap=False)
             self.key_inputs[key] = line
@@ -174,7 +182,32 @@ class SettingsScreen(QWidget):
         sa.setWidget(body)
         lay.addWidget(sa, 1)
 
-    # ── 열쇠 저장 ─────────────────────────────────────────
+    # ── 열쇠 넣고 지우기 ──────────────────────────────────
+    def _has(self, key: str) -> bool:
+        if self.vault is None:
+            return False
+        try:
+            return self.vault.has(key)
+        except Exception:
+            return False
+
+    def _refresh_key(self, key: str) -> None:
+        self.key_states[key].setText(self._key_state_text(key))
+        if btn := self.key_deletes.get(key):
+            btn.setEnabled(self.vault is not None and self._has(key))
+
+    def _delete_key(self, key: str) -> None:
+        """저장해 둔 열쇠를 지웁니다. **금고 파일은 그대로 둡니다.**"""
+        try:
+            지웠나 = self.vault.delete(key)
+        except Exception:
+            self.key_states[key].setText("열쇠를 지우지 못했습니다. 회사에 문의해 주세요.")
+            return
+        self.key_states[key].setText(
+            "지웠습니다. 다시 넣으셔야 씁니다." if 지웠나 else "지울 열쇠가 없습니다.")
+        if btn := self.key_deletes.get(key):
+            btn.setEnabled(False)
+
     def _key_state_text(self, key: str) -> str:
         if self.vault is None:
             return "아직 넣지 않았습니다"
@@ -201,4 +234,4 @@ class SettingsScreen(QWidget):
             state.setText("열쇠를 저장하지 못했습니다. 회사에 문의해 주세요.")
             return
         line.clear()
-        state.setText(self._key_state_text(key))
+        self._refresh_key(key)
