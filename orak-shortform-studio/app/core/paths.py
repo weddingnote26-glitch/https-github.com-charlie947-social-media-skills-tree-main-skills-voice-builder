@@ -3,7 +3,7 @@
 분리규칙의 표를 사람의 주의력에 맡기지 않고 코드가 지키게 합니다.
 파일을 쓰기 전에는 반드시 ``assert_writable()`` 를 거칩니다.
 
-    내 문서\\ORAK_SHORTFORM_STUDIO\\      ← 여기 아래만 쓸 수 있습니다
+    내 문서\\오락 숏폼 스튜디오\\      ← 여기 아래만 쓸 수 있습니다
       ├ Projects\\20260901_할머니국수\\
       │    ├ source\\ script\\ images\\ videos\\ audio\\ subtitle\\ final\\
       ├ Settings\\
@@ -23,7 +23,24 @@ import unicodedata
 from datetime import date
 from pathlib import Path
 
-APP_DIR_NAME = "ORAK_SHORTFORM_STUDIO"
+APP_DIR_NAME = "오락 숏폼 스튜디오"
+"""자료가 쌓이는 폴더 이름 (2026-08-29 확정).
+
+**한글에 띄어쓰기가 들어갑니다.** 담당자가 탐색기에서 찾아야 하는 폴더라
+영어 대문자보다 이쪽이 낫습니다. 경로에 공백이 있어도 깨지지 않게,
+바깥 프로그램을 부를 때는 **인자를 늘 리스트로 넘깁니다** (§3 · `Ffmpeg.run`).
+
+`%LOCALAPPDATA%` 를 쓰지 않는 이유: **숨김 폴더라 담당자가 자기 영상을
+못 찾습니다.** 만든 영상을 직접 열어 확인하고 손으로 올려야 하는데,
+숨김 폴더에 두면 그때마다 회사에 물어봐야 합니다.
+"""
+
+LEGACY_DIR_NAMES = ("ORAK_SHORTFORM_STUDIO",)
+"""전에 쓰던 폴더 이름들.
+
+**옮기지도 지우지도 않습니다** (§0-1 4번 · 분리규칙 §3-3).
+남아 있으면 설정 화면이 「저기 있습니다」 라고 알려주기만 합니다.
+"""
 
 SCENE_SUBDIRS = ("source", "script", "images", "videos", "audio", "subtitle", "final")
 TOP_SUBDIRS = ("Projects", "Settings", "Assets", "Logs",
@@ -107,13 +124,32 @@ class Paths:
     # ── 기본 위치 ─────────────────────────────────────────
     @staticmethod
     def _default_data_root() -> Path:
-        """내 문서\\ORAK_SHORTFORM_STUDIO\\ (분리규칙 §1)"""
+        """내 문서\\오락 숏폼 스튜디오\\ (분리규칙 §1 · 2026-08-29 확정)"""
+        return Paths._documents_dir() / APP_DIR_NAME
+
+    @staticmethod
+    def _documents_dir() -> Path:
+        """내 문서 폴더. 윈도우 언어 설정에 따라 이름이 다릅니다."""
         home = Path.home()
         for candidate in ("Documents", "내 문서", "문서"):
             docs = home / candidate
             if docs.is_dir():
-                return docs / APP_DIR_NAME
-        return home / "Documents" / APP_DIR_NAME
+                return docs
+        return home / "Documents"
+
+    def legacy_data_root(self) -> Path | None:
+        """전에 쓰던 이름의 폴더가 남아 있으면 그 자리.
+
+        **찾기만 합니다.** 옮기지도 지우지도 않습니다 — 담당자가 만든 영상이
+        들어 있을 수 있고, 프로그램이 임의로 정리하면 안 됩니다 (§0-1 4번).
+        설정 화면이 이 값을 보고 「저기 있습니다」 라고 알려줍니다.
+        """
+        옆에 = self._data_root.parent
+        for 옛이름 in LEGACY_DIR_NAMES:
+            옛것 = 옆에 / 옛이름
+            if 옛것.is_dir() and _norm(옛것) != _norm(self._data_root):
+                return 옛것
+        return None
 
     @staticmethod
     def _default_bundled_assets() -> Path:

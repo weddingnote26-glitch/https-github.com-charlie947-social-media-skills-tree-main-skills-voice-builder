@@ -5,7 +5,7 @@
 
 ---
 
-## 2026-08-29 (토) — 오락 숏폼 · Stage 3·4·6b·8·컷편집·9 + 공급자 교체·규칙
+## 2026-08-29 (토) — 오락 숏폼 · Stage 3·4·6b·8·컷편집·9 + 공급자 교체·규칙 + Stage 10
 
 > **이어서 하실 때:** **"WORKLOG 읽고 오락 숏폼 이어서 해줘"**
 > 브랜치 `claude/entertainment-short-form-studio-0wew50` · 폴더 `orak-shortform-studio/`
@@ -24,12 +24,13 @@
 | **공급자** | 대본·이미지 OpenAI · 목소리 ElevenLabs 로 교체 | ✅ 시험 29개 |
 | **규칙** | 기본 제작 필수 규칙 (8항목 36줄) | ✅ 시험 22개 |
 | **서비스** | 단계별 실패·주제·사례·성과 | ✅ 시험 22개 |
+| **10** | 다시 하기 · 껐다 켜도 이어서 | ✅ 시험 26개 |
 | 5 | 이미지 (OpenAI) | 구조 완성 · **열쇠 넣고 모델 고르면 됨** |
 | 6 | 영상 (Kling) | ⛔ **계정 확인 필요 — 막힘** |
 | 7 | 음성 (ElevenLabs) | 구조 완성 · **열쇠 넣고 모델 고르면 됨** |
-| 10~12 | 다시하기 · 설치파일 · 최종점검 | 아직 |
+| 11~12 | 설치파일 · 최종점검 | 아직 |
 
-**시험 291개 전부 통과.**
+**시험 317개 전부 통과.**
 
 ```
 cd orak-shortform-studio
@@ -44,6 +45,7 @@ python tests/test_compose.py     25
 python tests/test_providers.py   29
 python tests/test_rules.py       22
 python tests/test_services.py    22
+python tests/test_recovery.py    26
 python -m app.main               창 띄우기
 ```
 
@@ -76,17 +78,16 @@ python -m app.main               창 띄우기
    그냥 느슨하게 하지 않고 **더 촘촘하게** 바꿨습니다: 지우는 것이
    `rulesets` 한 표뿐인지 글자와 동작 양쪽으로 확인합니다.
 
-### ⛔ 사장님 답을 기다리는 것
+### 정해진 것
 
-**충돌 2가지 (2026-08-29 새 지시서 vs 기존 지시서·분리규칙)**
+**둘 다 정해졌습니다.**
 
-| | 지금 | 새 지시서 |
+| | 정한 것 | 언제 |
 |---|---|---|
-| 데이터 폴더 | `내 문서\ORAK_SHORTFORM_STUDIO\` (§10-1 · 분리규칙 §2) | `%LOCALAPPDATA%\OrakShortformStudio\` |
-| SQLite 표 | 5개 (§10-2) — Stage 4 가 쓰는 중 | 4개 |
+| 데이터 폴더 | **`내 문서\오락 숏폼 스튜디오\`** | 2026-08-29 사장님 확정 |
+| SQLite 표 | 기존 5개 유지 + 4개 덧붙임 | 「최소 수정」 지시에 따름 |
 
-`%LOCALAPPDATA%` 는 숨김 폴더라 담당자가 영상을 못 찾습니다.
-절충안: 영상·프로젝트는 내 문서, DB·캐시·임시는 LOCALAPPDATA.
+`%LOCALAPPDATA%` 는 숨김 폴더라 담당자가 자기 영상을 못 찾아서 쓰지 않았습니다.
 
 **Stage 별로 필요한 것**
 

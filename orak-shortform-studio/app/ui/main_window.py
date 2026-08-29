@@ -35,6 +35,16 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db = db
         self.registry = registry
+        self.recovery = None
+        if db is not None:
+            from app.services.recovery import RecoveryService
+
+            self.recovery = RecoveryService(
+                db,
+                provider_for=(
+                    (lambda 이름: registry.photo_video_provider()
+                     if 이름 == "kenburns" else registry.video_provider())
+                    if registry is not None else None))
         self.setWindowTitle("오락 숏폼 AI 스튜디오")
         self.resize(theme.WINDOW_W, theme.WINDOW_H)
 
@@ -55,7 +65,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.screens = {
             "새 영상 만들기": NewVideoScreen(),
-            "작업 목록": JobListScreen(),
+            "작업 목록": JobListScreen(db=db, recovery=self.recovery),
             "캐릭터": CharacterScreen(),
             "설정": SettingsScreen(db=db, registry=registry),
         }

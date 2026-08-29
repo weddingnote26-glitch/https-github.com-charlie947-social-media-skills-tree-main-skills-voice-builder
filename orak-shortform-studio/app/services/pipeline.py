@@ -121,7 +121,8 @@ class Production:
 
     # ── 돌리기 ────────────────────────────────────────────
     def run(self, step: Step, work: Callable[[], Any], *,
-            skip_if: bool = False) -> StepState:
+            skip_if: bool = False, policy=None,
+            sleep=None, on_wait=None) -> StepState:
         """한 단계를 돌립니다. **여기서 예외가 밖으로 나가지 않습니다.**
 
         어떤 예외가 나도 그 단계만 「실패」 가 되고 프로그램은 살아 있습니다.
@@ -137,8 +138,21 @@ class Production:
         st.status = StepStatus.RUNNING
         st.attempts += 1
         st.updated_at = time.time()
+        일감 = work
+        if policy is not None:
+            # 잠깐 막힌 것(429·5xx·인터넷)만 알아서 다시 부릅니다.
+            # 열쇠나 설정이 틀린 것은 몇 번을 해도 같아서 곧바로 올라옵니다.
+            from app.services.recovery import run_with_retry
+
+            def 일감():                                    # noqa: F811
+                풀옵션 = {"policy": policy}
+                if sleep is not None:
+                    풀옵션["sleep"] = sleep
+                if on_wait is not None:
+                    풀옵션["on_wait"] = on_wait
+                return run_with_retry(work, **풀옵션)
         try:
-            st.result = work()
+            st.result = 일감()
         except ProviderError as e:
             st.status = StepStatus.FAILED
             st.message = e.user_message
@@ -156,9 +170,12 @@ class Production:
         st.updated_at = time.time()
         return st
 
-    def retry(self, step: Step, work: Callable[[], Any]) -> StepState:
-        """그 단계**만** 다시. 앞 단계 결과는 그대로 둡니다."""
+    def retry(self, step: Step, work: Callable[[], Any], **kw) -> StepState:
+        """그 단계**만** 다시. 앞 단계 결과는 그대로 둡니다.
+
+        이미 끝난 단계는 다시 부르지 않습니다 — **돈이 두 번 나갑니다.**
+        """
         st = self.states[step]
         if st.status is StepStatus.DONE:
             return st
-        return self.run(step, work)
+        return self.run(step, work, **kw)

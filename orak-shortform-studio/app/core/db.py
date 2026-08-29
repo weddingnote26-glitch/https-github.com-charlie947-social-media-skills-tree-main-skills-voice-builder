@@ -384,6 +384,19 @@ class Database:
             for r in rows
         ]
 
+    def unfinished_video_rows(self) -> list[dict[str, Any]]:
+        """`unfinished_video_jobs()` 와 같은 줄들을 **id 와 함께** 돌려줍니다.
+
+        이어서 하려면 조회만으로는 부족합니다 — 끝난 뒤 그 줄의 상태를 고치고,
+        어느 프로젝트 폴더에 내려받을지도 알아야 합니다.
+        """
+        rows = self._conn.execute(
+            "SELECT j.*, p.store_name AS store_name, p.folder_path AS folder_path"
+            " FROM generation_jobs j LEFT JOIN projects p ON p.id = j.project_id"
+            " WHERE j.job_type = ? AND j.status IN (?,?) ORDER BY j.request_at",
+            (JobType.VIDEO.value, *UNFINISHED)).fetchall()
+        return [dict(r) for r in rows]
+
     def month_to_date_krw(self, *, now: Optional[float] = None) -> int:
         """이번 달 누적 사용액. 화면 하단에 항상 표시합니다 (§11)."""
         import datetime as _dt

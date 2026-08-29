@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.core.paths import Paths
+from app.core.paths import APP_DIR_NAME, Paths
 from app.core.secrets import CredentialStore, VaultUnavailable, open_vault
 from app.ui import theme
 from app.ui.rules_widget import RulesPanel
@@ -229,6 +229,24 @@ class SettingsScreen(QWidget):
         l3.addWidget(label(
             "이 값은 「assets › pricing.json」 에서 읽어온 것입니다.", name="Hint"))
         bl.addWidget(c3)
+
+        # ── 자료가 쌓이는 곳 ──
+        c6 = card()
+        l6 = vbox(c6)
+        l6.addWidget(label("만든 영상이 쌓이는 곳", name="SectionHead", wrap=False))
+        자리 = Paths()
+        l6.addWidget(label(f"내 문서 › {APP_DIR_NAME} › Projects", wrap=False))
+        l6.addWidget(label(
+            "탐색기에서 바로 찾을 수 있는 곳입니다. 숨김 폴더가 아닙니다.",
+            name="Hint"))
+        옛것 = 자리.legacy_data_root()
+        if 옛것 is not None:
+            # **옮기지도 지우지도 않습니다** (§0-1 4번). 어디 있는지만 알립니다.
+            l6.addWidget(NoticeBox(
+                f"예전 이름의 폴더가 그대로 있습니다: {옛것.name}\n"
+                "안에 든 것은 건드리지 않았습니다. 필요하면 직접 옮겨 주세요.",
+                tone="info", title="예전 폴더가 남아 있습니다"))
+        bl.addWidget(c6)
 
         # ── 배경음악 ──
         c4 = card()
