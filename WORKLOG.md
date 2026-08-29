@@ -5,7 +5,7 @@
 
 ---
 
-## 2026-08-29 (토) — 오락 숏폼 · Stage 3 · 4 · 6b
+## 2026-08-29 (토) — 오락 숏폼 · Stage 3 · 4 · 6b · 8 · 컷편집 · 9
 
 > **이어서 하실 때:** **"WORKLOG 읽고 오락 숏폼 이어서 해줘"**
 > 브랜치 `claude/entertainment-short-form-studio-0wew50` · 폴더 `orak-shortform-studio/`
@@ -20,21 +20,24 @@
 | **6b** | 사진 움직이기 (FFmpeg) | ✅ 시험 18개 · **진짜 영상 나옴** |
 | **8** | 자막(ASS) + 광고 표시 | ✅ 시험 23개 · **진짜 구워서 확인** |
 | **컷 편집** | 사진 고르기 · 장면 배정 · 길이 조정 | ✅ 시험 25개 |
+| **9** | 최종 합성 (이어붙이기 · BGM · 자막 굽기) | ✅ 시험 25개 · **한 편 나옴** |
 | 5 | 이미지 (Gemini) | ⛔ **요청 형식·요금 미확인 — 막힘** |
 | 6 | 영상 (Kling) | ⛔ **계정 확인 필요 — 막힘** |
-| 7~12 | 음성 · 자막 · 합성 · 설치파일 | 아직 |
+| 7 | 음성 (ElevenLabs) | 한국어 모델 답 기다리는 중 |
+| 10~12 | 다시하기 · 설치파일 · 최종점검 | 아직 |
 
-**시험 190개 전부 통과.**
+**시험 215개 전부 통과.**
 
 ```
 cd orak-shortform-studio
 python tests/test_contracts.py   22
-python tests/test_ui_flow.py     26
+python tests/test_ui_flow.py     27
 python tests/test_storage.py     45
 python tests/test_script.py      30
 python tests/test_kenburns.py    18
 python tests/test_subtitles.py   23
 python tests/test_photos.py      25
+python tests/test_compose.py     25
 python -m app.main               창 띄우기
 ```
 
@@ -55,6 +58,13 @@ python -m app.main               창 띄우기
    `QFrame {}` 스타일이 안쪽 글자에도 테두리를 그렸습니다.
 7. **버튼 글자가 잘렸습니다** — 「위로」 가 「귀토」 로. 너비를 좁게 고정한 탓입니다.
    ▲▼ 기호도 글꼴에 없어 막대로 보여 한글로 바꿨습니다.
+8. **배경음악이 사실상 안 들렸습니다.** 원인이 둘이었습니다 (Stage 9).
+   ① `amix` 는 기본값이 **입력 개수로 나누기** 라서 말소리와 BGM 이 나란히
+   6dB 씩 작아졌습니다 → `normalize=0`.
+   ② 「voice 대비 -18dB」 를 **음원 파일에 -18dB** 로 잘못 구현했습니다.
+   넣는 음원마다 원래 크기가 달라서, 조용한 mp3 는 안 들리고 시끄러운 mp3 는
+   말소리를 덮었습니다 → **먼저 재고**(LUFS) 목표에 맞춥니다.
+   자세한 내용과 숫자는 `STAGE9_합성.md` §5.
 
 ### ⛔ 사장님 답을 기다리는 것
 
@@ -75,7 +85,7 @@ python -m app.main               창 띄우기
 | Gemini 이미지 요청 형식 · 장당 요금 | Stage 5 전 |
 | Kling 계정 4가지 (발급·잔액·동시처리·2.6 권한) | Stage 6 전 |
 | ElevenLabs 한국어 모델 | Stage 7 전 |
-| BGM 조달처 | Stage 9 전 |
+| BGM 조달처 (상업적 이용 가능한 것) | 지금 — 폴더만 비어 있습니다 |
 
 ### 사장님이 해주셔야 하는 것
 
@@ -86,6 +96,15 @@ python -m app.main               창 띄우기
 3. **자막 글꼴** — fonts.google.com/noto/specimen/Noto+Sans+KR 에서 받아
    `assets/fonts/NotoSansKR-Bold.ttf` 로 넣어주세요 (OFL · 재배포 가능).
    맑은 고딕은 재배포 권리가 없어 못 씁니다.
+4. **배경음악** — 상업적 이용이 되는 음원을 `assets/bgm/` 에 넣어주세요.
+   **크기는 아무래도 상관없습니다** — 프로그램이 재서 맞춥니다.
+   비워 두면 배경음악 없이 만들어집니다 (영상·자막은 그대로 나옵니다).
+
+### 알아두실 것
+
+**Stage 7(음성) 전까지 미리보기는 소리가 작게 들립니다.** 고장이 아닙니다.
+배경음악은 「말소리보다 18dB 아래」 로 맞춰져 있는데 아직 말소리가 없어서
+그렇습니다. 음성이 붙는 순간 말소리가 올라오고 배경음악은 그 아래에 깔립니다.
 
 ### 윈도우 PC 설치
 
