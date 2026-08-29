@@ -3,7 +3,7 @@
 집 ↔ 회사 어디서든 같은 작업을 이어서 하기 위한 저장소입니다.
 
 - **저장소**: https://github.com/weddingnote26-glitch/https-github.com-charlie947-social-media-skills-tree-main-skills-voice-builder
-- **작업 브랜치**: `claude/work-environment-setup-qkurkt`
+- **어느 작업이 어느 브랜치인지** → **[작업_대장.md](작업_대장.md)** 를 먼저 보세요 (덮어쓰기 방지)
 
 ## 지금 들어 있는 것
 

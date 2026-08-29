@@ -7,8 +7,13 @@
 
 ## 2026-08-29 (토) — 오락 숏폼 · Stage 3·4·6b·8·컷편집·9 + 공급자 교체·규칙 + Stage 10
 
-> **이어서 하실 때:** **"WORKLOG 읽고 오락 숏폼 이어서 해줘"**
-> 브랜치 `claude/entertainment-short-form-studio-0wew50` · 폴더 `orak-shortform-studio/`
+> **이어서 하실 때:** **"작업_대장 읽고 오락 숏폼 이어서 해줘"**
+> 브랜치 **`orak-shortform-studio`** · 폴더 `orak-shortform-studio/`
+>
+> 2026-08-29 부터 브랜치를 **`orak-shortform-studio`** 로 옮겼습니다.
+> 예전 브랜치 `claude/entertainment-short-form-studio-0wew50` 은
+> Stage 10 까지가 그대로 얼려져 있습니다 — **손대지 마세요.**
+> 어느 작업이 어느 브랜치인지는 [작업_대장.md](작업_대장.md) 를 보세요.
 
 ### 어디까지 했나
 
