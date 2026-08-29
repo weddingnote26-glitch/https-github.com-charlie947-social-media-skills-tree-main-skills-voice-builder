@@ -43,6 +43,12 @@ orak-shortform-studio/.venv/
 orak-shortform-studio/assets/master/*.png
 orak-shortform-studio/assets/master/*.jpg
 
+# 배포 만들기 (Stage 11) — 만들 때 나오는 것들. 저장소에 넣지 않습니다.
+orak-shortform-studio/ffmpeg/
+orak-shortform-studio/build/
+orak-shortform-studio/dist/
+orak-shortform-studio/설치파일_출력/
+
 # 폰트·BGM은 각자 받아서 넣습니다 (라이선스·용량)
 orak-shortform-studio/assets/fonts/*.ttf
 orak-shortform-studio/assets/fonts/*.otf

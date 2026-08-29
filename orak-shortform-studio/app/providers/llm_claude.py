@@ -119,7 +119,18 @@ class ClaudeScriptProvider:
                     user_message="대본을 만들 열쇠가 없습니다. 설정에서 넣어주세요.",
                     log_detail="claude api key missing",
                     provider=self.name)
-            import anthropic
+            try:
+                import anthropic
+            except ImportError:
+                # 배포본에는 이 꾸러미를 넣지 않습니다 (Stage 11).
+                # 기본 대본 공급자가 OpenAI 라서 크기만 키우기 때문입니다.
+                # 코드는 그대로 두었으니 필요하면 다시 넣으면 됩니다.
+                raise ProviderError(
+                    retry=Retry.NEVER_PARAM,
+                    user_message="이 프로그램에는 Claude 대본이 들어 있지 않습니다. "
+                                 "설정에서 OpenAI 를 쓰거나 회사에 문의해 주세요.",
+                    log_detail="anthropic package not bundled",
+                    provider=self.name) from None
 
             masking.register(api_key.reveal())
             self._client = anthropic.Anthropic(api_key=api_key.reveal())
