@@ -22,6 +22,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QLabel,
@@ -35,9 +36,17 @@ from PySide6.QtWidgets import (
 )
 
 from app.contracts.errors import ProviderError
-from app.contracts.models import AdDisclosure, RenderMode, Script, StoreInfo
+from app.contracts.models import (
+    MAX_TOTAL_SEC,
+    AdDisclosure,
+    RenderMode,
+    Script,
+    StoreInfo,
+)
+from app.core.photos import PhotoSet, assignment_problems, auto_assign
 from app.core.script_rules import check_script
 from app.ui import theme
+from app.ui.photo_widgets import PhotoPicker, ScenePhotoPicker
 from app.ui.widgets import (
     BusyButton,
     ErrorBox,
@@ -90,6 +99,8 @@ class NewVideoScreen(QWidget):
         super().__init__()
         self.script_provider = script_provider
         self.max_kling_clips = max_kling_clips
+        self.photos = PhotoSet()
+        self.scene_photos: dict[int, object] = {}
         self.script: Script | None = None
         self.last_error = ""
         self.stack = QStackedWidget()
@@ -169,21 +180,20 @@ class NewVideoScreen(QWidget):
         ))
         bl.addWidget(urls)
 
-        # 음식 사진
+        # 음식 사진 (§4 — 여러 장 · 장면에 배정)
         photos = card()
         pl = vbox(photos)
         pl.addWidget(label("음식 사진", name="SectionHead"))
         pl.addWidget(label(
-            "실제로 찍은 사진을 넣으면 그 장면은 영상 생성 비용이 들지 않습니다.",
+            "실제로 찍은 사진을 넣으면 그 장면은 영상 만드는 비용이 들지 않습니다.\n"
+            "위에 있는 사진부터 차례로 장면에 들어갑니다. [위로] [아래로] 로 순서를 바꾸세요.",
             name="Hint"))
-        prow = hbox()
-        pick = QPushButton("사진 고르기")
-        pick.setObjectName("Secondary")
-        prow.addWidget(pick)
-        self.photo_count = label("고른 사진 없음", name="Hint", wrap=False)
-        prow.addWidget(self.photo_count)
-        prow.addStretch(1)
-        pl.addLayout(prow)
+        self.photo_picker = PhotoPicker(self.photos)
+        pl.addWidget(self.photo_picker)
+        pl.addWidget(NoticeBox(
+            "고르신 사진의 원본은 그대로 둡니다. 목록에서 빼도 파일은 지워지지 않습니다.\n"
+            "영상을 만들 때 프로젝트 폴더로 복사해서 씁니다.",
+            tone="info"))
         bl.addWidget(photos)
 
         # 대가성 — §5
@@ -244,6 +254,7 @@ class NewVideoScreen(QWidget):
             menu=f["menu"], price=f["price"], features=f["features"],
             reason=f["reason"], memo=f["memo"],
             reference_urls=urls,
+            photo_paths=self.photos.paths(),
             disclosure=AdDisclosure(is_paid=self.paid_check.isChecked()),
         )
 
@@ -332,6 +343,9 @@ class NewVideoScreen(QWidget):
         lay.addLayout(foot)
 
         self.scene_editors: list[tuple[int, QTextEdit, QLineEdit]] = []
+        self.scene_lengths: dict[int, QDoubleSpinBox] = {}
+        self.scene_times: dict[int, object] = {}
+        self.scene_pickers: dict[int, ScenePhotoPicker] = {}
         self.refresh_script_view()
         return page
 
@@ -363,10 +377,18 @@ class NewVideoScreen(QWidget):
         paid = self.paid_check.isChecked()
         caption = self.script.caption if self.script else ""
         hashtags = list(self.script.hashtags) if self.script else ["#a"] * 5
-        return check_script(
+        problems = check_script(
             {"scenes": scenes, "caption": caption, "hashtags": hashtags,
              "hook": "", "full_text": "", "title": ""},
             is_paid_promotion=paid, max_kling_clips=self.max_kling_clips)
+
+        # 사진이 덜 배정된 장면도 알려줍니다 (§4).
+        if self.script is not None:
+            from app.core.script_rules import Problem
+
+            for 글 in assignment_problems(self.script.scenes, self.scene_photos):
+                problems.append(Problem(where="사진", message=글))
+        return problems
 
     def refresh_script_view(self) -> None:
         """대본이 바뀌면 화면을 다시 그립니다."""
@@ -375,8 +397,13 @@ class NewVideoScreen(QWidget):
             if w := item.widget():
                 w.setParent(None)
         self.scene_editors = []
+        self.scene_lengths = {}
+        self.scene_times = {}
+        self.scene_pickers = {}
 
         진짜 = self.script is not None
+        if 진짜 and not self.scene_photos:
+            self.scene_photos = dict(auto_assign(self.script.scenes, self.photos))
         self.sample_notice.setVisible(not 진짜)
 
         if 진짜:
@@ -390,25 +417,40 @@ class NewVideoScreen(QWidget):
                 self._scene_card(idx, start, end, mode, narration, screen_text))
         self.scene_layout.addStretch(1)
 
-        kling = sum(1 for r in rows if r[3] is RenderMode.KLING)
-        total = max((r[2] for r in rows), default=0)
+        self._refresh_summary()
+        self.update_rule_notice()
+
+    def _refresh_summary(self) -> None:
+        """아래 요약 네 칸을 다시 그립니다. 컷 길이를 바꿀 때도 부릅니다."""
+        rows = self.scenes_as_dicts()
+        kling = sum(1 for r in rows if r["render_mode"] == RenderMode.KLING.value)
+        total = max((r["end_sec"] for r in rows), default=0)
+        사진필요 = sum(1 for r in rows if r["render_mode"] == RenderMode.KENBURNS.value)
+        사진있음 = sum(1 for r in rows
+                       if r["render_mode"] == RenderMode.KENBURNS.value
+                       and self.scene_photos.get(r["idx"]))
+
         while self.summary.count():
             item = self.summary.takeAt(0)
             if w := item.widget():
                 w.setParent(None)
-        for col, (k, v) in enumerate([
-            ("총 길이", f"{total:g}초  (30초까지 됩니다)"),
-            ("영상 생성 장면", f"{kling}개  (한 편에 {self.max_kling_clips}개까지)"),
-            ("실제 사진 장면", f"{len(rows) - kling}개  (비용 없음)"),
-            ("예상 비용", self._cost_text()),
+
+        넘침 = total > MAX_TOTAL_SEC
+        모자람 = 사진있음 < 사진필요
+        for col, (k, v, 나쁨) in enumerate([
+            ("총 길이", f"{total:g}초  (30초까지 됩니다)", 넘침),
+            ("영상 만드는 장면", f"{kling}개  (한 편에 {self.max_kling_clips}개까지)",
+             kling > self.max_kling_clips),
+            ("사진 넣은 장면", f"{사진있음} / {사진필요}개", 모자람),
+            ("예상 비용", self._cost_text(), False),
         ]):
             k_lb = label(k, name="Hint", wrap=False)
             v_lb = label(v, wrap=False)
-            v_lb.setStyleSheet(f"font-size: {theme.FS_BODY}px; font-weight: 700;")
+            색 = theme.BAD if 나쁨 else theme.INK
+            v_lb.setStyleSheet(
+                f"font-size: {theme.FS_BODY}px; font-weight: 700; color: {색};")
             self.summary.addWidget(k_lb, 0, col)
             self.summary.addWidget(v_lb, 1, col)
-
-        self.update_rule_notice()
 
     def _cost_text(self) -> str:
         if self.script_provider is None:
@@ -447,6 +489,7 @@ class NewVideoScreen(QWidget):
         head.addWidget(no)
         secs = label(f"{start:g}초 ~ {end:g}초", name="Hint", wrap=False)
         head.addWidget(secs)
+        self.scene_times[idx] = secs
         head.addStretch(1)
         text, fg, bg = RENDER_LABEL[mode]
         tag = QLabel(text)
@@ -468,9 +511,64 @@ class NewVideoScreen(QWidget):
         st.textChanged.connect(self.update_rule_notice)
         cl.addWidget(st)
 
+        # ── 컷 길이 조정 ──
+        길이줄 = hbox()
+        길이줄.addWidget(label("이 장면 길이", name="Hint", wrap=False))
+        spin = QDoubleSpinBox()
+        spin.setRange(1.0, 15.0)
+        spin.setSingleStep(0.5)
+        spin.setDecimals(1)
+        spin.setSuffix(" 초")
+        spin.setValue(round(end - start, 1))
+        spin.valueChanged.connect(
+            lambda v, i=idx: self._set_scene_length(i, v))
+        길이줄.addWidget(spin)
+        길이줄.addWidget(label("전체 30초를 넘으면 만들 수 없습니다", name="Hint"))
+        길이줄.addStretch(1)
+        cl.addLayout(길이줄)
+        self.scene_lengths[idx] = spin
+
+        # ── 실제 사진 장면에는 사진 고르개 ──
+        if mode is RenderMode.KENBURNS:
+            picker = ScenePhotoPicker(
+                idx, self.photos, self.scene_photos.get(idx),
+                on_pick=self._set_scene_photo)
+            cl.addWidget(picker)
+            self.scene_pickers[idx] = picker
+
         # 담당자가 고친 것을 읽어올 수 있게 등록합니다.
         self.scene_editors.append((idx, nar, st))
         return c
+
+    # ── 컷 편집 ───────────────────────────────────────────
+    def _set_scene_length(self, idx: int, seconds: float) -> None:
+        """한 장면 길이를 바꾸고 **뒤 장면들을 밀어** 시간이 이어지게 합니다.
+
+        장면 사이에 빈 시간이 생기면 영상이 끊깁니다.
+        """
+        if self.script is None:
+            return
+        시작 = 0.0
+        for s in self.script.scenes:
+            길이 = seconds if s.idx == idx else (s.end_sec - s.start_sec)
+            s.start_sec = round(시작, 2)
+            s.end_sec = round(시작 + 길이, 2)
+            시작 = s.end_sec
+        self._refresh_scene_times()
+        self.update_rule_notice()
+
+    def _refresh_scene_times(self) -> None:
+        """카드 머리의 「0초 ~ 3초」 글자를 새 값으로 바꿉니다."""
+        if self.script is None:
+            return
+        for s in self.script.scenes:
+            if lb := self.scene_times.get(s.idx):
+                lb.setText(f"{s.start_sec:g}초 ~ {s.end_sec:g}초")
+        self._refresh_summary()
+
+    def _set_scene_photo(self, idx: int, path: object) -> None:
+        self.scene_photos[idx] = path
+        self.update_rule_notice()
 
     def _produce(self) -> None:
         # Stage 6~9 에서 진짜 제작이 들어옵니다.

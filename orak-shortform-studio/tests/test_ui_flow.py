@@ -44,6 +44,24 @@ def _fill(screen) -> None:
         screen.fields[k].setText("값")
 
 
+def _add_photos(screen, n: int = 3) -> None:
+    """실제 사진 장면에 넣을 사진을 담습니다.
+
+    사진이 없으면 [영상 제작] 이 잠깁니다(§4). 담당자가 실제로 거치는 순서입니다.
+    """
+    import tempfile
+
+    from PIL import Image
+
+    tmp = Path(tempfile.mkdtemp())
+    paths = []
+    for i in range(n):
+        p = tmp / f"사진{i}.jpg"
+        Image.new("RGB", (1600, 1200), (230, 210, 180)).save(p)
+        paths.append(p)
+    screen.photo_picker.add_paths(paths)
+
+
 def _visible_texts(root: QWidget) -> list[str]:
     """화면에 실제로 글자로 나오는 것들을 모읍니다."""
     out: list[str] = []
@@ -206,9 +224,10 @@ def test_담당자가_고친_대본도_검사한다() -> None:
     """만들 때만 검사하고 사람이 고친 건 안 하면 구멍이 생깁니다."""
     s = NewVideoScreen(script_provider=_fake_provider())
     _fill(s)
+    _add_photos(s)
     s.make_script_button.click()
     _app.processEvents()
-    assert s.check_edits() == [], "처음엔 문제가 없어야 합니다"
+    assert s.check_edits() == [], f"처음엔 문제가 없어야 합니다: {s.check_edits()}"
     assert s.produce_button.isEnabled()
 
     idx, nar, txt = s.scene_editors[0]
@@ -225,6 +244,7 @@ def test_담당자가_고친_대본도_검사한다() -> None:
 def test_고친_것을_되돌리면_다시_만들_수_있다() -> None:
     s = NewVideoScreen(script_provider=_fake_provider())
     _fill(s)
+    _add_photos(s)
     s.make_script_button.click()
     _app.processEvents()
     idx, nar, txt = s.scene_editors[0]
@@ -234,6 +254,16 @@ def test_고친_것을_되돌리면_다시_만들_수_있다() -> None:
     nar.setPlainText(원래)
     _app.processEvents()
     assert s.produce_button.isEnabled(), "되돌렸는데 여전히 잠겨 있습니다"
+
+
+def test_사진이_없으면_만들기가_잠긴다() -> None:
+    """§4 — 실제 사진 장면에 넣을 사진이 있어야 만들 수 있습니다."""
+    s = NewVideoScreen(script_provider=_fake_provider())
+    _fill(s)                       # 사진은 일부러 안 담습니다
+    s.make_script_button.click()
+    _app.processEvents()
+    assert not s.produce_button.isEnabled(), "사진이 없는데 만들기가 눌립니다"
+    assert "사진" in s.rule_notice.text()
 
 
 def test_과장표현을_넣으면_막는다() -> None:
