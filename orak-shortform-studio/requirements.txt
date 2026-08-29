@@ -16,6 +16,10 @@ PySide6==6.8.1
 pywin32==308; sys_platform == "win32"
 
 # Stage 4~7 — API 호출
+# requests 는 OpenAI·ElevenLabs 를 부를 때 씁니다 (app/core/http.py).
+# 회사 SDK 를 따로 깔지 않습니다 — 부르는 곳이 몇 군데뿐이고,
+# SDK 마다 판이 달라지면 공급자를 갈아끼우기가 오히려 어려워집니다.
+requests==2.32.3
 httpx==0.28.1
 pydantic==2.10.6
 

@@ -221,8 +221,8 @@ def test_폴더이름을_다듬는다() -> None:
     assert safe_folder_name("할머니 손칼국수") == "할머니손칼국수"
 
 
-def test_지우는_기능이_없다() -> None:
-    """분리규칙 §3-3 — 파일을 지우는 코드를 쓰지 마세요."""
+def test_파일을_지우는_코드가_없다() -> None:
+    """분리규칙 §3-3 — 파일을 지우는 코드를 쓰지 마세요. 여기는 예외가 없습니다."""
     import app.core.db as db_mod
     import app.core.paths as paths_mod
     import app.core.secrets as secrets_mod
@@ -230,8 +230,37 @@ def test_지우는_기능이_없다() -> None:
     for mod in (paths_mod, db_mod, secrets_mod):
         src = Path(mod.__file__).read_text(encoding="utf-8")
         for 금지 in ("shutil.rmtree", "os.remove", "os.unlink", "os.rmdir",
-                     "DROP TABLE", "DELETE FROM"):
+                     "DROP TABLE"):
             assert 금지 not in src, f"{Path(mod.__file__).name} 에 {금지} 가 있습니다"
+
+
+def test_지우는_것은_규칙_한_줄뿐이다() -> None:
+    """담당자가 「기본 제작 필수 규칙」 한 줄을 지우는 것만 허용합니다.
+
+    그건 자기가 적은 것을 되돌리는 일이지 결과물을 지우는 게 아닙니다.
+    **만든 영상·장면·작업기록·프로젝트는 어떤 경우에도 지우지 않습니다** (§0-1).
+    """
+    import re
+
+    import app.core.db as db_mod
+
+    src = Path(db_mod.__file__).read_text(encoding="utf-8")
+    지우는것 = re.findall(r"DELETE FROM (\w+)", src)
+    assert 지우는것 == ["rulesets"], f"규칙 말고 다른 것도 지웁니다: {지우는것}"
+
+    # 실제로도 그런지 확인합니다 — 글자 검사만으로는 부족합니다.
+    db = _db()
+    pid = db.create_project(store_name="가게", folder_path="/x")
+    db.add_scene(pid, idx=1, start_sec=0, end_sec=3,
+                 render_mode=RenderMode.KENBURNS)
+    db.record_job(project_id=pid, provider="kenburns", job_type=JobType.VIDEO,
+                  cost_estimate_krw=0)
+    rid = db.add_rule(section="기타", body="지울 규칙")
+    db.remove_rule(rid)
+
+    assert db.rules() == [], "규칙이 안 지워졌습니다"
+    assert db.get_project(pid) is not None, "프로젝트가 사라졌습니다"
+    assert len(db.scenes(pid)) == 1, "장면이 사라졌습니다"
 
 
 # ═════════════════════════════════════════════════════════════
@@ -342,9 +371,36 @@ def _db() -> Database:
     return Database(_paths().db_path(), masker=Masker())
 
 
-def test_표가_다섯개다() -> None:
-    assert _db().table_names() == [
-        "generation_jobs", "project_urls", "projects", "scenes", "settings"]
+def test_원래_다섯_표가_그대로_있다() -> None:
+    """§10-2 의 5개입니다. 2026-08-29 에 표를 더 넣었지만 **이 5개는 그대로**입니다."""
+    있는것 = set(_db().table_names())
+    for 이름 in ("generation_jobs", "project_urls", "projects", "scenes",
+               "settings"):
+        assert 이름 in 있는것, f"{이름} 표가 사라졌습니다"
+
+
+def test_나중에_넣은_표도_있다() -> None:
+    """2026-08-29 지시로 넣은 4개. 기존 표를 건드리지 않고 덧붙였습니다."""
+    있는것 = set(_db().table_names())
+    for 이름 in ("rulesets", "competitor_notes", "topic_ideas",
+               "performance_metrics"):
+        assert 이름 in 있는것, f"{이름} 표가 없습니다"
+    assert len(있는것) == 9, sorted(있는것)
+
+
+def test_쓰던_파일을_열어도_자료가_남는다() -> None:
+    """표를 더 넣었습니다. **이미 쓰던 db 를 열었을 때 자료가 날아가면 안 됩니다.**"""
+    자리 = _paths().db_path()
+    첫번째 = Database(자리, masker=Masker())
+    pid = 첫번째.create_project(store_name="할머니 손칼국수", folder_path="/x")
+    첫번째.add_scene(pid, idx=1, start_sec=0, end_sec=3,
+                   render_mode=RenderMode.KENBURNS)
+    첫번째.close()
+
+    두번째 = Database(자리, masker=Masker())
+    assert 두번째.get_project(pid)["store_name"] == "할머니 손칼국수"
+    assert len(두번째.scenes(pid)) == 1
+    assert "rulesets" in 두번째.table_names()
 
 
 def test_프로젝트와_장면을_넣고_읽는다() -> None:

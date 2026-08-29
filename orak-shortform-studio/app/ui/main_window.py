@@ -26,8 +26,15 @@ MENU = ["새 영상 만들기", "작업 목록", "캐릭터", "설정"]
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, db=None, registry=None) -> None:
+        """``db`` 를 주면 설정 화면이 규칙과 모델 선택을 함께 씁니다.
+
+        안 주면 화면은 그대로 뜨되 규칙은 「아직 불러오지 않았습니다」 로 보입니다.
+        시험이 데이터베이스 없이도 창을 띄울 수 있어야 해서 이렇게 두었습니다.
+        """
         super().__init__()
+        self.db = db
+        self.registry = registry
         self.setWindowTitle("오락 숏폼 AI 스튜디오")
         self.resize(theme.WINDOW_W, theme.WINDOW_H)
 
@@ -50,7 +57,7 @@ class MainWindow(QMainWindow):
             "새 영상 만들기": NewVideoScreen(),
             "작업 목록": JobListScreen(),
             "캐릭터": CharacterScreen(),
-            "설정": SettingsScreen(),
+            "설정": SettingsScreen(db=db, registry=registry),
         }
         for name in MENU:
             self.stack.addWidget(self.screens[name])

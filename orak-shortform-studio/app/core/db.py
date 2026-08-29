@@ -98,6 +98,64 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
+-- ── 아래 4개는 나중에 덧붙인 표입니다 (2026-08-29 지시). ──
+-- 기존 5개 표는 손대지 않았습니다. CREATE IF NOT EXISTS 라서
+-- 이미 쓰던 db.sqlite3 를 열어도 있던 자료가 그대로 남습니다.
+
+-- 기본 제작 필수 규칙. **열쇠는 여기 오지 않습니다** — 본문은 _clean() 을 거칩니다.
+CREATE TABLE IF NOT EXISTS rulesets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    section    TEXT    NOT NULL,              -- 큰 항목 (예: 「릴스 / 쇼츠 대본」)
+    body       TEXT    NOT NULL,              -- 규칙 본문 한 줄
+    scopes     TEXT    NOT NULL DEFAULT '',   -- 쉼표 구분: script,image,caption...
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_builtin INTEGER NOT NULL DEFAULT 0,    -- 기본 템플릿에서 온 것인가
+    updated_at REAL    NOT NULL
+);
+
+-- 경쟁 콘텐츠 메모. **주소는 저장만 합니다. 프로그램이 열지 않습니다** (§0-4).
+CREATE TABLE IF NOT EXISTS competitor_notes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER,
+    platform   TEXT    NOT NULL DEFAULT '',   -- instagram / youtube / blog
+    url        TEXT    NOT NULL DEFAULT '',
+    note       TEXT    NOT NULL DEFAULT '',
+    created_at REAL    NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+-- 주제 아이디어. 담당자가 직접 적거나 대본 AI 가 제안한 것을 담아 둡니다.
+CREATE TABLE IF NOT EXISTS topic_ideas (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER,
+    title      TEXT    NOT NULL,
+    source     TEXT    NOT NULL DEFAULT '',   -- 뉴스 / 트렌드 / 지역이슈 / 담당자
+    memo       TEXT    NOT NULL DEFAULT '',
+    used       INTEGER NOT NULL DEFAULT 0,
+    created_at REAL    NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+-- 성과. 담당자가 손으로 넣습니다 (§0-4 — 자동 수집 없음).
+CREATE TABLE IF NOT EXISTS performance_metrics (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id  INTEGER NOT NULL,
+    measured_on TEXT    NOT NULL,             -- YYYY-MM-DD
+    views       INTEGER NOT NULL DEFAULT 0,
+    saves       INTEGER NOT NULL DEFAULT 0,
+    shares      INTEGER NOT NULL DEFAULT 0,
+    comments    INTEGER NOT NULL DEFAULT 0,
+    note        TEXT    NOT NULL DEFAULT '',
+    created_at  REAL    NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rules_enabled   ON rulesets(enabled, sort_order);
+CREATE INDEX IF NOT EXISTS idx_notes_project   ON competitor_notes(project_id);
+CREATE INDEX IF NOT EXISTS idx_ideas_project   ON topic_ideas(project_id);
+CREATE INDEX IF NOT EXISTS idx_metrics_project ON performance_metrics(project_id);
+
 CREATE INDEX IF NOT EXISTS idx_scenes_project ON scenes(project_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_project   ON generation_jobs(project_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_status    ON generation_jobs(status);
@@ -364,6 +422,134 @@ class Database:
     def all_settings(self) -> dict[str, str]:
         return {r["key"]: r["value"]
                 for r in self._conn.execute("SELECT key, value FROM settings")}
+
+    # ── 기본 제작 필수 규칙 (2026-08-29 지시) ─────────────
+    #
+    # 열쇠와 섞이지 않게 **표를 따로 씁니다.** 본문은 담당자가 손으로 적는
+    # 자유 입력이라 settings 와 똑같이 _clean() 을 거칩니다 — 토큰이 든 문장을
+    # 붙여넣어도 평문으로 남지 않습니다.
+
+    def add_rule(self, *, section: str, body: str, scopes: str = "",
+                 enabled: bool = True, sort_order: int = 0,
+                 is_builtin: bool = False) -> int:
+        with self._tx() as cur:
+            cur.execute(
+                "INSERT INTO rulesets (section, body, scopes, enabled,"
+                " sort_order, is_builtin, updated_at) VALUES (?,?,?,?,?,?,?)",
+                (self._clean(section), self._clean(body), self._clean(scopes),
+                 int(enabled), sort_order, int(is_builtin), time.time()))
+            return int(cur.lastrowid or 0)
+
+    def rules(self, *, enabled_only: bool = False) -> list[dict[str, Any]]:
+        sql = "SELECT * FROM rulesets"
+        if enabled_only:
+            sql += " WHERE enabled = 1"
+        sql += " ORDER BY sort_order, id"
+        return [dict(r) for r in self._conn.execute(sql)]
+
+    def get_rule(self, rule_id: int) -> Optional[dict[str, Any]]:
+        row = self._conn.execute(
+            "SELECT * FROM rulesets WHERE id = ?", (rule_id,)).fetchone()
+        return dict(row) if row else None
+
+    def update_rule(self, rule_id: int, *, section: str | None = None,
+                    body: str | None = None, scopes: str | None = None,
+                    enabled: bool | None = None,
+                    sort_order: int | None = None) -> None:
+        칸, 값 = [], []
+        for 이름, v in (("section", section), ("body", body), ("scopes", scopes)):
+            if v is not None:
+                칸.append(f"{이름} = ?")
+                값.append(self._clean(v))
+        if enabled is not None:
+            칸.append("enabled = ?")
+            값.append(int(enabled))
+        if sort_order is not None:
+            칸.append("sort_order = ?")
+            값.append(sort_order)
+        if not 칸:
+            return
+        칸.append("updated_at = ?")
+        값.append(time.time())
+        값.append(rule_id)
+        with self._tx() as cur:
+            cur.execute(f"UPDATE rulesets SET {', '.join(칸)} WHERE id = ?", 값)
+
+    def remove_rule(self, rule_id: int) -> None:
+        """규칙 **한 줄**만 지웁니다.
+
+        담당자가 화면에서 「지우기」 를 누른 것이라 이건 자료 삭제가 아니라
+        입력 취소입니다. 파일은 건드리지 않습니다 (분리규칙 §3-3).
+        """
+        with self._tx() as cur:
+            cur.execute("DELETE FROM rulesets WHERE id = ?", (rule_id,))
+
+    # ── 경쟁 콘텐츠 메모 · 주제 · 성과 ────────────────────
+
+    def add_competitor_note(self, *, platform: str, url: str = "", note: str = "",
+                            project_id: Optional[int] = None) -> int:
+        """참고 사례를 **적어 둡니다.** 프로그램이 그 주소를 열지 않습니다 (§0-4)."""
+        with self._tx() as cur:
+            cur.execute(
+                "INSERT INTO competitor_notes (project_id, platform, url, note,"
+                " created_at) VALUES (?,?,?,?,?)",
+                (project_id, self._clean(platform), self._clean(url),
+                 self._clean(note), time.time()))
+            return int(cur.lastrowid or 0)
+
+    def competitor_notes(self, project_id: Optional[int] = None
+                         ) -> list[dict[str, Any]]:
+        if project_id is None:
+            rows = self._conn.execute(
+                "SELECT * FROM competitor_notes ORDER BY id DESC")
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM competitor_notes WHERE project_id = ?"
+                " ORDER BY id DESC", (project_id,))
+        return [dict(r) for r in rows]
+
+    def add_topic_idea(self, *, title: str, source: str = "", memo: str = "",
+                       project_id: Optional[int] = None) -> int:
+        with self._tx() as cur:
+            cur.execute(
+                "INSERT INTO topic_ideas (project_id, title, source, memo,"
+                " created_at) VALUES (?,?,?,?,?)",
+                (project_id, self._clean(title), self._clean(source),
+                 self._clean(memo), time.time()))
+            return int(cur.lastrowid or 0)
+
+    def topic_ideas(self, project_id: Optional[int] = None
+                    ) -> list[dict[str, Any]]:
+        if project_id is None:
+            rows = self._conn.execute("SELECT * FROM topic_ideas ORDER BY id DESC")
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM topic_ideas WHERE project_id = ? ORDER BY id DESC",
+                (project_id,))
+        return [dict(r) for r in rows]
+
+    def mark_topic_used(self, idea_id: int, used: bool = True) -> None:
+        with self._tx() as cur:
+            cur.execute("UPDATE topic_ideas SET used = ? WHERE id = ?",
+                        (int(used), idea_id))
+
+    def add_metrics(self, *, project_id: int, measured_on: str, views: int = 0,
+                    saves: int = 0, shares: int = 0, comments: int = 0,
+                    note: str = "") -> int:
+        """성과는 **담당자가 손으로 넣습니다.** 자동 수집은 하지 않습니다 (§0-4)."""
+        with self._tx() as cur:
+            cur.execute(
+                "INSERT INTO performance_metrics (project_id, measured_on, views,"
+                " saves, shares, comments, note, created_at)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (project_id, self._clean(measured_on), int(views), int(saves),
+                 int(shares), int(comments), self._clean(note), time.time()))
+            return int(cur.lastrowid or 0)
+
+    def metrics(self, project_id: int) -> list[dict[str, Any]]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM performance_metrics WHERE project_id = ?"
+            " ORDER BY measured_on DESC, id DESC", (project_id,))]
 
     def table_names(self) -> list[str]:
         rows = self._conn.execute(

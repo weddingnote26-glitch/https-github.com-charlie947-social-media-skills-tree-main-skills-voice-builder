@@ -5,7 +5,7 @@
 
 ---
 
-## 2026-08-29 (토) — 오락 숏폼 · Stage 3 · 4 · 6b · 8 · 컷편집 · 9
+## 2026-08-29 (토) — 오락 숏폼 · Stage 3·4·6b·8·컷편집·9 + 공급자 교체·규칙
 
 > **이어서 하실 때:** **"WORKLOG 읽고 오락 숏폼 이어서 해줘"**
 > 브랜치 `claude/entertainment-short-form-studio-0wew50` · 폴더 `orak-shortform-studio/`
@@ -15,29 +15,35 @@
 | Stage | 내용 | 상태 |
 |---|---|---|
 | 0·1·2 | 점검 · 설계 · 화면 | ✅ |
-| **3** | 폴더 · SQLite · 열쇠 금고(DPAPI) | ✅ 시험 45개 |
-| **4** | 대본 만들기 (claude-opus-5) | ✅ 시험 30개 |
+| **3** | 폴더 · SQLite · 열쇠 금고(DPAPI) | ✅ 시험 48개 |
+| **4** | 대본 만들기 | ✅ 시험 30개 |
 | **6b** | 사진 움직이기 (FFmpeg) | ✅ 시험 18개 · **진짜 영상 나옴** |
 | **8** | 자막(ASS) + 광고 표시 | ✅ 시험 23개 · **진짜 구워서 확인** |
 | **컷 편집** | 사진 고르기 · 장면 배정 · 길이 조정 | ✅ 시험 25개 |
 | **9** | 최종 합성 (이어붙이기 · BGM · 자막 굽기) | ✅ 시험 25개 · **한 편 나옴** |
-| 5 | 이미지 (Gemini) | ⛔ **요청 형식·요금 미확인 — 막힘** |
+| **공급자** | 대본·이미지 OpenAI · 목소리 ElevenLabs 로 교체 | ✅ 시험 29개 |
+| **규칙** | 기본 제작 필수 규칙 (8항목 36줄) | ✅ 시험 22개 |
+| **서비스** | 단계별 실패·주제·사례·성과 | ✅ 시험 22개 |
+| 5 | 이미지 (OpenAI) | 구조 완성 · **열쇠 넣고 모델 고르면 됨** |
 | 6 | 영상 (Kling) | ⛔ **계정 확인 필요 — 막힘** |
-| 7 | 음성 (ElevenLabs) | 한국어 모델 답 기다리는 중 |
+| 7 | 음성 (ElevenLabs) | 구조 완성 · **열쇠 넣고 모델 고르면 됨** |
 | 10~12 | 다시하기 · 설치파일 · 최종점검 | 아직 |
 
-**시험 215개 전부 통과.**
+**시험 291개 전부 통과.**
 
 ```
 cd orak-shortform-studio
 python tests/test_contracts.py   22
 python tests/test_ui_flow.py     27
-python tests/test_storage.py     45
+python tests/test_storage.py     48
 python tests/test_script.py      30
 python tests/test_kenburns.py    18
 python tests/test_subtitles.py   23
 python tests/test_photos.py      25
 python tests/test_compose.py     25
+python tests/test_providers.py   29
+python tests/test_rules.py       22
+python tests/test_services.py    22
 python -m app.main               창 띄우기
 ```
 
@@ -65,6 +71,10 @@ python -m app.main               창 띄우기
    넣는 음원마다 원래 크기가 달라서, 조용한 mp3 는 안 들리고 시끄러운 mp3 는
    말소리를 덮었습니다 → **먼저 재고**(LUFS) 목표에 맞춥니다.
    자세한 내용과 숫자는 `STAGE9_합성.md` §5.
+9. **표를 4개 늘리면서 옛 시험 2개가 깨졌습니다** — 「표가 다섯개다」 와
+   「지우는 기능이 없다」. 둘 다 새 동작이 맞아서 시험을 고쳤는데,
+   그냥 느슨하게 하지 않고 **더 촘촘하게** 바꿨습니다: 지우는 것이
+   `rulesets` 한 표뿐인지 글자와 동작 양쪽으로 확인합니다.
 
 ### ⛔ 사장님 답을 기다리는 것
 
@@ -82,9 +92,9 @@ python -m app.main               창 띄우기
 
 | 질문 | 언제 |
 |---|---|
-| Gemini 이미지 요청 형식 · 장당 요금 | Stage 5 전 |
+| OpenAI 요금 (대본 토큰당 · 이미지 장당) | 비용 표시를 켜기 전 |
 | Kling 계정 4가지 (발급·잔액·동시처리·2.6 권한) | Stage 6 전 |
-| ElevenLabs 한국어 모델 | Stage 7 전 |
+| ElevenLabs 한국어 모델 | **[연결 확인] 을 누르면 목록에 나옵니다** |
 | BGM 조달처 (상업적 이용 가능한 것) | 지금 — 폴더만 비어 있습니다 |
 
 ### 사장님이 해주셔야 하는 것
@@ -96,7 +106,10 @@ python -m app.main               창 띄우기
 3. **자막 글꼴** — fonts.google.com/noto/specimen/Noto+Sans+KR 에서 받아
    `assets/fonts/NotoSansKR-Bold.ttf` 로 넣어주세요 (OFL · 재배포 가능).
    맑은 고딕은 재배포 권리가 없어 못 씁니다.
-4. **배경음악** — 상업적 이용이 되는 음원을 `assets/bgm/` 에 넣어주세요.
+4. **OpenAI 열쇠** — platform.openai.com 에서 발급 → 설정 → 「대본·이미지 (OpenAI)」
+   → [저장] → **[대본·이미지 연결 확인]** 을 누르면 쓸 수 있는 모델 목록이 뜹니다.
+   거기서 대본용·이미지용을 고르세요. (프로그램은 모델 이름을 모릅니다 — 일부러입니다)
+5. **배경음악** — 상업적 이용이 되는 음원을 `assets/bgm/` 에 넣어주세요.
    **크기는 아무래도 상관없습니다** — 프로그램이 재서 맞춥니다.
    비워 두면 배경음악 없이 만들어집니다 (영상·자막은 그대로 나옵니다).
 

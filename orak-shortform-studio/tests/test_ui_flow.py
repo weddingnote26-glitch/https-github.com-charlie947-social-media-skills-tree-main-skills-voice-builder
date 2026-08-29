@@ -474,7 +474,10 @@ def test_열쇠칸은_금고를_열_수_있을_때만_열린다() -> None:
     안전한 척하며 평문으로 받아두는 길은 없습니다.
     """
     s = _window().screens["설정"]
-    assert len(s.key_inputs) == 4
+    # 개수로 못 박지 않습니다 — 공급자가 늘면 칸도 늡니다.
+    # 대신 **꼭 있어야 하는 칸**이 있는지 봅니다.
+    for 있어야할것 in ("openai", "elevenlabs", "kling"):
+        assert 있어야할것 in s.key_inputs, f"{있어야할것} 열쇠 칸이 없습니다"
 
     열림 = [w.isEnabled() for w in s.key_inputs.values()]
     assert len(set(열림)) == 1, "일부만 열리면 안 됩니다"

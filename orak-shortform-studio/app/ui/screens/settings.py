@@ -25,15 +25,28 @@ from PySide6.QtWidgets import (
 from app.core.paths import Paths
 from app.core.secrets import CredentialStore, VaultUnavailable, open_vault
 from app.ui import theme
+from app.ui.rules_widget import RulesPanel
 from app.ui.widgets import NoticeBox, card, field_label, hbox, label, vbox
 
 PRICING_PATH = Path(__file__).resolve().parents[3] / "assets" / "pricing.json"
 
 KEYS = [
-    ("claude", "대본 만들기 (Claude)", "카드뉴스 프로그램과 다른 키를 쓰세요"),
-    ("kling", "영상 만들기 (Kling)", "한 번만 보여주므로 발급할 때 복사해 두세요"),
-    ("gemini", "이미지 만들기 (Gemini)", ""),
+    ("openai", "대본·이미지 (OpenAI)", "대본과 이미지를 한 열쇠로 씁니다"),
     ("elevenlabs", "목소리 (ElevenLabs)", ""),
+    ("kling", "영상 만들기 (Kling)", "한 번만 보여주므로 발급할 때 복사해 두세요"),
+    ("claude", "대본 만들기 (Claude)", "예전에 쓰던 것입니다. 안 넣어도 됩니다"),
+    ("gemini", "이미지 만들기 (Gemini)", "예전에 쓰던 것입니다. 안 넣어도 됩니다"),
+]
+
+MODEL_ROWS = [
+    ("script", "대본 모델", "openai.script_model",
+     "[연결 확인] 을 누르면 쓸 수 있는 목록이 나옵니다"),
+    ("image", "이미지 모델", "openai.image_model",
+     "[연결 확인] 을 누르면 쓸 수 있는 목록이 나옵니다"),
+    ("voice_model", "목소리 모델", "elevenlabs.model",
+     "한국어가 되는 것으로 골라주세요"),
+    ("voice_id", "쓸 목소리", "elevenlabs.voice_id",
+     "일레븐랩스에서 만든 목소리가 나옵니다"),
 ]
 
 
@@ -45,13 +58,17 @@ def _limits() -> dict:
 
 
 class SettingsScreen(QWidget):
-    def __init__(self, vault: CredentialStore | None = None) -> None:
+    def __init__(self, vault: CredentialStore | None = None,
+                 db=None, registry=None) -> None:
         """``vault`` 를 주면 그걸 씁니다. 안 주면 이 컴퓨터에서 열 수 있는지 봅니다.
 
         시험은 잠금장치를 갈아끼운 금고를 넣어 리눅스에서도 흐름을 확인합니다.
         """
         super().__init__()
         self.vault = vault
+        self.db = db
+        self.registry = registry
+        self.rules_service = None
         self.vault_error = ""
         if self.vault is None:
             try:
@@ -120,27 +137,77 @@ class SettingsScreen(QWidget):
             tone="info", title="열쇠는 이렇게 지킵니다"))
         bl.addWidget(c1)
 
+        # ── 쓰는 곳 ──
+        c0 = card()
+        l0 = vbox(c0)
+        l0.addWidget(label("무엇으로 만드나요", name="SectionHead"))
+        f0 = QFormLayout()
+        f0.setSpacing(12)
+        for 이름, 값 in [("대본", "OpenAI"), ("이미지", "OpenAI"),
+                        ("목소리", "ElevenLabs"), ("영상", "Kling")]:
+            f0.addRow(field_label(이름, width=theme.FIELD_LABEL_W_WIDE),
+                      label(값, wrap=False))
+        l0.addLayout(f0)
+        l0.addWidget(label(
+            "바꾸려면 회사에 문의해 주세요. 예전에 쓰던 것도 지우지 않고 남겨 두었습니다.",
+            name="Hint"))
+        bl.addWidget(c0)
+
         # ── 모델 ──
+        #
+        # **모델 이름을 프로그램 안에 적어두지 않습니다** (§0-2).
+        # [연결 확인] 이 계정에 물어본 목록으로 칸을 채웁니다. 추측하지 않습니다.
         c2 = card()
         l2 = vbox(c2)
         l2.addWidget(label("쓸 모델", name="SectionHead"))
         f2 = QFormLayout()
         f2.setSpacing(12)
-        for name, items in [
-            ("대본", ["아직 정하지 않았습니다"]),
-            ("영상", ["kling-2.6"]),
-            ("이미지", ["gemini-3.1-flash-image"]),
-            ("목소리", ["연결한 뒤 목록을 불러옵니다"]),
-        ]:
+        self.model_boxes: dict[str, QComboBox] = {}
+        self.model_keys: dict[str, str] = {}
+        for 칸, 이름, 설정키, 도움말 in MODEL_ROWS:
             combo = QComboBox()
-            combo.addItems(items)
-            combo.setEnabled(False)
-            f2.addRow(field_label(name, width=theme.FIELD_LABEL_W_WIDE), combo)
+            combo.setEditable(False)
+            지금 = self.db.get_setting(설정키, "") if self.db else ""
+            combo.addItem(지금 or "아직 고르지 않았습니다", 지금)
+            combo.currentIndexChanged.connect(
+                lambda _=0, c=칸: self._save_model(c))
+            self.model_boxes[칸] = combo
+            self.model_keys[칸] = 설정키
+            f2.addRow(field_label(이름, width=theme.FIELD_LABEL_W_WIDE), combo)
+            f2.addRow(field_label("", width=theme.FIELD_LABEL_W_WIDE),
+                      label(도움말, name="Hint"))
         l2.addLayout(f2)
+
+        시험줄 = hbox()
+        self.test_buttons: dict[str, QPushButton] = {}
+        for 어디, 글 in (("openai", "대본·이미지 연결 확인"),
+                        ("elevenlabs", "목소리 연결 확인"),
+                        ("kling", "영상 연결 확인")):
+            b = QPushButton(글)
+            b.setObjectName("Secondary")
+            b.clicked.connect(lambda _=False, w=어디: self._test(w))
+            self.test_buttons[어디] = b
+            시험줄.addWidget(b)
+        시험줄.addStretch(1)
+        l2.addLayout(시험줄)
+
+        self.test_state = label("", name="Hint")
+        l2.addWidget(self.test_state)
         l2.addWidget(label(
-            "모델 이름은 프로그램 안에 박아두지 않습니다. 서비스가 바뀌면 여기서 고칩니다.",
-            name="Hint"))
+            "모델 이름은 프로그램 안에 박아두지 않습니다. [연결 확인] 을 누르면 "
+            "지금 쓸 수 있는 것만 목록에 나옵니다.", name="Hint"))
         bl.addWidget(c2)
+
+        # ── 기본 제작 필수 규칙 ──
+        c5 = card()
+        l5 = vbox(c5)
+        if self.db is not None:
+            from app.services.rules_service import ProductionRulesService
+            self.rules_service = ProductionRulesService(self.db)
+            self.rules_service.ensure_seeded()
+        self.rules_panel = RulesPanel(self.rules_service)
+        l5.addWidget(self.rules_panel)
+        bl.addWidget(c5)
 
         # ── 한도 ──
         limits = _limits()
@@ -235,3 +302,73 @@ class SettingsScreen(QWidget):
             return
         line.clear()
         self._refresh_key(key)
+
+    # ── 모델 고르기와 연결 확인 ───────────────────────────
+    #
+    # **모델 이름을 추측해서 넣지 않습니다** (§0-2). [연결 확인] 이
+    # 계정에 물어본 목록만 칸에 넣습니다. 못 물어보면 칸이 비어 있습니다.
+
+    def _save_model(self, 칸: str) -> None:
+        if self.db is None:
+            return
+        combo = self.model_boxes[칸]
+        값 = combo.currentData()
+        if 값 is None:
+            값 = ""
+        self.db.put_setting(self.model_keys[칸], str(값))
+
+    def _fill_models(self, 칸: str, 목록: list[tuple[str, str]]) -> None:
+        combo = self.model_boxes[칸]
+        지금 = self.db.get_setting(self.model_keys[칸], "") if self.db else ""
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("아직 고르지 않았습니다", "")
+        for 값, 이름 in 목록:
+            combo.addItem(이름, 값)
+        고른자리 = combo.findData(지금)
+        combo.setCurrentIndex(고른자리 if 고른자리 >= 0 else 0)
+        combo.blockSignals(False)
+
+    def _test(self, 어디: str) -> None:
+        """[연결 확인]. 실패해도 **화면에는 한국어 한 줄만** 나옵니다 (§9)."""
+        버튼 = self.test_buttons.get(어디)
+        if 버튼 is not None:
+            버튼.setEnabled(False)
+        self.test_state.setText("확인하는 중입니다…")
+        try:
+            됐나, 말 = self._run_test(어디)
+        except Exception:
+            됐나, 말 = False, "확인하지 못했습니다. 잠시 뒤 다시 눌러 주세요."
+        finally:
+            if 버튼 is not None:
+                버튼.setEnabled(True)
+        self.test_state.setText(말)
+
+    def _run_test(self, 어디: str) -> tuple[bool, str]:
+        if self.registry is None:
+            return False, "먼저 열쇠를 넣고 프로그램을 다시 켜 주세요."
+
+        if 어디 == "openai":
+            대본 = self.registry.script_provider()
+            됐나, 말 = 대본.health()
+            if 됐나:
+                목록 = 대본.list_models()
+                self._fill_models("script", 목록)
+                self._fill_models("image", 목록)
+            return 됐나, 말
+
+        if 어디 == "elevenlabs":
+            목소리 = self.registry.voice_provider()
+            됐나, 말 = 목소리.health()
+            if 됐나:
+                self._fill_models("voice_model", 목소리.list_models())
+                self._fill_models("voice_id", 목소리.list_voices())
+            return 됐나, 말
+
+        # 영상(Kling) 은 아직 붙이지 않았습니다. **가짜로 되는 척하지 않습니다.**
+        from app.contracts.errors import ProviderError
+        try:
+            self.registry.video_provider()
+        except ProviderError as e:
+            return False, e.user_message
+        return True, "영상 만들기를 쓸 수 있습니다."
