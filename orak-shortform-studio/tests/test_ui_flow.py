@@ -244,10 +244,36 @@ def test_캐릭터화면이_없는_기준이미지를_알려준다() -> None:
         assert "01_주마스터_놀람.png" in texts
 
 
-def test_캐릭터화면이_안적은_색을_알려준다() -> None:
+def test_캐릭터화면이_색을_제대로_보여준다() -> None:
+    """색 칸이 채워졌으면 그 값을, 비었으면 비었다고 알려줘야 합니다.
+
+    설정 파일의 자리표시자(``__사장님_확인_필요__``)를 **그대로 화면에 띄우면 안 됩니다.**
+    담당자에게는 개발자 표기가 아니라 사람 말이 보여야 합니다 (§9).
+    """
+    import json
+    from pathlib import Path
+
+    from app.ui.screens.character import PLACEHOLDER, PROFILE_PATH
+
+    colors = json.loads(Path(PROFILE_PATH).read_text(encoding="utf-8"))["고정"]["대표색상"]
+    적힌것 = {k: v for k, v in colors.items() if v != PLACEHOLDER}
+    빈것 = [k for k, v in colors.items() if v == PLACEHOLDER]
+
     texts = " ".join(_visible_texts(_window().screens["캐릭터"]))
-    assert "아직 안 적으셨습니다" in texts, "비어 있는 색 칸을 알려줘야 합니다"
-    assert "__사장님_확인_필요__" not in texts, "설정 파일 원문을 그대로 띄우면 안 됩니다"
+
+    assert PLACEHOLDER not in texts, "설정 파일 자리표시자를 그대로 띄우면 안 됩니다"
+
+    for key, value in 적힌것.items():
+        assert value in texts, f"{key} 에 적힌 색이 화면에 안 보입니다: {value!r}"
+
+    if 빈것:
+        assert "아직 안 적으셨습니다" in texts, "비어 있는 칸은 비었다고 알려줘야 합니다"
+        assert "채워주셔야 합니다" in texts, "무엇을 해야 하는지 안내해야 합니다"
+    else:
+        assert "아직 안 적으셨습니다" not in texts, \
+            "다 채웠는데도 비었다고 나옵니다"
+        assert "채워주셔야 합니다" not in texts, \
+            "다 채웠는데도 채우라는 안내가 남아 있습니다"
 
 
 def test_설정의_열쇠칸은_아직_잠겨있다() -> None:
