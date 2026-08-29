@@ -5,6 +5,9 @@
 - **저장소**: https://github.com/weddingnote26-glitch/https-github.com-charlie947-social-media-skills-tree-main-skills-voice-builder
 - **어느 작업이 어느 브랜치인지** → **[작업_대장.md](작업_대장.md)** 를 먼저 보세요 (덮어쓰기 방지)
 
+> **오락 숏폼 AI 스튜디오는 https://github.com/weddingnote26-glitch/orak-shortform-studio 로 옮겼습니다.**
+> 이 저장소의 `orak-shortform-studio/` 폴더는 사본이니 고치지 마세요.
+
 ## 지금 들어 있는 것
 
 ### `naver-blog-automation/` — 네이버 블로그 주간 콘텐츠 제작 도우미
