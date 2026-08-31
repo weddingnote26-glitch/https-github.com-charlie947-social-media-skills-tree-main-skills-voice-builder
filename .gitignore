@@ -48,3 +48,26 @@ orak-shortform-studio/assets/fonts/*.ttf
 orak-shortform-studio/assets/fonts/*.otf
 orak-shortform-studio/assets/bgm/*.mp3
 orak-shortform-studio/assets/bgm/*.m4a
+
+# ── 보관함 (_보관/) ────────────────────────────────────────
+# 옛 사본을 여기로 옮기면서 알았습니다: 위 규칙은 전부 「orak-shortform-studio/」
+# 로 시작해서 **경로에 묶여 있습니다.** 폴더를 옮기면 규칙이 안 먹고,
+# 빌드 찌꺼기(dist 360개 · ffmpeg.exe 78MB)가 딸려 들어옵니다.
+_보관/**/dist/
+_보관/**/build/
+_보관/**/ffmpeg/
+_보관/**/.venv/
+_보관/**/__pycache__/
+_보관/**/credentials.dat
+_보관/**/*.db
+_보관/**/*.sqlite3
+_보관/**/assets/master/*.png
+_보관/**/assets/master/*.jpg
+_보관/**/assets/fonts/*.ttf
+_보관/**/assets/fonts/*.otf
+_보관/**/assets/bgm/*.mp3
+_보관/**/assets/bgm/*.m4a
+
+# 어느 자리에 있든 막습니다 (경로에 안 묶이게)
+**/dist/
+**/build/
