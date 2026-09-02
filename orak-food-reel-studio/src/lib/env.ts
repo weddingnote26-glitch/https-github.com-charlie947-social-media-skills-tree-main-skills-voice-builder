@@ -15,6 +15,9 @@ export const EnvSchema = z.object({
   CLOUDFLARE_API_TOKEN: z.string().optional().default(""),
   CLOUDFLARE_IMAGE_MODEL: z.string().optional().default(""),
   CLOUDFLARE_CHARACTER_MODEL: z.string().optional().default(""),
+  // 영상 생성 AI (선택) — 지금은 키·모델 이름만 보관한다
+  KLING_API_KEY: z.string().optional().default(""),
+  KLING_MODEL: z.string().optional().default(""),
   INSTAGRAM_ACCESS_TOKEN: z.string().optional().default(""),
   INSTAGRAM_USER_ID: z.string().optional().default(""),
   PUBLIC_MEDIA_BASE_URL: z.string().optional().default(""),

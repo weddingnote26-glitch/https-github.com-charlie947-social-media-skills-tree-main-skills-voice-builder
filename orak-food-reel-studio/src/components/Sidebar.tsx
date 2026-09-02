@@ -2,8 +2,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** §48 왼쪽 메뉴 */
-const MENU = [
+/**
+ * 왼쪽 메뉴.
+ *
+ * 자료 성격의 화면(맛집 DB)은 그것을 쓰는 화면(릴스 벤치마킹) 아래로 넣었다.
+ * 최상위 항목이 길어질수록 "지금 무엇을 하는 화면인지" 가 흐려진다.
+ */
+interface MenuItem {
+  href: string;
+  icon: string;
+  label: string;
+  /** 이 항목 아래에 접어 넣는 화면들 */
+  children?: MenuItem[];
+}
+
+export const MENU: MenuItem[] = [
   { href: "/", icon: "🏠", label: "홈" },
   { href: "/today", icon: "✨", label: "오늘의 릴스" },
   { href: "/week", icon: "🗓", label: "이번 주 6개" },
@@ -11,15 +24,24 @@ const MENU = [
   { href: "/producing", icon: "🎬", label: "제작중" },
   { href: "/imported", icon: "🎞", label: "외부 영상 AI 음성" },
   { href: "/library", icon: "✅", label: "완성 콘텐츠" },
-  // 발행 전에 반드시 거치는 화면 — 완성과 발행 사이에 둔다 (§5)
+  // 발행 전에 반드시 거치는 화면 — 완성과 발행 사이에 둔다
   { href: "/review", icon: "🔎", label: "미리보기·검수" },
-  { href: "/publish", icon: "🚀", label: "예약/발행" },
+  // 예약·발행·재발행은 모두 이 한 화면에서 다룬다 (지우기도 여기서)
+  { href: "/publish", icon: "🚀", label: "예약 · 발행" },
   { href: "/analytics", icon: "📊", label: "성과분석" },
-  { href: "/restaurants", icon: "🍽", label: "맛집 DB" },
-  { href: "/benchmark", icon: "🔍", label: "릴스 벤치마킹" },
+  {
+    href: "/benchmark", icon: "🔍", label: "릴스 벤치마킹",
+    children: [{ href: "/restaurants", icon: "🍽", label: "맛집 DB" }],
+  },
   { href: "/character", icon: "🥟", label: "만두탐정 오락이" },
   { href: "/settings", icon: "⚙️", label: "설정" },
 ];
+
+/** 지금 보고 있는 화면인가 (하위 항목이 켜져 있으면 상위도 켠다) */
+export function isActive(pathname: string, item: MenuItem): boolean {
+  const hit = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
+  return hit(item.href) || (item.children ?? []).some((c) => hit(c.href));
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -32,24 +54,41 @@ export default function Sidebar() {
       <Link href="/" className="flex items-center gap-2 px-3 md:pb-3 shrink-0">
         <span className="text-2xl">🥟</span>
         <div className="hidden md:block">
-          <div className="font-extrabold text-lg leading-tight">오락푸드</div>
-          <div className="text-xs text-gray-600">AI 릴스 스튜디오</div>
+          <div className="font-extrabold text-lg leading-tight">오락 숏폼</div>
+          <div className="text-xs text-gray-600">제작 스튜디오</div>
         </div>
       </Link>
       {MENU.map((m) => {
-        const active = pathname === m.href || (m.href !== "/" && pathname.startsWith(m.href));
+        const active = isActive(pathname, m);
         return (
-          <Link
-            key={m.href}
-            href={m.href}
-            // shrink-0 이 없으면 세로 공간이 모자랄 때 항목들이 눌려 글자가 겹친다
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition shrink-0 whitespace-nowrap ${
-              active ? "bg-[#FDEDE5] text-[#B84A1B]" : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <span className="text-lg w-6 text-center shrink-0">{m.icon}</span>
-            {m.label}
-          </Link>
+          <div key={m.href} className="contents md:block">
+            <Link
+              href={m.href}
+              // shrink-0 이 없으면 세로 공간이 모자랄 때 항목들이 눌려 글자가 겹친다
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition shrink-0 whitespace-nowrap ${
+                active ? "bg-[#FDEDE5] text-[#B84A1B]" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <span className="text-lg w-6 text-center shrink-0">{m.icon}</span>
+              {m.label}
+            </Link>
+            {/* 하위 항목 — 넓은 화면에서는 한 칸 들여 쓰고, 좁은 화면에서는 옆에 이어 붙인다 */}
+            {(m.children ?? []).map((c) => {
+              const on = pathname === c.href || pathname.startsWith(c.href);
+              return (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition shrink-0 whitespace-nowrap md:ml-6 ${
+                    on ? "bg-[#FDEDE5] text-[#B84A1B]" : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="text-base w-5 text-center shrink-0">{c.icon}</span>
+                  {c.label}
+                </Link>
+              );
+            })}
+          </div>
         );
       })}
       <div className="hidden md:block mt-auto px-3 pt-4 text-xs text-gray-600 shrink-0">

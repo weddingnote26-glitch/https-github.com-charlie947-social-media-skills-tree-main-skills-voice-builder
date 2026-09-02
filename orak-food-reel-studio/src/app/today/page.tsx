@@ -5,9 +5,11 @@ import { Card, ProgressBar, ErrorBox, StepRow, api } from "@/components/ui";
 import { jobProgress, type ProgressStep } from "@/lib/pipeline/progress";
 import { useToast } from "@/components/Toast";
 import RestaurantPicker from "@/components/RestaurantPicker";
+import Link from "next/link";
+import { TOPIC_CATEGORIES } from "@/lib/content/categories";
 
 const AREAS = ["관악구", "신림", "봉천", "서울대입구", "낙성대", "기타 서울"];
-const TYPES = ["자동 추천", "가성비 맛집", "숨은 동네 맛집", "부모님과 가기 좋은 곳", "5070 추천 맛집", "혼밥 맛집", "데이트 맛집", "친구 모임 맛집", "메뉴 하나 집중 소개", "가격 대비 만족도", "오래된 동네 맛집", "반전 맛집", "직접 가보고 싶은 맛집"];
+const TYPES = ["자동 추천", "가성비 맛집", "숨은 동네 맛집", "동네 새로 생긴 맛집 추가", "부모님과 가기 좋은 곳", "5070 추천 맛집", "혼밥 맛집", "데이트 맛집", "친구 모임 맛집", "메뉴 하나 집중 소개", "가격 대비 만족도", "오래된 동네 맛집", "반전 맛집", "직접 가보고 싶은 맛집"];
 
 interface Job {
   id: string; reel_id: string | null; status: string; error: string | null;
@@ -20,6 +22,14 @@ export default function Today() {
   const [url, setUrl] = useState("");
   const [area, setArea] = useState("관악구");
   const [type, setType] = useState("자동 추천");
+  // 주제 추천 화면에서 "이 주제로 만들기" 를 누르면 ?type=주제 로 돌아온다 — 그 값을 콘텐츠 유형에 채운다.
+  // (화면이 켜진 뒤 주소만 읽으므로 미리 그려 두는 데 영향이 없다)
+  useEffect(() => {
+    const fromTopic = new URLSearchParams(window.location.search).get("type")?.trim();
+    if (fromTopic) setType(fromTopic.slice(0, 40));
+  }, []);
+  // 추천받은 주제는 목록에 없을 수 있다 — 고른 값을 맨 위에 끼워 보여 준다
+  const typeOptions = TYPES.includes(type) ? TYPES : [type, ...TYPES];
   const [mode, setMode] = useState<"ORAKI_DETECTIVE" | "NORMAL_FOOD">("ORAKI_DETECTIVE");
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -138,6 +148,14 @@ export default function Today() {
               <label className="label">맛집 URL <span className="font-normal text-gray-600">(선택 — Instagram / 지도 / 블로그)</span></label>
               <input className="input" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
             </div>
+            <div>
+              <label className="label">주제 고르기 <span className="font-normal text-gray-600">(분류를 누르면 AI 가 세부 주제를 추천합니다)</span></label>
+              <div className="flex flex-wrap gap-2">
+                {TOPIC_CATEGORIES.map((c) => (
+                  <Link key={c.key} href={`/topics/${c.key}`} className="chip" title={c.hint}>{c.icon} {c.label}</Link>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">지역</label>
@@ -148,7 +166,7 @@ export default function Today() {
               <div>
                 <label className="label">콘텐츠 유형</label>
                 <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
-                  {TYPES.map((t) => <option key={t}>{t}</option>)}
+                  {typeOptions.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>
@@ -157,8 +175,8 @@ export default function Today() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button type="button" onClick={() => setMode("ORAKI_DETECTIVE")}
                   className={`rounded-xl border-2 p-4 text-left transition ${mode === "ORAKI_DETECTIVE" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>
-                  <div className="text-lg font-extrabold">🥟 만두탐정 오락이</div>
-                  <div className="text-sm text-gray-600 mt-0.5">맛집 사건 파일 — 오락이가 조사하고 판정합니다</div>
+                  <div className="text-lg font-extrabold">🥟 맛집 사건 파일</div>
+                  <div className="text-sm text-gray-600 mt-0.5">만두탐정 오락이가 조사하고 판정합니다</div>
                 </button>
                 <button type="button" onClick={() => setMode("NORMAL_FOOD")}
                   className={`rounded-xl border-2 p-4 text-left transition ${mode === "NORMAL_FOOD" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 hover:border-gray-300"}`}>

@@ -5,11 +5,13 @@ import { describeAppAddress, type AppAddress } from "@/lib/app-address";
 import { DEFAULT_IMAGE_MODEL, DEFAULT_CHARACTER_MODEL } from "@/lib/providers/cloudflare-models";
 import type { AppSettings } from "@/lib/settings";
 import VoicePicker from "@/components/VoicePicker";
+import BrandingCard from "@/components/BrandingCard";
 import { useToast } from "@/components/Toast";
 import { describeSettingsChange } from "@/lib/settings-diff";
 
 type Services = Record<"llm" | "image" | "tts" | "instagram", boolean>;
-type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY" | "CLOUDFLARE_API_TOKEN";
+// 화면 쪽 목록 — src/lib/secrets.ts 의 SecretName 과 같은 값을 쓴다 (서버 코드를 화면으로 끌어오지 않으려고 따로 둔다)
+type SecretName = "ANTHROPIC_API_KEY" | "ELEVENLABS_API_KEY" | "IMAGE_API_KEY" | "CLOUDFLARE_API_TOKEN" | "KLING_API_KEY";
 interface SecretStatus { set: boolean; source: string; hint: string }
 interface IgStatus {
   tokenSet: boolean; tokenSource: string; tokenHint: string;
@@ -181,13 +183,26 @@ export default function SettingsPage() {
         </p>
       </Card>
 
-      <Card title="🤖 AI (Claude) — 대본·캡션·기획">
+      <Card title="🤖 AI (Claude) — 대본·캡션·기획" collapsible defaultOpen>
         <KeyField name="ANTHROPIC_API_KEY" label="Claude API 키"
           help="console.anthropic.com → API Keys 에서 발급. 저장하면 바로 적용되며 프로그램을 다시 켜지 않아도 됩니다." />
         <div className="flex flex-wrap items-center gap-3"><TestBtn service="llm" /></div>
+        {/* 주제 추천은 제미나이로도 받을 수 있다 — 모델 이름은 사용자가 넣는다 (짐작해서 채우지 않는다) */}
+        <div className="mt-5 pt-5 border-t border-gray-200">
+          <label className="label text-sm">💡 주제 추천에 쓸 제미나이 모델 (선택)</label>
+          <div className="flex flex-wrap gap-2 items-start">
+            <input className="input flex-1 min-w-[16rem]" value={s.topics.geminiModel} placeholder="aistudio.google.com 에 적힌 모델 이름 그대로"
+              onChange={(e) => setS({ ...s, topics: { ...s.topics, geminiModel: e.target.value } })} />
+            <button className="btn-secondary" onClick={() => save({ topics: s.topics })}>저장</button>
+          </div>
+          <p className="text-xs text-gray-600 mt-1">
+            오늘의 릴스 → 4대 분류를 누르면 세부 주제를 추천합니다. 여기를 비우면 위의 Claude 키로 추천하고,
+            채우면 이미지 생성에 넣은 Gemini 키(AIza…)와 함께 제미나이가 추천합니다.
+          </p>
+        </div>
       </Card>
 
-      <Card title="🎙 ElevenLabs — AI 음성">
+      <Card title="🎙 ElevenLabs — AI 음성" collapsible>
         <KeyField name="ELEVENLABS_API_KEY" label="ElevenLabs API 키"
           help="elevenlabs.io → 설정 → 워크스페이스 → API 키. 저장하면 아래에 목소리 목록이 나타납니다." />
         <div className="mb-4">
@@ -208,7 +223,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ tts: s.tts })}>저장</button><TestBtn service="tts" /></div>
       </Card>
 
-      <Card title="🖼 이미지 생성">
+      <Card title="🖼 이미지 생성" collapsible>
         <div className="field-grid mb-3">
           <div><label className="label text-sm">공급자</label>
             <select className="input" value={s.imageProvider}
@@ -338,7 +353,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-center gap-3"><button className="btn-primary" onClick={() => save({ imageProvider: s.imageProvider, imageModel: s.imageModel })}>저장</button><TestBtn service="image" /></div>
       </Card>
 
-      <Card title="📸 Instagram — Meta 공식 API">
+      <Card title="📸 Instagram — Meta 공식 API" collapsible>
         <ol className="text-sm text-gray-600 space-y-1 mb-4 list-decimal pl-5">
           <li>Instagram을 <b>Professional(비즈니스/크리에이터) 계정</b>으로 전환</li>
           <li><a className="text-[#B84A1B] font-bold" href="https://developers.facebook.com" target="_blank">developers.facebook.com</a>에서 앱 생성</li>
@@ -487,7 +502,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card title="🎬 영상 · 자막">
+      <Card title="🎬 영상 · 자막" collapsible>
         <div className="field-grid mb-3">
           <div><label className="label text-sm">기본 릴스 길이</label>
             <select className="input" value={s.reelDurationSec} onChange={(e) => setS({ ...s, reelDurationSec: parseInt(e.target.value) })}>
@@ -500,13 +515,41 @@ export default function SettingsPage() {
           <div><label className="label text-sm">강조 색</label>
             <input type="color" className="swatch" value={s.subtitle.highlightColor} onChange={(e) => setS({ ...s, subtitle: { ...s.subtitle, highlightColor: e.target.value } })} /></div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-primary" onClick={() => save({ reelDurationSec: s.reelDurationSec, subtitle: s.subtitle })}>저장</button>
+        {/*
+          영상 생성 AI — 지금 제작은 이미지 + 카메라 움직임으로 영상을 만든다.
+          여기 값은 사용자가 미리 넣어 두는 연결 정보다. 모델 이름은 서비스가 알려 준 값을
+          그대로 받는다 — 코드에 박아 두면 서비스가 이름을 바꿀 때마다 프로그램을 고쳐야 한다.
+        */}
+        <div className="mt-5 pt-5 border-t border-gray-200">
+          <label className="label text-sm">영상 생성 AI (선택)</label>
+          <div className="field-grid mb-3">
+            <div><label className="label text-sm">에이전트</label>
+              <select className="input" value={s.video.provider}
+                onChange={(e) => setS({ ...s, video: { ...s.video, provider: e.target.value as AppSettings["video"]["provider"] } })}>
+                <option value="none">쓰지 않음</option>
+                <option value="kling">클링 AI (Kling AI)</option>
+              </select></div>
+            <div><label className="label text-sm">모델 이름 (서비스가 알려 준 값을 그대로)</label>
+              <input className="input" disabled={s.video.provider === "none"} value={s.video.model}
+                placeholder={s.video.provider === "none" ? "에이전트를 먼저 고르세요" : "예: 서비스 문서에 적힌 모델 이름"}
+                onChange={(e) => setS({ ...s, video: { ...s.video, model: e.target.value } })} /></div>
+          </div>
+          {s.video.provider === "kling" && (
+            <KeyField name="KLING_API_KEY" label="클링 AI API 키"
+              help="클링 AI 계정에서 발급한 키를 붙여넣으세요. 암호화되어 저장되며 화면에는 앞뒤 몇 글자만 보입니다." />
+          )}
+          <p className="text-xs text-gray-600 mt-1">
+            넣어 두신 키와 모델 이름은 저장만 됩니다. <b>지금 릴스 제작에는 아직 쓰이지 않습니다</b> —
+            연결 방식(주소·요청 형식)을 확인한 뒤 제작 흐름에 붙일 예정입니다.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          <button className="btn-primary" onClick={() => save({ reelDurationSec: s.reelDurationSec, subtitle: s.subtitle, video: s.video })}>저장</button>
           <TestBtn service="ffmpeg" />
         </div>
       </Card>
 
-      <Card title="🎵 BGM">
+      <Card title="🎵 BGM" collapsible>
         <p className="text-sm text-gray-600 mb-3">직접 등록한 음원 또는 상업적 사용이 허용된 음원만 사용하세요. 파일을 <b>assets/bgm/</b> 폴더에 넣고 파일명을 입력하면 나레이션에 맞춰 자동으로 소리가 줄어듭니다(더킹).</p>
         <div className="field-grid mb-3">
           <div><label className="label text-sm">BGM 파일명 (비우면 BGM 없음)</label>
@@ -517,7 +560,9 @@ export default function SettingsPage() {
         <button className="btn-primary" onClick={() => save({ bgm: s.bgm })}>저장</button>
       </Card>
 
-      <Card title="📆 발행 스케줄 (§주 6회)">
+      <BrandingCard />
+
+      <Card title="📆 발행 스케줄 (주 6회)" collapsible>
         <div className="flex gap-2 mb-3">
           {Object.entries(s.publishDays).map(([k, v]) => (
             <button key={k} onClick={() => setS({ ...s, publishDays: { ...s.publishDays, [k]: !v } })}
@@ -537,7 +582,7 @@ export default function SettingsPage() {
         <button className="btn-primary" onClick={() => save({ publishDays: s.publishDays, publishTime: s.publishTime, orakiPerWeek: s.orakiPerWeek })}>저장</button>
       </Card>
 
-      <Card title="✅ 승인 모드 (§SAFE/AUTO)">
+      <Card title="✅ 승인 모드 (SAFE · AUTO)" collapsible>
         <div className="field-grid mb-3">
           <button onClick={() => setS({ ...s, approvalMode: "SAFE" })}
             className={`rounded-xl border-2 p-4 text-left ${s.approvalMode === "SAFE" ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200"}`}>

@@ -80,6 +80,38 @@ export const AppSettingsSchema = z.object({
     assetRoot: z.string().default(""),
   }).default({ enabled: true, seed: 20260823, referenceImages: [], assetRoot: "" }),
 
+  /**
+   * 영상 생성 AI (선택).
+   * 지금 제작 흐름은 이미지 + Ken Burns 로 영상을 만든다. 여기 값은 앞으로 영상 생성
+   * 서비스를 붙일 때 쓰려고 사용자가 미리 넣어 두는 자리다 — 모델 이름을 코드에 박지 않는다.
+   */
+  video: z.object({
+    provider: z.enum(["none", "kling"]).default("none"),
+    /** 서비스가 알려 준 모델 이름을 그대로 넣는다 (짐작해서 채우지 않는다) */
+    model: z.string().default(""),
+  }).default({ provider: "none", model: "" }),
+
+  /**
+   * 주제 추천 (오늘의 릴스 4대 분류 → 세부 주제).
+   * 제미나이 모델 이름은 사용자가 넣는다 — 코드에 박지 않는다. 비우면 Claude 로 추천한다.
+   */
+  topics: z.object({
+    geminiModel: z.string().default(""),
+  }).default({ geminiModel: "" }),
+
+  /**
+   * 인트로 · 아웃트로 (로고 · 배너).
+   * 파일은 assets/branding/ 안의 이름만 둔다. 완성 영상 앞뒤에 그림 장면으로 붙는다 (pipeline/branding.ts).
+   */
+  branding: z.object({
+    intro: z.object({ file: z.string().default(""), seconds: z.number().min(0.5).max(10).default(2) }).default({ file: "", seconds: 2 }),
+    outro: z.object({ file: z.string().default(""), seconds: z.number().min(0.5).max(10).default(2) }).default({ file: "", seconds: 2 }),
+    /** 맛집 릴스에 붙일지 */
+    applyToReels: z.boolean().default(true),
+    /** 외부 영상 AI 음성 결과에 붙일지 */
+    applyToImported: z.boolean().default(true),
+  }).default({ intro: { file: "", seconds: 2 }, outro: { file: "", seconds: 2 }, applyToReels: true, applyToImported: true }),
+
   // BGM
   bgm: z.object({
     file: z.string().default(""),      // /assets/bgm/ 내 사용자 등록 파일

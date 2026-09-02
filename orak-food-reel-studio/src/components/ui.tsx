@@ -7,18 +7,42 @@ import { stepView, type ProgressStep } from "@/lib/pipeline/progress";
  * 제목 → (오른쪽 도구) → 내용 순서를 고정해, 화면마다 배치가 달라지지 않게 한다.
  * 오른쪽 도구가 많은 화면에서도 좁은 폭에서 겹치지 않도록 줄바꿈을 허용한다.
  */
-export function Card({ title, right, children, className = "" }: {
+export function Card({ title, right, children, className = "", collapsible = false, defaultOpen = false }: {
   title?: string; right?: React.ReactNode; children: React.ReactNode; className?: string;
+  /**
+   * 제목을 눌러 접었다 펼 수 있게 한다.
+   * 설정처럼 항목이 많은 화면은 다 펼쳐 두면 무엇이 어디 있는지 찾기 어렵다.
+   */
+  collapsible?: boolean;
+  /** 접을 수 있는 박스를 처음부터 펼쳐 둘지 */
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const shown = !collapsible || open;
   return (
     <section className={`card p-6 ${className}`}>
       {(title || right) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          {title && <h2 className="text-lg font-extrabold text-gray-900">{title}</h2>}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {title && (collapsible ? (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              className="flex items-center gap-2 text-lg font-extrabold text-gray-900 cursor-pointer
+                rounded-lg -mx-1 px-1 hover:text-[#B84A1B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E86A3A]"
+            >
+              {/* 색만으로 상태를 알리지 않는다 — 삼각형 방향과 글자로 함께 알린다 */}
+              <span aria-hidden="true" className="text-sm text-gray-500 w-3">{open ? "▾" : "▸"}</span>
+              {title}
+              <span className="sr-only">{open ? " (펼쳐짐, 누르면 접힙니다)" : " (접힘, 누르면 펼쳐집니다)"}</span>
+            </button>
+          ) : (
+            <h2 className="text-lg font-extrabold text-gray-900">{title}</h2>
+          ))}
           {right && <div className="flex flex-wrap items-center gap-2">{right}</div>}
         </div>
       )}
-      {children}
+      {shown && <div className={title || right ? "mt-4" : ""}>{children}</div>}
     </section>
   );
 }

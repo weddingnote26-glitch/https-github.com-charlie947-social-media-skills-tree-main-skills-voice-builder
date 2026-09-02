@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, api, useApi, ErrorBox, LoadGate } from "@/components/ui";
+import { Card, api, useApi, ErrorBox, LoadGate, mediaUrl } from "@/components/ui";
 import ReferenceLibrary from "@/components/ReferenceLibrary";
 
 interface CharData {
@@ -23,17 +23,37 @@ export default function CharacterPage() {
 
   if (!data) return <LoadGate error={loadError} onRetry={reload} what="오락이 정보" />;
   const c = data.character;
+  // 띠에 세울 얼굴 — 실제로 있는 기준 이미지 중 첫 장을 쓴다 (없으면 만두 그림표로 대신한다)
+  const portrait = mediaUrl(data.references.find((r) => r.exists)?.path);
 
   return (
     <div className="page space-y-6">
-      <header>
-        <h1 className="text-2xl font-extrabold">🥟 {c.name}</h1>
-        <p className="text-gray-600 mt-1">“{c.world}” — 오락푸드 전속 캐릭터 IP</p>
+      {/*
+        오락이는 "지금 이 프로그램의 캐릭터가 누구인지" 만 알려주면 된다.
+        예전에는 이 화면 전체가 캐릭터 소개로 채워져 정작 할 일(기준 이미지 등록·고정)이 묻혔다.
+        그래서 화면 높이의 1/10 정도만 쓰는 띠로 줄이고, 자세한 내용은 아래에서 펼쳐 보게 한다.
+      */}
+      <header
+        className="sticky top-0 z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-white/95 backdrop-blur border-b border-gray-200
+          flex items-center gap-3 h-[10vh] min-h-[64px] max-h-[96px] overflow-hidden"
+      >
+        {portrait ? (
+          <img src={portrait} alt={`${c.name} 기준 이미지`} className="h-full w-auto object-contain shrink-0" />
+        ) : (
+          <span className="text-3xl shrink-0" aria-hidden="true">🥟</span>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-lg md:text-xl font-extrabold truncate">{c.name}</h1>
+          <p className="text-xs text-gray-600 truncate">“{c.world}” — 오락푸드 전속 캐릭터 IP · 약 {c.heightCm}cm</p>
+        </div>
+        <span className={`badge shrink-0 ml-auto ${data.lock.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-800"}`}>
+          {data.lock.enabled ? "🔒 캐릭터 고정 켜짐" : "🔓 캐릭터 고정 꺼짐"}
+        </span>
       </header>
       <ErrorBox msg={err} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <Card title="캐릭터 프로필">
+        <Card title="캐릭터 프로필" collapsible>
           <dl className="text-sm space-y-2">
             <div className="flex justify-between"><dt className="text-gray-600 font-bold">실제 크기 설정</dt><dd className="font-bold">약 {c.heightCm}cm (테이블 위 크기)</dd></div>
             <div className="flex justify-between"><dt className="text-gray-600 font-bold">브랜드 컬러</dt><dd className="font-bold flex items-center gap-2"><span className="inline-block w-4 h-4 rounded" style={{ background: c.brandColor }} />{c.brandColor}</dd></div>
@@ -43,7 +63,7 @@ export default function CharacterPage() {
           </dl>
         </Card>
 
-        <Card title="🔒 캐릭터 고정 (Character Lock)">
+        <Card title="🔒 캐릭터 고정 (Character Lock)" collapsible defaultOpen>
           <label className="flex items-center gap-3 mb-4 cursor-pointer">
             <input type="checkbox" className="w-5 h-5 accent-[#E86A3A]" checked={data.lock.enabled}
               onChange={(e) => setLock({ enabled: e.target.checked })} />
@@ -58,7 +78,7 @@ export default function CharacterPage() {
         </Card>
       </div>
 
-      <Card title="🖼 Master Reference — 캐릭터 일관성의 기준">
+      <Card title="🖼 Master Reference — 캐릭터 일관성의 기준" collapsible defaultOpen>
         <p className="text-sm text-gray-600 mb-4">
           기준 이미지 7종이 <b>기본으로 준비돼 있습니다.</b> 이미지 생성 시 “기준”으로 표시한 파일들이 참조로 함께 전달되어
           모든 콘텐츠에서 같은 얼굴·의상·비율을 유지합니다. 폴더를 만들어 용도별로 정리할 수 있습니다.
@@ -72,21 +92,21 @@ export default function CharacterPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <Card title="🎬 행동 라이브러리">
+        <Card title="🎬 행동 라이브러리" collapsible>
           <div className="flex flex-wrap gap-1.5">{data.actions.map((a) => <span key={a} className="badge bg-gray-100 text-gray-700">{a}</span>)}</div>
         </Card>
-        <Card title="😀 표정 라이브러리">
+        <Card title="😀 표정 라이브러리" collapsible>
           <div className="flex flex-wrap gap-1.5">{data.expressions.map((a) => <span key={a} className="badge bg-gray-100 text-gray-700">{a}</span>)}</div>
         </Card>
       </div>
 
-      <Card title="💬 대표 말투 (그대로 반복하지 않고 매번 변형됩니다)">
+      <Card title="💬 대표 말투 (그대로 반복하지 않고 매번 변형됩니다)" collapsible>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {data.speechSamples.map((s) => <div key={s} className="rounded-lg bg-gray-50 px-3 py-2">“{s}”</div>)}
         </div>
       </Card>
 
-      <Card title="⚖️ 탐정 판정 문구 은행">
+      <Card title="⚖️ 탐정 판정 문구 은행" collapsible>
         <div className="space-y-2 text-sm">
           {Object.entries(data.verdictPhrases).map(([k, arr]) => (
             <div key={k}><span className="font-extrabold text-gray-600">{k}:</span> <span className="text-gray-700">{arr.join(" / ")}</span></div>

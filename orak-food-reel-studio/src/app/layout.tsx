@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/Toast";
 import ClientErrorLog from "@/components/ClientErrorLog";
 
 export const metadata: Metadata = {
-  title: "오락푸드 AI 릴스 스튜디오",
+  title: "오락 숏폼 제작 스튜디오",
   description: "맛집 입력부터 Instagram Reels 발행까지 — 만두탐정 오락이와 함께",
 };
 

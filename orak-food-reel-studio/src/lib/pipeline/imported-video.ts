@@ -10,6 +10,7 @@ import { logError, logInfo } from "../log";
 import { redactError } from "../redact";
 import { bugTag } from "../where";
 import type { ProgressStep } from "./progress";
+import { applyBranding } from "./branding";
 
 /**
  * 외부에서 만든 영상에 AI 음성을 입혀 최종 MP4 를 만든다.
@@ -762,14 +763,25 @@ export async function runImportedJob(jobId: string): Promise<void> {
       audioMode: row.audio_mode, mixDb: row.mix_db, voiceGainDb: voice.gainDb,
     });
     await runFFmpeg(plan.args, 60 * 60 * 1000);
+    // 인트로·아웃트로 — 설정돼 있을 때만. 실패해도 합친 영상은 그대로 둔다.
+    let brandNote = "";
+    let brandSec = 0;
+    try {
+      const brand = await applyBranding(finalPath, "imported");
+      if (brand.applied) { brandSec = brand.addedSec; brandNote = `인트로·아웃트로 +${brand.addedSec}s`; }
+    } catch (e) {
+      logError("imported", `인트로·아웃트로를 붙이지 못해 그대로 둡니다: ${redactError(e)}`);
+      brandNote = "인트로·아웃트로는 붙이지 못했습니다 (영상은 그대로)";
+    }
     const renderNote = [
+      brandNote,
       plan.extendedSec > 0 ? `음성이 영상보다 ${plan.extendedSec}s 길어 마지막 장면을 멈춘 채 이어 붙였습니다` : "",
       row.audio_mode === "mix" && !plan.mixed ? "원본에 소리가 없어 AI 음성만 넣었습니다" : "",
       plan.mixed ? `기존 소리를 ${clampDb(row.mix_db)}dB 로 낮춰 섞었습니다` : "",
     ].filter(Boolean).join(" · ");
     writeMeta(outDir, {
       voice: { sec: voice.totalSec, chunks: voice.chunks, provider: voice.provider, levels: voice.levels, gain_db: voice.gainDb },
-      render: { final_sec: plan.finalSec, extended_sec: plan.extendedSec, mixed: plan.mixed, voice_gain_db: plan.voiceGainDb },
+      render: { final_sec: plan.finalSec + brandSec, extended_sec: plan.extendedSec, mixed: plan.mixed, voice_gain_db: plan.voiceGainDb, branding_sec: brandSec },
     });
     mark("render", { status: "완료", progress: 100, indeterminate: false, message: renderNote || `${plan.finalSec}s` });
 

@@ -16,6 +16,7 @@ import { buildOverlays } from "./overlay";
 import { ensureCharacterPresence } from "../content/character-presence";
 import { planCharacterOverlays } from "./character-overlay";
 import { renderReel } from "./render";
+import { applyBranding } from "./branding";
 import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
 import { saveScenes, updateReel, getReel } from "../reels";
@@ -280,7 +281,19 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       scenes: script.scenes, imageByScene, voicePath: voice.voicePath,
       assPath: subs.assPath, outPath: videoPath, characters: charOverlays,
     });
-    mark("render", { status: "완료", progress: 100, indeterminate: false, message: `${rendered.totalSec.toFixed(1)}s` });
+    // 인트로·아웃트로 — 설정돼 있을 때만 앞뒤에 붙인다. 붙이다 실패해도 릴스 자체는 살린다.
+    let brandSec = 0;
+    try {
+      const brand = await applyBranding(videoPath, "reels");
+      brandSec = brand.addedSec;
+    } catch (e) {
+      logError("render", `인트로·아웃트로를 붙이지 못해 그대로 둡니다: ${redactError(e)}`);
+    }
+    const finalSec = rendered.totalSec + brandSec;
+    mark("render", {
+      status: "완료", progress: 100, indeterminate: false,
+      message: `${finalSec.toFixed(1)}s${brandSec ? ` (인트로·아웃트로 +${brandSec}s)` : ""}`,
+    });
 
     // 8) 썸네일 (§23)
     mark("thumbnail", { status: "진행중", progress: 0, indeterminate: true });
@@ -319,7 +332,7 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
         voice_notice: voiceNotice,
       }),
       video_path: videoPath, thumb_path: thumbPath, srt_path: subs.srtPath, voice_path: voice.voicePath,
-      duration_sec: rendered.totalSec,
+      duration_sec: finalSec,
       status: "검수",
       title: script.title,
     });
@@ -537,5 +550,8 @@ export async function rerender(reelId: string): Promise<void> {
     scenes: script.scenes, imageByScene, voicePath, assPath, outPath: videoPath,
     characters: charOverlays,
   });
-  updateReel(reelId, { video_path: videoPath, duration_sec: rendered.totalSec, status: "검수" });
+  let brandSec = 0;
+  try { brandSec = (await applyBranding(videoPath, "reels")).addedSec; }
+  catch (e) { logError("render", `인트로·아웃트로를 붙이지 못해 그대로 둡니다: ${redactError(e)}`); }
+  updateReel(reelId, { video_path: videoPath, duration_sec: rendered.totalSec + brandSec, status: "검수" });
 }
