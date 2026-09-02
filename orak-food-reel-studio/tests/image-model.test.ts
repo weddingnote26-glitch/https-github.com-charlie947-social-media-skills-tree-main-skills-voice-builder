@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("image-model");
 import { modelOwner, pickImageModel, clearStaleImageModel, imageKeyMismatch } from "../src/lib/providers/image-model";
 import { needsOrgVerification } from "../src/lib/providers/image";
 

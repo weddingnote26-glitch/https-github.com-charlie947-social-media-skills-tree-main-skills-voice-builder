@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("character-overlay");
 import { planCharacterOverlays, poseFor, cutoutFor } from "../src/lib/pipeline/character-overlay";
 import { buildRenderArgs } from "../src/lib/pipeline/render";
 import type { Scene } from "../src/lib/schema";

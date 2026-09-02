@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("character-presence");
 import {
   ensureCharacterPresence, presenceBlockReason, countCharacter, hasCharacter,
 } from "../src/lib/content/character-presence";

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("overlay");
 import { buildOverlays, PRICE_UNKNOWN, clip } from "../src/lib/pipeline/overlay";
 import { buildAss } from "../src/lib/pipeline/subtitles";
 import type { Scene, RestaurantInfo } from "../src/lib/schema";

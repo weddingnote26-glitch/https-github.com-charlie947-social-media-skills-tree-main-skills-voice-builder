@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("rerender-timing");
 import { saveScenes, getReel } from "../src/lib/reels";
 import { db } from "../src/lib/db";
 import type { Scene } from "../src/lib/schema";

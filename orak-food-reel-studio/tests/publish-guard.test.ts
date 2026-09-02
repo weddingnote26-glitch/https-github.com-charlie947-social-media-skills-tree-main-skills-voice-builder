@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("publish-guard");
 import { friendlyImageError } from "../src/lib/providers/image";
 
 /**

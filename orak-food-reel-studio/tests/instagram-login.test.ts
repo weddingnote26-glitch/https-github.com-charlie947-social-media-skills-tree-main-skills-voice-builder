@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { useTempDb } from "./helpers";
+useTempDb("instagram-login");
 import { igLoginKind, graphBase } from "../src/lib/providers/instagram";
 import { describeKeyFailure } from "../src/lib/providers/api-failure";
 
