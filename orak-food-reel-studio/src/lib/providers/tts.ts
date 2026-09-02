@@ -121,6 +121,40 @@ export async function listElevenLabsVoices(): Promise<VoiceSummary[]> {
   }));
 }
 
+export interface TtsModelSummary {
+  id: string;
+  name: string;
+  description: string;
+  /** 지원 언어 코드 (예: ko) */
+  languages: string[];
+}
+
+/**
+ * 계정에서 쓸 수 있는 음성 모델 목록 (외부 영상 화면에서 골라 쓰기 위함).
+ * 모델 이름을 코드에 박아 두면 ElevenLabs 가 이름을 바꿀 때마다 프로그램을 고쳐야 한다 —
+ * 목소리 목록처럼 계정에서 받아온다. 글→음성이 되는 모델만 남긴다.
+ */
+export async function listElevenLabsModels(): Promise<TtsModelSummary[]> {
+  if (!resolveSecret("ELEVENLABS_API_KEY")) throw new Error("ElevenLabs API 키가 없습니다. 설정 화면에서 넣어 주세요.");
+  const out = await withRetry("elevenlabs", "list-models", async () =>
+    fetchJson<Array<{
+      model_id?: string; name?: string; description?: string;
+      can_do_text_to_speech?: boolean;
+      languages?: Array<{ language_id?: string; name?: string }>;
+    }>>("elevenlabs", "https://api.elevenlabs.io/v1/models", {
+      method: "GET",
+      headers: { "xi-api-key": resolveSecret("ELEVENLABS_API_KEY") },
+    }), 2);
+  return (Array.isArray(out) ? out : [])
+    .filter((m) => !!m.model_id && m.can_do_text_to_speech !== false)
+    .map((m) => ({
+      id: m.model_id as string,
+      name: m.name ?? (m.model_id as string),
+      description: m.description ?? "",
+      languages: (m.languages ?? []).map((l) => l.language_id ?? "").filter(Boolean),
+    }));
+}
+
 /** 오디오 길이(초) 측정 */
 export async function audioDuration(file: string): Promise<number> {
   const { runFFprobe } = await import("../ffmpeg");
