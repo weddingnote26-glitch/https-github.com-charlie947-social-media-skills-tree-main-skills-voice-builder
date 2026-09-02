@@ -18,22 +18,26 @@ export interface JobRow {
   updated_at: string;
   /** 어떤 릴스에 대한 작업이었는지 (있으면) */
   reel_title: string | null;
+  /** 결과가 저장되는 폴더 — 대본이 만들어져 릴스 행이 생긴 뒤부터 있다 */
+  output_dir: string | null;
 }
 
 function toRow(r: {
   id: string; reel_id: string | null; steps_json: string; status: string;
   error: string | null; created_at: string; updated_at: string; reel_title: string | null;
+  output_dir: string | null;
 }): JobRow {
   return {
     id: r.id, reel_id: r.reel_id, status: r.status, error: r.error,
     created_at: r.created_at, updated_at: r.updated_at, reel_title: r.reel_title,
+    output_dir: r.output_dir ?? null,
     steps: j<StepState[]>(r.steps_json, []),
   };
 }
 
 const SELECT = `
   SELECT p.id, p.reel_id, p.steps_json, p.status, p.error, p.created_at, p.updated_at,
-         r.title AS reel_title
+         r.title AS reel_title, r.output_dir AS output_dir
   FROM production_jobs p
   LEFT JOIN reels r ON r.id = p.reel_id`;
 

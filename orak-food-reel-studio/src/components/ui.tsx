@@ -87,6 +87,7 @@ export function Stars({ n }: { n: number }) {
 interface OrakBridge {
   isDesktopApp?: boolean;
   openOutputFolder?: (folderName: string) => Promise<{ ok: boolean; reason?: string; opened?: string }>;
+  pickVideoFile?: () => Promise<{ ok: boolean; canceled?: boolean; path?: string; reason?: string }>;
 }
 function bridge(): OrakBridge | undefined {
   if (typeof window === "undefined") return undefined;
@@ -103,11 +104,30 @@ export function canOpenFolder(): boolean {
   return typeof bridge()?.openOutputFolder === "function";
 }
 
-export async function openOutputFolder(folderName: string): Promise<{ ok: boolean; reason?: string }> {
+export async function openOutputFolder(folderName: string): Promise<{ ok: boolean; reason?: string; opened?: string }> {
   const fn = bridge()?.openOutputFolder;
   if (!fn) return { ok: false, reason: "설치한 프로그램에서만 폴더를 열 수 있습니다" };
   try {
     return await fn(folderName);
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** 영상 파일 고르기 창을 띄울 수 있는지 (설치형 앱에서만) */
+export function canPickVideo(): boolean {
+  return typeof bridge()?.pickVideoFile === "function";
+}
+
+/**
+ * 영상 파일 고르기 창 — 사용자가 창에서 직접 고른 파일의 경로 하나만 돌려받는다.
+ * 화면 쪽이 파일을 읽는 것이 아니다. 고른 경로는 서버가 FFprobe 로 다시 확인한다.
+ */
+export async function pickVideoFile(): Promise<{ ok: boolean; canceled?: boolean; path?: string; reason?: string }> {
+  const fn = bridge()?.pickVideoFile;
+  if (!fn) return { ok: false, reason: "설치한 프로그램에서만 파일 고르기 창을 열 수 있습니다" };
+  try {
+    return await fn();
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }

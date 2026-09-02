@@ -13,6 +13,7 @@ const { app, BrowserWindow, shell, dialog, Menu, ipcMain } = require("electron")
 const path = require("node:path");
 const fs = require("node:fs");
 const { resolveInside } = require("./safe-path");
+const { VIDEO_EXTENSIONS } = require("./video-types");
 const net = require("node:net");
 const { fork } = require("node:child_process");
 
@@ -135,6 +136,30 @@ ipcMain.handle("orak:open-output", async (_e, folderName) => {
   const open = fs.existsSync(safe.target) ? safe.target : root;
   const err = await shell.openPath(open);
   return err ? { ok: false, reason: err } : { ok: true, opened: open };
+});
+
+/**
+ * AI 음성을 입힐 영상 파일 고르기 (외부 영상 AI 음성 최종 제작).
+ *
+ * 화면(웹)은 파일 시스템을 만질 수 없다 — 파일 고르기 창은 본체만 띄울 수 있다.
+ * 돌려주는 것은 "사용자가 창에서 직접 고른 파일의 경로" 하나뿐이다. 화면 쪽이 원하는
+ * 경로를 지정해 읽게 하지 않는다. 고른 파일은 서버가 FFprobe 로 정말 영상인지 다시 확인한다.
+ */
+ipcMain.handle("orak:pick-video", async () => {
+  const options = {
+    title: "AI 음성을 입힐 영상 고르기",
+    properties: ["openFile"],
+    filters: [
+      { name: "동영상", extensions: VIDEO_EXTENSIONS },
+      { name: "모든 파일", extensions: ["*"] },
+    ],
+  };
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options);
+  const picked = result && !result.canceled && Array.isArray(result.filePaths) ? result.filePaths[0] : "";
+  if (!picked) return { ok: false, canceled: true };
+  return { ok: true, path: picked };
 });
 
 function createWindow(port) {

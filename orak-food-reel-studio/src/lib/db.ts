@@ -188,7 +188,27 @@ function migrate(d: SqliteDatabase): void {
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS imported_video_jobs (  -- 외부 영상 + AI 음성 최종 제작 (맛집 릴스와 별개)
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    source_path TEXT NOT NULL,                     -- 원본 영상 (읽기만 한다)
+    source_info_json TEXT NOT NULL DEFAULT '{}',   -- FFprobe 요약 {durationSec,width,height,hasAudio,...}
+    narration TEXT NOT NULL DEFAULT '',
+    voice_json TEXT NOT NULL DEFAULT '{}',         -- 이번 작업에만 쓰는 {voiceId,model,speed,...}
+    audio_mode TEXT NOT NULL DEFAULT 'mute',       -- mute(기존 소리 끄기) | mix(작게 섞기)
+    mix_db REAL NOT NULL DEFAULT -18,
+    output_dir TEXT,
+    voice_path TEXT, final_path TEXT,
+    duration_sec REAL,
+    steps_json TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT '대기',           -- 대기/진행중/완료/실패
+    error TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_reels_status ON reels(status);
+  CREATE INDEX IF NOT EXISTS idx_imported_status ON imported_video_jobs(status);
   CREATE INDEX IF NOT EXISTS idx_reels_planned ON reels(planned_date);
   CREATE INDEX IF NOT EXISTS idx_schedules_at ON schedules(publish_at, status);
   CREATE INDEX IF NOT EXISTS idx_pubjobs_phase ON publishing_jobs(phase);

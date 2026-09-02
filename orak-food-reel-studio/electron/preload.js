@@ -17,4 +17,11 @@ contextBridge.exposeInMainWorld("orak", {
    * 화면 쪽은 "완성영상 폴더 안의 어느 이름" 까지만 말할 수 있다.
    */
   openOutputFolder: (folderName) => ipcRenderer.invoke("orak:open-output", String(folderName ?? "")),
+  /**
+   * AI 음성을 입힐 영상 파일 고르기 창을 띄운다 (외부 영상 AI 음성 최종 제작).
+   *
+   * 돌려주는 것은 사용자가 창에서 직접 고른 파일의 경로 하나뿐이다.
+   * 화면 쪽에 파일 읽기·쓰기 권한을 주는 것이 아니다.
+   */
+  pickVideoFile: () => ipcRenderer.invoke("orak:pick-video"),
 });

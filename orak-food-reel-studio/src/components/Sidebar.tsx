@@ -9,6 +9,7 @@ const MENU = [
   { href: "/week", icon: "🗓", label: "이번 주 6개" },
   { href: "/calendar", icon: "📅", label: "콘텐츠 캘린더" },
   { href: "/producing", icon: "🎬", label: "제작중" },
+  { href: "/imported", icon: "🎞", label: "외부 영상 AI 음성" },
   { href: "/library", icon: "✅", label: "완성 콘텐츠" },
   { href: "/publish", icon: "🚀", label: "예약/발행" },
   { href: "/analytics", icon: "📊", label: "성과분석" },

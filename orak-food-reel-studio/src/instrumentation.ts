@@ -43,5 +43,10 @@ export async function register(): Promise<void> {
     logInfo("startup", `중단된 제작 ${stale.c}건을 정리했습니다`);
   }
 
+  // 외부 영상 AI 음성 작업(imported_video_jobs)도 같은 이유로 정리한다
+  const { cleanupStaleImportedJobs } = await import("./lib/pipeline/imported-video");
+  const staleImported = cleanupStaleImportedJobs();
+  if (staleImported > 0) logInfo("startup", `중단된 외부 영상 작업 ${staleImported}건을 정리했습니다`);
+
   startScheduler();
 }
