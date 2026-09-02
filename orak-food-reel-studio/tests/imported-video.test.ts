@@ -22,6 +22,8 @@ import {
   scanTopLevelBoxes, moovBeforeMdat, verifyFinalVideo, synthesizeNarration,
   createImportedJob, runImportedJob, getImportedJob, listImportedJobs, deleteImportedJobs, countImportedJobs,
   importedOutputDir, cleanupStaleImportedJobs, VIDEO_EXTENSIONS, FINAL_FILE_NAME, NARRATION_CHUNK_CHARS,
+  parseVolumeDetect, measureVolume, narrationGainDb,
+  TARGET_MEAN_DBFS, TARGET_PEAK_DBFS, MAX_GAIN_DB, FINAL_SILENT_PEAK_DBFS,
   type VideoInfo,
 } from "../src/lib/pipeline/imported-video";
 import { POST as createRoute, DELETE as deleteRoute } from "../src/app/api/imported/route";
@@ -79,7 +81,9 @@ async function waitDone(id: string, timeoutMs = 90_000) {
 
 const sampleMode = () => { vi.stubEnv("APP_MODE", "sample"); resetEnvCache(); };
 const readMeta = (dir: string) => JSON.parse(fs.readFileSync(path.join(dir, "metadata.json"), "utf8")) as {
-  render: { final_sec: number; extended_sec: number; mixed: boolean }; verified?: { checks: string[] };
+  render: { final_sec: number; extended_sec: number; mixed: boolean; voice_gain_db: number };
+  voice?: { gain_db: number; levels: { meanDb: number; maxDb: number } };
+  verified?: { checks: string[] };
 };
 const postJson = (handler: (req: Request) => Promise<Response>, url: string, body: unknown, method = "POST") =>
   handler(new Request(`http://localhost${url}`, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
@@ -261,6 +265,92 @@ describe("faststart 판정 (MP4 상자 순서)", () => {
     const broken = Buffer.alloc(8); broken.writeUInt32BE(3, 0); broken.write("free", 4, "latin1");
     expect(scan([box("ftyp", 16), broken, box("moov", 8)])).toBe(false);
     expect(scan([])).toBe(false);
+  });
+});
+
+/* ───────────────────────── 음량 ───────────────────────── */
+
+describe("음량 재기", () => {
+  it("volumedetect 기록에서 평균·최대를 뽑는다", () => {
+    const log = [
+      "[Parsed_volumedetect_0 @ 0x1] n_samples: 441000",
+      "[Parsed_volumedetect_0 @ 0x1] mean_volume: -53.2 dB",
+      "[Parsed_volumedetect_0 @ 0x1] max_volume: -49.5 dB",
+    ].join("\n");
+    expect(parseVolumeDetect(log)).toEqual({ meanDb: -53.2, maxDb: -49.5 });
+  });
+  it("숫자가 없으면 오류다 — 못 잰 것을 0dB 로 치지 않는다", () => {
+    expect(() => parseVolumeDetect("아무 것도 없음")).toThrow(/재지 못했습니다/);
+    expect(() => parseVolumeDetect("mean_volume: -inf dB")).toThrow(/재지 못했습니다/);
+  });
+});
+
+describe("AI 음성을 얼마나 키울지", () => {
+  it("사실상 무음이던 연습 모드 톤을 들리는 크기로 올린다", () => {
+    // 실제로 문제가 됐던 값 (샘플 톤 → 모노→스테레오 3dB 손실까지 먹은 뒤)
+    const gain = narrationGainDb({ meanDb: -53.2, maxDb: -49.5 });
+    expect(gain).toBeCloseTo(33.2, 1);
+    expect(-53.2 + gain).toBeCloseTo(TARGET_MEAN_DBFS, 1);   // 평균이 목표까지 온다
+    expect(-49.5 + gain).toBeLessThan(0);                     // 그래도 0dBFS 를 넘지 않는다
+  });
+
+  it("이미 정상 크기면 건드리지 않는다", () => {
+    expect(narrationGainDb({ meanDb: TARGET_MEAN_DBFS, maxDb: TARGET_PEAK_DBFS })).toBe(0);
+  });
+
+  it("큰 음성을 절대 줄이지 않는다 (감쇄 금지)", () => {
+    expect(narrationGainDb({ meanDb: -10, maxDb: -0.5 })).toBe(0);
+    expect(narrationGainDb({ meanDb: -3, maxDb: 0 })).toBe(0);
+  });
+
+  it("피크가 먼저 한계에 닿으면 거기서 멈춘다 (클리핑 방지)", () => {
+    const gain = narrationGainDb({ meanDb: -40, maxDb: -5 });
+    expect(gain).toBeCloseTo(3.5, 1);
+    expect(-5 + gain).toBeCloseTo(TARGET_PEAK_DBFS, 1);
+    expect(-5 + gain).toBeLessThan(0);
+  });
+
+  it("아주 작은 파일도 상한까지만 올린다 (잡음 증폭 방지)", () => {
+    expect(narrationGainDb({ meanDb: -90, maxDb: -85 })).toBe(MAX_GAIN_DB);
+  });
+});
+
+describe("합치기 명령의 음량 처리", () => {
+  const base = { sourcePath: "/v/원본.mp4", voicePath: "/o/voice.wav", outPath: "/o/최종.mp4", videoSec: 10, voiceSec: 6, hasAudio: true };
+  const filterOf = (plan: { args: string[] }) => plan.args[plan.args.indexOf("-filter_complex") + 1];
+
+  it("기존 소리를 끈 경우 AI 음성에 감쇄가 전혀 없다", () => {
+    const plan = buildImportedRenderArgs({ ...base, audioMode: "mute", voiceGainDb: 12 });
+    const f = filterOf(plan);
+    expect(f).toContain("[1:a]volume=12dB,apad[a]");
+    expect(f).not.toContain("[0:a]");           // 원본 소리를 아예 쓰지 않는다
+    expect(f).not.toContain("amix");
+    expect(plan.voiceGainDb).toBe(12);
+  });
+
+  it("섞는 경우 원본만 낮추고 AI 음성은 오히려 올린다", () => {
+    const plan = buildImportedRenderArgs({ ...base, audioMode: "mix", mixDb: -20, voiceGainDb: 8 });
+    const f = filterOf(plan);
+    expect(f).toContain("[0:a]volume=-20dB");   // 원본은 사용자가 정한 만큼만 내려간다
+    expect(f).toContain("[1:a]volume=8dB,apad[nar]");
+    expect(f).toContain("normalize=0");          // amix 가 AI 음성을 반으로 줄이지 않게
+    expect(f).toContain("alimiter=limit=0.98:level=false"); // 더한 값이 0dBFS 를 넘지 않게
+    expect(plan.voiceGainDb).toBe(8);
+  });
+
+  it("올릴 필요가 없으면 volume 필터를 넣지 않는다", () => {
+    expect(filterOf(buildImportedRenderArgs({ ...base, audioMode: "mute" }))).toContain("[1:a]apad[a]");
+    expect(filterOf(buildImportedRenderArgs({ ...base, audioMode: "mute", voiceGainDb: 0 }))).not.toContain("volume=");
+  });
+
+  it("음수 게인은 무시한다 — 어떤 값이 와도 AI 음성을 줄이지 않는다", () => {
+    const plan = buildImportedRenderArgs({ ...base, audioMode: "mute", voiceGainDb: -15 });
+    expect(plan.voiceGainDb).toBe(0);
+    expect(filterOf(plan)).not.toContain("volume=");
+  });
+
+  it("게인 상한을 넘겨 보내도 상한에서 멈춘다", () => {
+    expect(buildImportedRenderArgs({ ...base, audioMode: "mute", voiceGainDb: 999 }).voiceGainDb).toBe(MAX_GAIN_DB);
   });
 });
 
@@ -568,6 +658,60 @@ describe("연습 모드로 처음부터 끝까지 (FFmpeg 필요)", () => {
   }, 120_000);
 });
 
+describe("AI 음성이 실제로 들리는 크기로 합쳐진다 (FFmpeg 필요)", () => {
+  /**
+   * 실제로 겪은 일: 완성 파일에 오디오 트랙은 있었지만 최대 -49dB 라 휴대폰에서 안 들렸다.
+   * 그래서 "트랙이 있다" 가 아니라 "실제 음량" 을 재서 확인한다.
+   */
+  itFF("기존 소리 끄기 — 최종 파일이 사실상 무음이 아니다", async () => {
+    sampleMode();
+    const src = await makeVideo("vol-mute/원본.mp4", { sec: 3, audio: true });
+    const info = await inspectVideo(src);
+    const id = createImportedJob({ sourcePath: src, narration: "안녕하세요. 오락이입니다. 잘 들리는지 확인합니다.", voice: {}, audioMode: "mute" }, info);
+    await runImportedJob(id);
+    const job = getImportedJob(id)!;
+    expect(job.status).toBe("완료");
+
+    const before = await measureVolume(job.voice_path!);   // 올리기 전 (원래 음성 파일)
+    const after = await measureVolume(job.final_path!);    // 최종 파일
+    expect(before.maxDb).toBeLessThan(FINAL_SILENT_PEAK_DBFS);  // 원래는 사실상 무음이었고
+    expect(after.maxDb).toBeGreaterThan(FINAL_SILENT_PEAK_DBFS); // 최종은 들린다
+    expect(after.maxDb).toBeGreaterThan(-25);
+    expect(after.maxDb).toBeLessThanOrEqual(0);                  // 클리핑은 없다
+    expect(after.maxDb - before.maxDb).toBeGreaterThan(20);      // 실제로 크게 올라갔다
+    const meta = readMeta(job.output_dir!);
+    expect(meta.render.voice_gain_db).toBeGreaterThan(20);
+  }, 120_000);
+
+  itFF("작게 섞기 — AI 음성은 들리고 합친 소리가 0dBFS 를 넘지 않는다", async () => {
+    sampleMode();
+    const src = await makeVideo("vol-mix/원본.mp4", { sec: 5, audio: true });
+    const info = await inspectVideo(src);
+    const id = createImportedJob({ sourcePath: src, narration: "안녕하세요. 섞기 확인입니다.", voice: {}, audioMode: "mix", mixDb: -20 }, info);
+    await runImportedJob(id);
+    const job = getImportedJob(id)!;
+    expect(job.status).toBe("완료");
+    const after = await measureVolume(job.final_path!);
+    expect(after.maxDb).toBeGreaterThan(-25);
+    expect(after.maxDb).toBeLessThanOrEqual(0);
+    expect(readMeta(job.output_dir!).render.mixed).toBe(true);
+  }, 120_000);
+
+  itFF("합친 뒤에도 영상 길이·규격은 그대로다", async () => {
+    sampleMode();
+    const src = await makeVideo("vol-spec/원본.mp4", { sec: 4, audio: true });
+    const info = await inspectVideo(src);
+    const id = createImportedJob({ sourcePath: src, narration: "규격 확인입니다.", voice: {}, audioMode: "mute" }, info);
+    await runImportedJob(id);
+    const job = getImportedJob(id)!;
+    const p = await probe(job.final_path!);
+    expect(p.streams.find((x) => x.codec_type === "video")).toMatchObject({ codec_name: "h264", pix_fmt: "yuv420p" });
+    expect(p.streams.find((x) => x.codec_type === "audio")).toMatchObject({ codec_name: "aac" });
+    expect(moovBeforeMdat(job.final_path!)).toBe(true);
+    expect(job.duration_sec!).toBeGreaterThanOrEqual(info.durationSec - 0.35);
+  }, 120_000);
+});
+
 describe("결과 검증은 나쁜 파일을 통과시키지 않는다 (FFmpeg 필요)", () => {
   itFF("faststart 가 없으면 실패", async () => {
     const f = await makeVideo("verify/nofast.mp4", { sec: 2, audio: true, faststart: false });
@@ -583,11 +727,28 @@ describe("결과 검증은 나쁜 파일을 통과시키지 않는다 (FFmpeg �
     await expect(verifyFinalVideo(f, { voiceSec: 5, videoSec: 2 })).rejects.toThrow(/음성이 잘렸습니다/);
     await expect(verifyFinalVideo(f, { voiceSec: 1, videoSec: 4 })).rejects.toThrow(/원본 영상.*보다 짧습니다/);
   });
+  itFF("소리가 사실상 안 들리면 실패 — 트랙만 있으면 통과시키지 않는다", async () => {
+    // 이번 문제 그대로: 규격은 다 맞는데 음량만 -50dB 인 파일
+    const quiet = absFile("verify/quiet.mp4");
+    fs.mkdirSync(path.dirname(quiet), { recursive: true });
+    await runFFmpeg([
+      "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=2",
+      "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+      "-af", "volume=0.003", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-movflags", "+faststart", "-y", quiet,
+    ]);
+    const levels = await measureVolume(quiet);
+    expect(levels.maxDb).toBeLessThan(FINAL_SILENT_PEAK_DBFS);
+    await expect(verifyFinalVideo(quiet, { voiceSec: 1, videoSec: 2 })).rejects.toThrow(/사실상 들리지 않습니다/);
+  }, 60_000);
+
   itFF("좋은 파일은 통과하고, 가운데가 깨진 파일은 실패", async () => {
     const good = await makeVideo("verify/good.mp4", { sec: 2, audio: true });
     const ok = await verifyFinalVideo(good, { voiceSec: 1, videoSec: 2 });
     expect(ok.faststart).toBe(true);
     expect(ok.checks).toContain("전체 디코딩 통과");
+    expect(ok.levels.maxDb).toBeGreaterThan(FINAL_SILENT_PEAK_DBFS);
+    expect(ok.checks.some((c) => c.includes("음량"))).toBe(true);
 
     const broken = absFile("verify/broken.mp4");
     const bytes = fs.readFileSync(good);

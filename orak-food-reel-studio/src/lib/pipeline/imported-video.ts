@@ -44,6 +44,26 @@ export const NARRATION_MAX_CHARS = 8000;
 /** "작게 섞기"의 기본 감쇠 */
 export const DEFAULT_MIX_DB = -18;
 
+/**
+ * AI 음성 음량 기준.
+ *
+ * 실제로 겪은 일: 완성된 영상에 오디오 트랙은 붙었는데 최대 음량이 -49dB 라
+ * 휴대폰에서 거의 들리지 않았다. 원인은 믹싱이 아니라 만들어진 음성 파일 자체가
+ * 작았던 것이다 (연습 모드 샘플 톤은 일부러 작게 만들고, 모노를 스테레오로 바꾸며
+ * 3dB 가 더 준다). 그래서 합치기 전에 한 번 재고, 모자란 만큼만 올린다.
+ *
+ *  - 평균을 목표까지 올리되, 피크가 한계에 닿으면 거기서 멈춘다 (클리핑 방지)
+ *  - 절대 낮추지 않는다 (게인은 0dB 이상) — AI 음성을 작게 만드는 일은 없다
+ *  - 아무리 작아도 상한까지만 올린다 — 잡음만 있는 파일을 크게 키우지 않는다
+ */
+export const TARGET_MEAN_DBFS = -20;
+export const TARGET_PEAK_DBFS = -1.5;
+export const MAX_GAIN_DB = 40;
+/** 이보다 작으면 음성이 아니라 사실상 무음이다 — 올리지 않고 실패로 본다 */
+export const SILENT_PEAK_DBFS = -60;
+/** 최종 파일이 이보다 작으면 "들리지 않는 영상" 이므로 완료로 보지 않는다 */
+export const FINAL_SILENT_PEAK_DBFS = -40;
+
 export type AudioMode = "mute" | "mix";
 
 export interface VideoInfo {
@@ -154,6 +174,44 @@ export async function inspectVideo(sourcePath: string): Promise<VideoInfo> {
   return parseProbeJson(out, path.basename(p), st.size);
 }
 
+/* ───────────────────────── 음량 재기 ───────────────────────── */
+
+export interface VolumeLevels {
+  /** 파일 전체의 평균 음량 (dBFS) */
+  meanDb: number;
+  /** 가장 큰 순간의 음량 (dBFS) */
+  maxDb: number;
+}
+
+/** FFmpeg volumedetect 가 남긴 글에서 숫자만 뽑는다 (순수 함수 — 시험에서 직접 확인한다) */
+export function parseVolumeDetect(log: string): VolumeLevels {
+  const mean = /mean_volume:\s*(-?[\d.]+) dB/.exec(log)?.[1];
+  const max = /max_volume:\s*(-?[\d.]+) dB/.exec(log)?.[1];
+  if (mean === undefined || max === undefined) throw new Error("음량을 재지 못했습니다.");
+  const levels = { meanDb: Number(mean), maxDb: Number(max) };
+  if (!Number.isFinite(levels.meanDb) || !Number.isFinite(levels.maxDb)) throw new Error("음량을 재지 못했습니다.");
+  return levels;
+}
+
+/**
+ * 파일의 실제 음량을 잰다.
+ * -v error 를 주면 volumedetect 가 남기는 결과까지 지워지므로 기본 기록 수준을 쓴다.
+ */
+export async function measureVolume(file: string): Promise<VolumeLevels> {
+  const log = await runFFmpeg(["-hide_banner", "-i", file, "-af", "volumedetect", "-f", "null", "-"], 10 * 60 * 1000);
+  return parseVolumeDetect(log);
+}
+
+/**
+ * 나레이션을 얼마나 키울지 (dB). 순수 함수 — 시험에서 숫자로 확인한다.
+ * 평균을 목표까지 올리되 피크가 한계를 넘으면 거기서 멈추고, 0 아래로는 내려가지 않는다.
+ */
+export function narrationGainDb(levels: VolumeLevels): number {
+  const raw = Math.min(TARGET_MEAN_DBFS - levels.meanDb, TARGET_PEAK_DBFS - levels.maxDb);
+  const clamped = Math.min(MAX_GAIN_DB, Math.max(0, raw));
+  return Math.round(clamped * 10) / 10;
+}
+
 /* ───────────────────────── 나레이션 → 음성 ───────────────────────── */
 
 /**
@@ -203,6 +261,10 @@ export interface NarrationResult {
   chunks: number;
   /** "elevenlabs" 또는 "sample"(연습 모드) */
   provider: string;
+  /** 만들어진 음성 파일의 실제 음량 */
+  levels: VolumeLevels;
+  /** 합칠 때 올려야 할 양 (dB, 0 이상) */
+  gainDb: number;
 }
 
 /**
@@ -256,8 +318,14 @@ export async function synthesizeNarration(
   await runFFmpeg(["-f", "concat", "-safe", "0", "-i", listFile, "-c:a", "pcm_s16le", "-y", voicePath]);
   const totalSec = round2(await audioDuration(voicePath));
   if (!(totalSec > 0)) throw new Error("만들어진 음성의 길이가 0 입니다.");
-  logInfo("imported", `나레이션 음성 완성 — ${totalSec}s, ${chunks.length}조각 (${tts.name})`);
-  return { voicePath, totalSec, chunks: chunks.length, provider: tts.name };
+  // 소리가 실제로 들어 있는지, 그리고 얼마나 키워야 하는지를 여기서 정한다
+  const levels = await measureVolume(voicePath);
+  if (levels.maxDb < SILENT_PEAK_DBFS) {
+    throw new Error(`만들어진 음성이 사실상 무음입니다 (최대 ${levels.maxDb}dB). 목소리 설정을 확인하고 다시 시도해 주세요.`);
+  }
+  const gainDb = narrationGainDb(levels);
+  logInfo("imported", `나레이션 음성 완성 — ${totalSec}s, ${chunks.length}조각 (${tts.name}) · 평균 ${levels.meanDb}dB · 최대 ${levels.maxDb}dB → +${gainDb}dB`);
+  return { voicePath, totalSec, chunks: chunks.length, provider: tts.name, levels, gainDb };
 }
 
 /* ───────────────────────── 합치기 ───────────────────────── */
@@ -270,6 +338,14 @@ export interface RenderPlan {
   extendedSec: number;
   /** 기존 소리를 실제로 섞었는지 (원본에 소리가 없으면 섞을 수 없다) */
   mixed: boolean;
+  /** AI 음성에 실제로 올린 양 (dB) */
+  voiceGainDb: number;
+}
+
+/** AI 음성 게인 — 올리기만 하고, 상한을 넘지 않는다 */
+function clampGain(v: number | undefined): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  return Math.round(Math.min(MAX_GAIN_DB, Math.max(0, v)) * 10) / 10;
 }
 
 function clampDb(v: number | undefined): number {
@@ -289,6 +365,8 @@ export function buildImportedRenderArgs(p: {
   sourcePath: string; voicePath: string; outPath: string;
   videoSec: number; voiceSec: number; hasAudio: boolean;
   audioMode: AudioMode; mixDb?: number;
+  /** AI 음성을 키울 양 (dB). 음수는 무시한다 — AI 음성을 작게 만들지 않는다 */
+  voiceGainDb?: number;
 }): RenderPlan {
   if (path.resolve(p.outPath) === path.resolve(p.sourcePath)) {
     throw new Error("원본 영상 위에 덮어쓸 수 없습니다 — 결과는 새 파일로만 저장합니다.");
@@ -304,9 +382,16 @@ export function buildImportedRenderArgs(p: {
   if (extendedSec > 0) vf.push(`tpad=stop_mode=clone:stop_duration=${extendedSec}`);
 
   const mixed = p.audioMode === "mix" && p.hasAudio;
+  // AI 음성은 올리기만 한다 (0dB 미만은 쓰지 않는다). 0 이면 필터를 아예 넣지 않는다.
+  const voiceGainDb = clampGain(p.voiceGainDb);
+  const nar = voiceGainDb > 0 ? `volume=${voiceGainDb}dB,apad` : "apad";
   const audio = mixed
-    ? `[0:a]volume=${clampDb(p.mixDb)}dB,apad[bg];[1:a]apad[nar];[bg][nar]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[a]`
-    : "[1:a]apad[a]";
+    // 섞을 때는 두 소리를 그대로 더하므로(normalize=0) 합이 0dBFS 를 넘을 수 있다.
+    // alimiter 로 끝에서만 눌러 준다 — level=false 라야 조용한 구간을 제멋대로 키우지 않는다.
+    ? `[0:a]volume=${clampDb(p.mixDb)}dB,apad[bg];[1:a]${nar}[nar];` +
+      `[bg][nar]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[sum];` +
+      `[sum]alimiter=limit=0.98:level=false[a]`
+    : `[1:a]${nar}[a]`;
 
   const args = [
     "-i", p.sourcePath, "-i", p.voicePath,
@@ -319,7 +404,7 @@ export function buildImportedRenderArgs(p: {
     "-t", finalSec.toFixed(2),
     "-y", p.outPath,
   ];
-  return { args, finalSec, extendedSec, mixed };
+  return { args, finalSec, extendedSec, mixed, voiceGainDb };
 }
 
 /* ───────────────────────── 결과 검증 ───────────────────────── */
@@ -333,6 +418,8 @@ export interface VerifyResult {
   pixFmt: string;
   faststart: boolean;
   sizeBytes: number;
+  /** 최종 파일에서 실제로 잰 음량 — "트랙이 있다" 와 "들린다" 는 다르다 */
+  levels: VolumeLevels;
   /** 통과한 항목을 사람 말로 */
   checks: string[];
 }
@@ -427,6 +514,19 @@ export async function verifyFinalVideo(
   if (!faststart) throw bad("faststart 가 적용되지 않았습니다 (moov 상자가 파일 뒤에 있음)");
   checks.push("faststart");
 
+  /*
+   * 오디오 스트림이 있다고 들리는 것은 아니다.
+   * 실제로 트랙은 붙었는데 최대 -49dB 라 휴대폰에서 거의 안 들리는 파일을 완료로 처리한 적이 있다.
+   * 그래서 여기서 실제 음량을 재고, 사실상 무음이면 완료로 보지 않는다.
+   */
+  let levels: VolumeLevels;
+  try { levels = await measureVolume(finalPath); }
+  catch (e) { throw bad(`음량을 재지 못했습니다: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`); }
+  if (levels.maxDb < FINAL_SILENT_PEAK_DBFS) {
+    throw bad(`소리가 사실상 들리지 않습니다 (최대 ${levels.maxDb}dB · 평균 ${levels.meanDb}dB). AI 음성이 너무 작게 합쳐졌습니다`);
+  }
+  checks.push(`음량 최대 ${levels.maxDb}dB · 평균 ${levels.meanDb}dB`);
+
   // 끝까지 디코딩 — 중간에 깨진 구간이 있으면 여기서 걸린다 (-xerror: 오류가 나면 바로 실패)
   let decodeLog = "";
   try {
@@ -440,7 +540,7 @@ export async function verifyFinalVideo(
   return {
     durationSec: info.durationSec, width: info.width, height: info.height,
     videoCodec: info.videoCodec, audioCodec: audio.codec_name ?? "", pixFmt: info.pixFmt,
-    faststart, sizeBytes: st.size, checks,
+    faststart, sizeBytes: st.size, levels, checks,
   };
 }
 
@@ -649,7 +749,8 @@ export async function runImportedJob(jobId: string): Promise<void> {
     });
     mark("voice", {
       status: "완료", progress: 100, indeterminate: false,
-      message: `${voice.totalSec}s (${voice.provider === "sample" ? "연습 모드 — 샘플 톤" : "ElevenLabs"})`,
+      message: `${voice.totalSec}s (${voice.provider === "sample" ? "연습 모드 — 샘플 톤" : "ElevenLabs"})`
+        + (voice.gainDb > 0 ? ` · 음량 ${voice.levels.maxDb}dB → +${voice.gainDb}dB 올림` : " · 음량 그대로"),
     }, "진행중", { voice_path: voice.voicePath });
 
     // 3) 합치기
@@ -658,7 +759,7 @@ export async function runImportedJob(jobId: string): Promise<void> {
     const plan = buildImportedRenderArgs({
       sourcePath: row.source_path, voicePath: voice.voicePath, outPath: finalPath,
       videoSec: info.durationSec, voiceSec: voice.totalSec, hasAudio: info.hasAudio,
-      audioMode: row.audio_mode, mixDb: row.mix_db,
+      audioMode: row.audio_mode, mixDb: row.mix_db, voiceGainDb: voice.gainDb,
     });
     await runFFmpeg(plan.args, 60 * 60 * 1000);
     const renderNote = [
@@ -666,7 +767,10 @@ export async function runImportedJob(jobId: string): Promise<void> {
       row.audio_mode === "mix" && !plan.mixed ? "원본에 소리가 없어 AI 음성만 넣었습니다" : "",
       plan.mixed ? `기존 소리를 ${clampDb(row.mix_db)}dB 로 낮춰 섞었습니다` : "",
     ].filter(Boolean).join(" · ");
-    writeMeta(outDir, { render: { final_sec: plan.finalSec, extended_sec: plan.extendedSec, mixed: plan.mixed } });
+    writeMeta(outDir, {
+      voice: { sec: voice.totalSec, chunks: voice.chunks, provider: voice.provider, levels: voice.levels, gain_db: voice.gainDb },
+      render: { final_sec: plan.finalSec, extended_sec: plan.extendedSec, mixed: plan.mixed, voice_gain_db: plan.voiceGainDb },
+    });
     mark("render", { status: "완료", progress: 100, indeterminate: false, message: renderNote || `${plan.finalSec}s` });
 
     // 4) 검증 — 여기까지 통과해야 완료다
