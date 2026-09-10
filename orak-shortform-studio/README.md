@@ -48,6 +48,7 @@ orak-shortform-studio\
 ## 현재 상태
 
 - [x] 폴더 생성 · 분리규칙 v2(2026-08-28) 저장
-- [ ] **저장소 비공개(Private) 전환** — 마스터 이미지를 넣기 전 필수 (사장님이 GitHub Settings에서)
-- [ ] `assets\master\` 에 마스터 3장 추가
-- [ ] Stage 1 지시서 수령 → 개발 시작
+- [x] 마스터 3장 수령 (2026-09-10, 사장님이 세션에 업로드 — ①놀람·손들기 ②윙크·엄지척 ③체크리스트 기록. 셋 다 같은 복장·배경으로 확인)
+- [ ] **저장소 비공개(Private) 전환** — 2026-09-10 확인 결과 아직 공개(public) 상태. 규칙대로 전환 전에는 마스터를 커밋하지 않는다 (사장님이 GitHub Settings → Danger Zone에서)
+- [ ] `assets\master\` 에 마스터 3장 커밋 — Private 확인 즉시. 예정 이름: `oraki_surprised.webp`(놀람·손들기) · `oraki_thumbsup.webp`(윙크·엄지척) · `oraki_checklist.webp`(체크리스트)
+- [ ] Stage 1 지시서 수령 (§6·§7 자막 규칙 포함) → 개발 시작
