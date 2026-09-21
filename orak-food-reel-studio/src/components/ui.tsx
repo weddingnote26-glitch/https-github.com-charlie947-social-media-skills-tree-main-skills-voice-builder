@@ -183,6 +183,11 @@ export async function api<T = unknown>(url: string, init?: RequestInit): Promise
         : "프로그램 서버에 연결하지 못했습니다. 검은 창(start.bat)이 켜져 있는지 확인하고, 꺼져 있으면 다시 실행해 주세요.",
     );
   }
+  return readApiBody<T>(res);
+}
+
+/** api()·apiUpload() 공통 — 서버 응답 봉투를 풀고 실패면 사람 말로 던진다 */
+async function readApiBody<T>(res: Response): Promise<T> {
   let body: { ok?: boolean; error?: string; data?: unknown };
   try {
     body = await res.json();
@@ -191,6 +196,24 @@ export async function api<T = unknown>(url: string, init?: RequestInit): Promise
   }
   if (!body.ok) throw new Error(body.error ?? `요청 실패 (${res.status})`);
   return body.data as T;
+}
+
+/**
+ * 파일 업로드(멀티파트) — 끌어다 놓은 영상 파일을 서버로 보낸다.
+ * api() 와 달리 content-type 을 적지 않는다: 브라우저가 boundary 를 붙여 스스로 정한다.
+ */
+export async function apiUpload<T = unknown>(url: string, form: FormData): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", body: form });
+  } catch {
+    throw new Error(
+      isDesktopApp()
+        ? "프로그램 내부 서버에 연결하지 못했습니다. 프로그램을 완전히 닫았다가 다시 켜 주세요."
+        : "프로그램 서버에 연결하지 못했습니다. 검은 창(start.bat)이 켜져 있는지 확인하고, 꺼져 있으면 다시 실행해 주세요.",
+    );
+  }
+  return readApiBody<T>(res);
 }
 
 export function useApi<T>(url: string, refreshMs?: number): {

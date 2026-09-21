@@ -37,12 +37,37 @@ export interface RenderPlan {
 }
 
 /**
+ * 장면에 끌어온 영상 클립(video_path)이 있으면 그 파일 경로를 모은다.
+ * 경로만 있고 파일이 없으면 조용히 이미지로 넘어가지 않는다 — 사용자는 클립이
+ * 들어간 영상을 기대하고 있으므로, 무엇이 왜 안 되는지 문장으로 멈춘다.
+ */
+export function sceneClipMap(scenes: Scene[]): Map<number, string> {
+  const m = new Map<number, string>();
+  for (const s of scenes) {
+    if (!s.video_path) continue;
+    if (!fs.existsSync(s.video_path)) {
+      throw new Error(
+        `SCENE ${s.scene} 의 영상 클립 파일을 찾을 수 없습니다: ${s.video_path} — [② 장면 편집]에서 클립을 다시 넣거나 빼 주세요.`,
+      );
+    }
+    m.set(s.scene, s.video_path);
+  }
+  return m;
+}
+
+/**
  * FFmpeg 인자 생성 — 테스트 가능하도록 실행과 분리 (§55).
  * imageBySene: scene 번호 → 이미지 경로
  */
 export function buildRenderArgs(opts: {
   scenes: Scene[];
   imageByScene: Map<number, string>;
+  /**
+   * 클링AI 웹 등 밖에서 만들어 끌어온 장면 영상 (scene 번호 → 파일 경로).
+   * 있는 장면은 이미지 + 카메라 움직임 대신 이 영상을 그대로 쓴다.
+   * 자막·오락이·간판 합성은 이미지 장면과 똑같이 그 위에 얹힌다.
+   */
+  videoByScene?: Map<number, string>;
   /** null 이면 무음으로 만든다 — 음성 생성이 실패해도 영상은 나와야 한다 */
   voicePath: string | null;
   assPath: string;
@@ -59,11 +84,11 @@ export function buildRenderArgs(opts: {
   const totalSec = scenes[scenes.length - 1].end;
   const args: string[] = ["-hide_banner", "-loglevel", "error"];
 
-  // 이미지 입력들
+  // 장면 입력들 — 클립이 있으면 클립, 없으면 이미지 (장면당 입력 하나라 뒤 인덱스 계산은 그대로다)
   for (const s of scenes) {
-    const img = opts.imageByScene.get(s.scene);
-    if (!img) throw new Error(`SCENE ${s.scene} 이미지가 없습니다`);
-    args.push("-i", img);
+    const src = opts.videoByScene?.get(s.scene) ?? opts.imageByScene.get(s.scene);
+    if (!src) throw new Error(`SCENE ${s.scene} 의 이미지·영상이 둘 다 없습니다`);
+    args.push("-i", src);
   }
   const voiceIdx = scenes.length;
   if (opts.voicePath) {
@@ -85,14 +110,29 @@ export function buildRenderArgs(opts: {
   const charStartIdx = (bgmIdx >= 0 ? bgmIdx : voiceIdx) + 1;
   for (const c of chars) args.push("-i", c.imagePath);
 
-  // 장면별 Ken Burns
+  // 장면별 영상 — 이미지는 Ken Burns, 끌어온 클립은 원래 움직임 그대로
   const parts: string[] = [];
   scenes.forEach((s, i) => {
     const dur = s.end - s.start;
     const frames = Math.max(1, Math.round(dur * FPS));
-    const motion = MOTION_EXPR[s.camera_motion](frames);
     const fadeIn = i > 0 ? `,fade=t=in:st=0:d=0.12` : "";
     const fadeOut = i === scenes.length - 1 ? `,fade=t=out:st=${Math.max(0, dur - 0.35).toFixed(2)}:d=0.35` : "";
+    if (opts.videoByScene?.has(s.scene)) {
+      /* 끌어온 영상 클립: 카메라 움직임(zoompan)을 얹지 않는다 — 클립의 움직임을 그대로 쓴다.
+         길이는 장면 길이에 정확히 맞춘다:
+         tpad 가 마지막 화면을 장면 길이만큼 무조건 이어 붙이고, trim 이 앞에서 장면 길이로 자른다.
+         → 클립이 길면 앞부분만 쓰고, 짧으면 모자란 만큼 마지막 화면이 멈춘 채 채워진다.
+         소리는 여기서 쓰지 않는다([i:v]만 뽑는다) — 나레이션·BGM 트랙이 소리를 맡는다.
+         format=yuv420p 는 10비트 클립(HEVC 10bit 등)도 이미지 장면과 이어붙게 만든다. */
+      parts.push(
+        `[${i}:v]fps=${FPS},scale=${W}:${H}:force_original_aspect_ratio=increase,` +
+        `crop=${W}:${H},setsar=1,format=yuv420p,` +
+        `tpad=stop_mode=clone:stop_duration=${dur.toFixed(2)},` +
+        `trim=duration=${dur.toFixed(2)},setpts=PTS-STARTPTS${fadeIn}${fadeOut}[v${i}]`
+      );
+      return;
+    }
+    const motion = MOTION_EXPR[s.camera_motion](frames);
     parts.push(
       `[${i}:v]scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +

@@ -39,6 +39,7 @@ export function getReel(id: string): (ReelRow & { script: ReelScript | null; sce
     visual_prompt: string; camera_motion: string; character_action: string | null;
     character_expression: string | null; character_presence: string | null;
     fact_source: string | null; image_path: string | null; image_hash: string | null;
+    video_path: string | null;
   }>;
   const script = j<ReelScript | null>(row.script_json, null);
   return {
@@ -58,6 +59,7 @@ export function getReel(id: string): (ReelRow & { script: ReelScript | null; sce
       fact_source: s.fact_source ?? "",
       image_path: s.image_path,
       image_hash: s.image_hash,
+      video_path: s.video_path ?? null,
     })),
   };
 }
@@ -67,8 +69,8 @@ export function saveScenes(reelId: string, scenes: Scene[]): void {
   const del = d.prepare("DELETE FROM scenes WHERE reel_id=?");
   const ins = d.prepare(
     `INSERT INTO scenes (id, reel_id, scene_no, start_sec, end_sec, narration, subtitle, visual_prompt,
-     camera_motion, character_action, character_expression, character_presence, fact_source, image_path, image_hash)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     camera_motion, character_action, character_expression, character_presence, fact_source, image_path, image_hash, video_path)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   );
   const tx = d.transaction(() => {
     del.run(reelId);
@@ -77,7 +79,7 @@ export function saveScenes(reelId: string, scenes: Scene[]): void {
         `${reelId}-s${s.scene}`, reelId, s.scene, s.start, s.end, s.narration, s.subtitle,
         s.visual_prompt, s.camera_motion, s.character_action ?? null, s.character_expression ?? null,
         s.character_presence ?? "none",
-        s.fact_source, s.image_path ?? null, s.image_hash ?? null,
+        s.fact_source, s.image_path ?? null, s.image_hash ?? null, s.video_path ?? null,
       );
     }
   });

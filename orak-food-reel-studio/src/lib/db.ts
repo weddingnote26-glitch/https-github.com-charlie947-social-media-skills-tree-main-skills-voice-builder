@@ -234,6 +234,9 @@ function migrate(d: SqliteDatabase): void {
      다시 만들 때 그 값이 대본을 덮어써서 오락이가 영상에서 사라졌다. */
   addColumn(d, "scenes", "character_presence", "TEXT NOT NULL DEFAULT 'none'");
   addColumn(d, "restaurants", "deleted_at", "TEXT");
+  /* 클링AI 웹에서 만들어 끌어온 장면 영상의 경로.
+     저장할 자리가 없으면 character_presence 때처럼 다시 읽는 순간 사라진다. */
+  addColumn(d, "scenes", "video_path", "TEXT");
 }
 
 /** 표에 칸이 없으면 더한다. 있으면 아무 것도 하지 않는다. */

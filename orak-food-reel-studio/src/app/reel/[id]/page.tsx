@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, StatusBadge, Stars, ErrorBox, api, mediaUrl, useApi, canOpenFolder, openOutputFolder, copyText } from "@/components/ui";
+import { Card, StatusBadge, Stars, ErrorBox, api, apiUpload, mediaUrl, useApi, canOpenFolder, openOutputFolder, canPickVideo, pickVideoFile, copyText } from "@/components/ui";
 import RestaurantForm, { FieldStatusBadge, type FormValue } from "@/components/RestaurantForm";
 import PublishDialog from "@/components/PublishDialog";
 import ScheduleDialog from "@/components/ScheduleDialog";
@@ -48,6 +48,10 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   const [tab, setTab] = useState<Tab | null>(null);
   /** 장면 목록에서 고른 장면 — 고른 것만 오른쪽에서 편집한다 */
   const [sel, setSel] = useState(0);
+  /** 클립 끌어다 놓기 중인지 (테두리 강조) */
+  const [clipDrag, setClipDrag] = useState(false);
+  /** 방금 넣은 클립이 장면에 어떻게 맞춰지는지 — 서버가 알려 준 문장 */
+  const [clipNotes, setClipNotes] = useState<string[] | null>(null);
 
   // 검수 화면에서 ?publish=now / ?publish=schedule 로 넘어오면 그 창을 바로 연다.
   useEffect(() => {
@@ -68,12 +72,57 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
   }, [data, scenes]);
 
   /** 클립보드에 담고 결과를 알린다 (복사는 한 번만 시도한다) */
-  const copyAnd = async (what: string, text: string | null) => {
+  const copyAnd = async (what: string, text: string | null, doneMsg?: string) => {
     setErr(null);
     if (!text) { setErr(`${what} 칸이 비어 있습니다.`); return; }
-    if (await copyText(text)) setMsg(`${what} 복사 완료 — Instagram 에 붙여넣으세요.`);
+    if (await copyText(text)) setMsg(doneMsg ?? `${what} 복사 완료 — Instagram 에 붙여넣으세요.`);
     else setErr(`${what} 복사에 실패했습니다 — 아래 칸에서 직접 선택해 복사해 주세요.`);
   };
+
+  /**
+   * 장면 클립(클링AI 웹 영상) 처리.
+   * 다른 단추들처럼 장면 상태를 통째로 버리지 않는다 — 치다 만 나레이션이 날아가지 않게,
+   * 서버가 확정한 video_path 만 그 장면에 끼워 넣는다.
+   */
+  const applyClipLocal = (sceneNo: number, videoPath: string | null) => {
+    setScenes((prev) => prev ? prev.map((s) => s.scene === sceneNo ? { ...s, video_path: videoPath } : s) : prev);
+    reload();
+  };
+  interface ClipResult { scene: number; video_path: string | null; notes?: string[]; message?: string }
+  const clipDone = (sceneNo: number, r: ClipResult) => {
+    applyClipLocal(sceneNo, r.video_path);
+    setClipNotes(r.notes?.length ? r.notes : null);
+    setMsg(r.message ?? null);
+  };
+  const clipRun = async (sceneNo: number, fn: () => Promise<ClipResult>) => {
+    setBusy(`clip${sceneNo}`); setErr(null); setMsg(null); setClipNotes(null);
+    try { clipDone(sceneNo, await fn()); }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(null); }
+  };
+  /** 끌어다 놓거나 고른 파일을 업로드로 붙인다 (브라우저·원격 접속 공용) */
+  const uploadClip = (sceneNo: number, file: File) => clipRun(sceneNo, () => {
+    const form = new FormData();
+    form.set("scene", String(sceneNo));
+    form.set("file", file, file.name);
+    return apiUpload<ClipResult>(`/api/reels/${id}/clip`, form);
+  });
+  /** 설치형 앱의 파일 고르기 창 — 경로만 서버로 보내 복사·검사한다 */
+  const pickClip = async (sceneNo: number) => {
+    const picked = await pickVideoFile();
+    if (!picked.ok || !picked.path) {
+      if (!picked.canceled) setErr(picked.reason ?? "파일을 고르지 못했습니다.");
+      return;
+    }
+    await clipRun(sceneNo, () => api<ClipResult>(`/api/reels/${id}/clip`, {
+      method: "POST", body: JSON.stringify({ scene: sceneNo, sourcePath: picked.path }),
+    }));
+  };
+  const detachClip = (sceneNo: number) => clipRun(sceneNo, () =>
+    api<ClipResult>(`/api/reels/${id}/clip`, { method: "DELETE", body: JSON.stringify({ scene: sceneNo }) }));
+  /** 클링AI 웹에 붙여넣을 프롬프트 — 배경 규칙(글자 금지)과 세로 규격을 함께 담는다 */
+  const klingPrompt = (s: Scene) =>
+    `${s.visual_prompt}\n\nvertical 9:16 video, 1080x1920, no text, no letters, no captions, no watermark`;
 
   /** 완성 영상 폴더 열기 (설치형 앱에서만) */
   const openFolder = async () => {
@@ -155,6 +204,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
       narration: "", subtitle: "", visual_prompt: base?.visual_prompt ?? "맛집 소개 장면",
       camera_motion: "slow_zoom_in", character_action: null, character_expression: null,
       character_presence: "none", fact_source: "", image_path: null, image_hash: null,
+      video_path: null,
     };
     const next = [...scenes];
     next.splice(sel + 1, 0, fresh);
@@ -263,7 +313,7 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                 {scenes.map((s, i) => {
                   const thumb = mediaUrl(s.image_path);
                   return (
-                    <button key={s.scene + "-" + i} onClick={() => setSel(i)} aria-pressed={curIdx === i}
+                    <button key={s.scene + "-" + i} onClick={() => { setSel(i); setClipNotes(null); }} aria-pressed={curIdx === i}
                       className={`w-full text-left rounded-xl border-2 p-2.5 flex items-center gap-3 transition ${
                         curIdx === i ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-200 bg-white hover:border-gray-300"}`}>
                       {thumb
@@ -277,7 +327,8 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                         </div>
                         <div className="text-sm truncate mt-1">{s.subtitle || s.narration || "(내용 없음)"}</div>
                         <div className="flex items-center gap-1.5 mt-1">
-                          {!s.image_path && <span className="badge bg-amber-100 text-amber-800">이미지 없음</span>}
+                          {!s.image_path && !s.video_path && <span className="badge bg-amber-100 text-amber-800">이미지 없음</span>}
+                          {s.video_path && <span className="badge bg-violet-100 text-violet-700" title="이 장면은 끌어온 영상 클립으로 만들어집니다">🎬 클립</span>}
                           {s.character_action && <span className="badge bg-[#FDEDE5] text-[#B84A1B]">🥟</span>}
                         </div>
                       </div>
@@ -304,7 +355,11 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                     </div>
                   </div>
                   <div className="grid grid-cols-[96px_1fr] gap-3">
-                    {mediaUrl(cur.image_path) ? (
+                    {mediaUrl(cur.video_path) ? (
+                      /* 클립이 있으면 이미지 대신 클립을 보여 준다 — 실제 렌더도 그렇게 된다 */
+                      <video key={cur.video_path} src={mediaUrl(cur.video_path)!} muted loop autoPlay playsInline
+                        className="w-24 aspect-9/16 object-cover rounded-lg border" />
+                    ) : mediaUrl(cur.image_path) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={mediaUrl(cur.image_path)!} alt="" className="w-24 aspect-9/16 object-cover rounded-lg border" />
                     ) : <div className="w-24 aspect-9/16 bg-gray-100 rounded-lg" />}
@@ -334,6 +389,69 @@ export default function ReelPage({ params }: { params: Promise<{ id: string }> }
                           onClick={() => run(`voice${curIdx}`, () => api(`/api/reels/${id}/regenerate`, { method: "POST", body: JSON.stringify({ scene: cur.scene, what: "voice" }) }), "음성을 다시 만들었습니다. 저장하면 영상에 반영됩니다.")}>
                           {busy === `voice${curIdx}` ? "생성 중…" : "🎙 음성 전체 다시"}
                         </button>
+                      </div>
+
+                      {/* 🎥 장면 영상 클립 — 클링AI 웹에서 만들어 끌어오면 이미지 대신 이 영상으로 렌더된다 */}
+                      <div
+                        className={`rounded-xl border-2 border-dashed p-3 transition ${clipDrag ? "border-[#E86A3A] bg-[#FDEDE5]" : "border-gray-300 bg-gray-50"}`}
+                        onDragOver={(e) => { e.preventDefault(); setClipDrag(true); }}
+                        onDragLeave={() => setClipDrag(false)}
+                        onDrop={(e) => {
+                          e.preventDefault(); setClipDrag(false);
+                          const f = e.dataTransfer.files?.[0];
+                          if (f) void uploadClip(cur.scene, f);
+                        }}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-gray-600">🎥 장면 영상 클립 (클링AI 웹에서 만들어 끌어오기)</span>
+                          <button className="btn-ghost" title="이 장면의 배경 설명을 클링AI 웹에 붙여넣을 수 있게 복사합니다 (세로 9:16 · 글자 금지 조건 포함)"
+                            onClick={() => copyAnd("클링 프롬프트", klingPrompt(cur), "클링 프롬프트 복사 완료 — 클링AI 웹(klingai.com)에 붙여넣어 영상을 만들고, 받은 파일을 여기에 끌어다 놓으세요.")}>
+                            📋 클링 프롬프트 복사
+                          </button>
+                        </div>
+                        {cur.video_path ? (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="badge bg-violet-100 text-violet-700">🎬 클립 사용 중</span>
+                              <span className="text-xs text-gray-700 break-all">{cur.video_path.split(/[\\/]/).pop()}</span>
+                              <button className="btn-secondary ml-auto" disabled={!!busy} onClick={() => void detachClip(cur.scene)}>
+                                {busy === `clip${cur.scene}` ? "빼는 중…" : "클립 빼기"}
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              이 장면은 이미지 대신 이 영상으로 만들어집니다. 자막·오락이·간판은 그대로 그 위에 얹힙니다.
+                              길면 장면 길이만큼 앞부분만 쓰고, 짧으면 마지막 화면이 멈춘 채 채워집니다.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            <p className="text-sm text-gray-700">
+                              영상 파일을 <b>여기에 끌어다 놓거나</b> 아래 단추로 골라 주세요.
+                              넣으면 이 장면은 이미지 + 카메라 움직임 대신 그 영상으로 만들어집니다.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {canPickVideo() && (
+                                <button className="btn-secondary" disabled={!!busy} onClick={() => void pickClip(cur.scene)}>
+                                  {busy === `clip${cur.scene}` ? "넣는 중…" : "📂 영상 파일 고르기"}
+                                </button>
+                              )}
+                              <label className={`btn-secondary cursor-pointer ${busy ? "pointer-events-none opacity-50" : ""}`}>
+                                {busy === `clip${cur.scene}` ? "넣는 중…" : "📥 파일 올리기"}
+                                <input type="file" hidden accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi,.mpg,.mpeg,.wmv"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = ""; // 같은 파일을 다시 골라도 onChange 가 오게
+                                    if (f) void uploadClip(cur.scene, f);
+                                  }} />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                        {clipNotes && clipNotes.length > 0 && (
+                          <ul className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-900 list-disc pl-6 space-y-0.5">
+                            {clipNotes.map((n) => <li key={n}>{n}</li>)}
+                          </ul>
+                        )}
                       </div>
                     </div>
                   </div>

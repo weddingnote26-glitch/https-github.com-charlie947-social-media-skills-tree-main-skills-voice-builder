@@ -539,8 +539,9 @@ export default function SettingsPage() {
               help="클링 AI 계정에서 발급한 키를 붙여넣으세요. 암호화되어 저장되며 화면에는 앞뒤 몇 글자만 보입니다." />
           )}
           <p className="text-xs text-gray-600 mt-1">
-            넣어 두신 키와 모델 이름은 저장만 됩니다. <b>지금 릴스 제작에는 아직 쓰이지 않습니다</b> —
-            연결 방식(주소·요청 형식)을 확인한 뒤 제작 흐름에 붙일 예정입니다.
+            <b>클링 AI는 API 없이 바로 쓸 수 있습니다</b> — 클링 웹(klingai.com)에서 영상을 만들어 내려받은 뒤,
+            릴스의 [② 장면 편집] → <b>🎥 장면 영상 클립</b>에 끌어다 놓으면 그 장면은 이미지 대신 그 영상으로 만들어집니다.
+            여기 키와 모델 이름은 저장만 해 둡니다 — 나중에 API 로 직접 연결할 때 쓸 자리입니다.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-4">

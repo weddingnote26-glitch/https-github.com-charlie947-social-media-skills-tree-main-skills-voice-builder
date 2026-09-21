@@ -15,7 +15,7 @@ import { writeSubtitles } from "./subtitles";
 import { buildOverlays } from "./overlay";
 import { ensureCharacterPresence } from "../content/character-presence";
 import { planCharacterOverlays } from "./character-overlay";
-import { renderReel } from "./render";
+import { renderReel, sceneClipMap } from "./render";
 import { applyBranding } from "./branding";
 import { makeThumbnail, thumbnailLines } from "./thumbnail";
 import { getSettings } from "../settings";
@@ -278,7 +278,8 @@ export async function runProductionJob(jobId: string, input: ProduceInput): Prom
       logInfo("render", `오락이 합성 — ${charOverlays.length}개 장면에 캐릭터를 얹습니다`);
     }
     const rendered = await renderReel({
-      scenes: script.scenes, imageByScene, voicePath: voice.voicePath,
+      scenes: script.scenes, imageByScene, videoByScene: sceneClipMap(script.scenes),
+      voicePath: voice.voicePath,
       assPath: subs.assPath, outPath: videoPath, characters: charOverlays,
     });
     // 인트로·아웃트로 — 설정돼 있을 때만 앞뒤에 붙인다. 붙이다 실패해도 릴스 자체는 살린다.
@@ -546,8 +547,10 @@ export async function rerender(reelId: string): Promise<void> {
   } catch { /* 업체를 못 찾으면 판 없이 간다 */ }
   const charOverlays = reel.content_mode === "ORAKI_DETECTIVE"
     ? planCharacterOverlays(script.scenes, rerenderPanels) : [];
+  /* 끌어온 클립이 있는 장면은 이미지가 없어도 된다 — 클립이 그 장면의 화면이다 */
   const rendered = await renderReel({
-    scenes: script.scenes, imageByScene, voicePath, assPath, outPath: videoPath,
+    scenes: script.scenes, imageByScene, videoByScene: sceneClipMap(script.scenes),
+    voicePath, assPath, outPath: videoPath,
     characters: charOverlays,
   });
   let brandSec = 0;

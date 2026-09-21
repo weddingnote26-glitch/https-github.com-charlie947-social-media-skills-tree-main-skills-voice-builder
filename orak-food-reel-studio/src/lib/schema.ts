@@ -41,6 +41,8 @@ export const SceneSchema = z.object({
   fact_source: z.string().default(""),      // 이 장면 정보의 근거 (없으면 "미확인")
   image_path: z.string().nullish(),         // 생성된 이미지 경로(캐시)
   image_hash: z.string().nullish(),         // visual_prompt 해시(§45 캐시 키)
+  /** 클링AI 웹 등 밖에서 만들어 끌어온 장면 영상 — 있으면 이미지 대신 이 영상으로 렌더한다 */
+  video_path: z.string().nullish(),
 });
 export type Scene = z.infer<typeof SceneSchema>;
 
